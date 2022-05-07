@@ -246,7 +246,7 @@ class DataModel:
         # return (obj_dist, obj_arg)
 
     def count_in_range(self, obj_type=0):
-        dist, arg = self.get_object_distance(obj_type)
+        dist, _ = self.get_object_distance(obj_type)
         count = np.count_nonzero(~np.isnan(dist), axis=1)
         if obj_type == 1:
             count = count-1 # don't count self
@@ -313,7 +313,7 @@ class DataModel:
         mdi = []
         for r_id, d in enumerate(md):
             if np.isnan(d):
-                mdi.append(np.nan)
+                mdi.append(0)
             else:
                 idxs = np.where(dist[:,r_id]==d)[0]
                 idx = np.random.choice(idxs, 1) # break a tie in more than one nearest distance
@@ -355,7 +355,7 @@ class DataModel:
             u, c = np.unique(col, return_counts=True)
             val = len(c)/self.roc_window
             counts.append(val)
- 
+        
         return counts
 
 class ExportRedisData(DataModel):
