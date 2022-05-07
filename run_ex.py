@@ -2,13 +2,17 @@ from simulator.wh_sim import *
 from simulator.lib import Config, SaveTo
 from simulator import CFG_FILES
 
+import warnings
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
+
 ###### Experiment parameters ######
 
 ex_id = 'e_1'
-iterations = 200
+iterations = 1#200
 export_data = True
 verbose = False    
-fault_range = range(11) # inject 0-10 faults
+fault_range = range(1) # inject 0-10 faults
 batch_id = 'test'
 
 ###### Config class ######

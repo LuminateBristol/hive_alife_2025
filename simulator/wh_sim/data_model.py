@@ -27,14 +27,14 @@ class DataModel:
         'velocity',
         'agent_delivery_count',
         'action_state',
-        'FOV_agent_density_forward',
-        'FOV_agent_density_behind',
-        'FOV_object_density_forward',
-        'FOV_object_density_behind',
-        'FOV_wall_density_forward',
-        'FOV_wall_density_behind',
-        'FOV_combined_density_forward',
-        'FOV_combined_density_behind',
+        # 'FOV_agent_density_forward',
+        # 'FOV_agent_density_behind',
+        # 'FOV_object_density_forward',
+        # 'FOV_object_density_behind',
+        # 'FOV_wall_density_forward',
+        # 'FOV_wall_density_behind',
+        # 'FOV_combined_density_forward',
+        # 'FOV_combined_density_behind',
         'nearest_agent_distance',
         'nearest_box_distance',
         'nearest_wall_distance',
@@ -82,11 +82,11 @@ class DataModel:
         agent_delivery_count = self.warehouse.rob_delivery_count
         action_state = self.swarm.agent_has_box
 
-        a_dir_ir = self.count_directional_in_range(1)
-        b_dir_ir = self.count_directional_in_range(0)
-        w_dir_ir = self.count_directional_in_range(2)
-        comb_dir_f = np.stack([a_dir_ir[0], b_dir_ir[0], w_dir_ir[0]]).sum(axis=0)
-        comb_dir_b = np.stack([a_dir_ir[1], b_dir_ir[1], w_dir_ir[1]]).sum(axis=0)
+        # a_dir_ir = self.count_directional_in_range(1)
+        # b_dir_ir = self.count_directional_in_range(0)
+        # w_dir_ir = self.count_directional_in_range(2)
+        # comb_dir_f = np.stack([a_dir_ir[0], b_dir_ir[0], w_dir_ir[0]]).sum(axis=0)
+        # comb_dir_b = np.stack([a_dir_ir[1], b_dir_ir[1], w_dir_ir[1]]).sum(axis=0)
         
         nearest_agent = self.get_nearest_object(1)
         nearest_box = self.get_nearest_object(0)
@@ -103,14 +103,14 @@ class DataModel:
             'velocity': rob_v,
             'agent_delivery_count': agent_delivery_count,
             'action_state': action_state,
-            'FOV_agent_density_forward': a_dir_ir[0],
-            'FOV_agent_density_behind': a_dir_ir[1],
-            'FOV_object_density_forward': b_dir_ir[0],
-            'FOV_object_density_behind': b_dir_ir[1],
-            'FOV_wall_density_forward': w_dir_ir[0],
-            'FOV_wall_density_behind': w_dir_ir[1],
-            'FOV_combined_density_forward': comb_dir_f,
-            'FOV_combined_density_behind': comb_dir_b,
+            # 'FOV_agent_density_forward': a_dir_ir[0],
+            # 'FOV_agent_density_behind': a_dir_ir[1],
+            # 'FOV_object_density_forward': b_dir_ir[0],
+            # 'FOV_object_density_behind': b_dir_ir[1],
+            # 'FOV_wall_density_forward': w_dir_ir[0],
+            # 'FOV_wall_density_behind': w_dir_ir[1],
+            # 'FOV_combined_density_forward': comb_dir_f,
+            # 'FOV_combined_density_behind': comb_dir_b,
             'nearest_agent_distance': nearest_agent[0],
             'nearest_box_distance': nearest_box[0],
             'nearest_wall_distance': nearest_wall[0],
@@ -199,48 +199,51 @@ class DataModel:
         if obj ==0 or obj==2:
             obj_dist = np.transpose(obj_dist)
 
+        return obj_dist, None
+
+        # @TODO remove directional
         # compute angle to object
-        n_r = self.swarm.number_of_agents
-        n_c = len(coord)
+        # n_r = self.swarm.number_of_agents
+        # n_c = len(coord)
         
-        coord_norm_x = np.tile(coord[:,0], (n_r,1)) - np.transpose(np.tile(rob_c[:,0], (n_c,1)))
-        coord_norm_y = np.tile(coord[:,1], (n_r,1)) - np.transpose(np.tile(rob_c[:,1], (n_c,1)))
+        # coord_norm_x = np.tile(coord[:,0], (n_r,1)) - np.transpose(np.tile(rob_c[:,0], (n_c,1)))
+        # coord_norm_y = np.tile(coord[:,1], (n_r,1)) - np.transpose(np.tile(rob_c[:,1], (n_c,1)))
         
-        obj_angles = np.arctan2(coord_norm_y.flatten(), coord_norm_x.flatten())
-        obj_angles_M = np.reshape(obj_angles, (n_r, n_c))
+        # obj_angles = np.arctan2(coord_norm_y.flatten(), coord_norm_x.flatten())
+        # obj_angles_M = np.reshape(obj_angles, (n_r, n_c))
 
-        pi_2_arr = np.empty(n_r)
-        pi_2_arr.fill(np.pi*2)
-        pi_h_arr = np.empty(n_r)
-        pi_h_arr.fill(np.pi/2)
+        # pi_2_arr = np.empty(n_r)
+        # pi_2_arr.fill(np.pi*2)
+        # pi_h_arr = np.empty(n_r)
+        # pi_h_arr.fill(np.pi/2)
 
-        heading_angles = (self.swarm.computed_heading - np.pi)%(2*np.pi)
-        heading_angles_M = np.transpose(np.tile(heading_angles, (n_c,1)))
-        ha_norm = heading_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
-        oa_norm = obj_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
-        obj_arg = ha_norm - oa_norm
+        # heading_angles = (self.swarm.computed_heading - np.pi)%(2*np.pi)
+        # heading_angles_M = np.transpose(np.tile(heading_angles, (n_c,1)))
+        # ha_norm = heading_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
+        # oa_norm = obj_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
+        # obj_arg = ha_norm - oa_norm
 
-        # obj_arg values: -2*pi < x < 2*pi
-        # We would like the arg to be between -pi and pi
-        le_idx = np.less_equal(obj_arg, -np.pi)
-        g_idx = np.greater(obj_arg, np.pi)
-        obj_arg[le_idx] += 2*np.pi
-        obj_arg[g_idx] -= 2*np.pi
+        # # obj_arg values: -2*pi < x < 2*pi
+        # # We would like the arg to be between -pi and pi
+        # le_idx = np.less_equal(obj_arg, -np.pi)
+        # g_idx = np.greater(obj_arg, np.pi)
+        # obj_arg[le_idx] += 2*np.pi
+        # obj_arg[g_idx] -= 2*np.pi
 
-        if obj == 0:
-            for idx, r_id in enumerate(self.warehouse.robot_carrier):
-                if r_id != -1:
-                    obj_arg[r_id][idx] = np.nan # if robot is carrying box, set angle to box as 0
-                    obj_dist[r_id][idx] = np.nan
+        # if obj == 0:
+        #     for idx, r_id in enumerate(self.warehouse.robot_carrier):
+        #         if r_id != -1:
+        #             obj_arg[r_id][idx] = np.nan # if robot is carrying box, set angle to box as 0
+        #             obj_dist[r_id][idx] = np.nan
 
-        if obj == 1:
-            np.fill_diagonal(obj_arg, np.nan)
+        # if obj == 1:
+        #     np.fill_diagonal(obj_arg, np.nan)
         
-        if in_range:
-            ir = np.transpose(ir)
-            obj_arg = np.multiply(obj_arg, ir)
+        # if in_range:
+        #     ir = np.transpose(ir)
+        #     obj_arg = np.multiply(obj_arg, ir)
             
-        return (obj_dist, obj_arg)
+        # return (obj_dist, obj_arg)
 
     def count_in_range(self, obj_type=0):
         dist, arg = self.get_object_distance(obj_type)
