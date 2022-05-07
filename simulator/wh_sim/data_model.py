@@ -277,7 +277,18 @@ class DataModel:
         nan_val = min_dist == foo
         md[nan_val] = np.nan
         mdi[nan_val] = np.nan
+        mdi = self._map_obj_id(mdi, obj_type)
         return (md, mdi)
+
+    def _map_obj_id(self, obj_id, obj_type=0):
+        if obj_type == 0:
+            offset = 1
+        elif obj_type == 1:
+            offset = self.warehouse.number_of_boxes + 1
+        elif obj_type == 2:
+            offset = self.warehouse.number_of_boxes + self.swarm.number_of_agents + 1
+        
+        return obj_id+offset
 
     def get_single_nearest(self, nearest_arr=None):
         if nearest_arr is None:
@@ -325,7 +336,7 @@ class DataModel:
         t = (self.warehouse.counter - t_d)%t_d
 
         data = np.array(self.metric_data[metric])
-        np.nan_to_num(data, copy=False, nan=-1)
+        np.nan_to_num(data, copy=False)
         data = data.reshape(1, self.number_of_agents)
 
         if metric not in self.roc_data:
