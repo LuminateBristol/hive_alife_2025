@@ -1,0 +1,55 @@
+#### Experiments
+
+e_1:
+  faults:
+    - type: 2
+      cfg:
+        speed_at_fault: 0.1
+
+  data_dir: "e_1"
+  description: "Robot moves at severely\nreduced speed"
+
+e_2:
+  # id: "e_2"
+  faults:
+    - type: 2
+      cfg:
+        speed_at_fault: 0.5
+
+  data_dir: "e_2"
+  description: "Robot moves at half speed"
+
+e_3:
+  # id: "e_3"
+  faults:
+    - type: 2
+      cfg:
+        speed_at_fault: 0.0
+
+  data_dir: "e_3"
+  description: "Robot can't move"
+
+e_4:
+  # id: "e_4"
+  faults:
+    - type: 1
+
+  data_dir: "e_4"
+  description: "Robot can't lift boxes"
+
+e_5:
+  # id: "e_5"
+  faults:
+    - type: 5
+
+  data_dir: "e_5"
+  description: "Robot can't deposit boxes"
+
+e_6:
+  faults:
+    - type: 4
+      cfg:
+        reduced_range: 0.1
+
+  data_dir: "e_6"
+  description: "Robot camera range\nseverely reduced"
