@@ -27,14 +27,6 @@ class DataModel:
         'velocity',
         'agent_delivery_count',
         'action_state',
-        # 'FOV_agent_density_forward',
-        # 'FOV_agent_density_behind',
-        # 'FOV_object_density_forward',
-        # 'FOV_object_density_behind',
-        # 'FOV_wall_density_forward',
-        # 'FOV_wall_density_behind',
-        # 'FOV_combined_density_forward',
-        # 'FOV_combined_density_behind',
         'nearest_agent_distance',
         'nearest_box_distance',
         'nearest_wall_distance',
@@ -81,12 +73,6 @@ class DataModel:
         rob_v = self.compute_velocity()
         agent_delivery_count = self.warehouse.rob_delivery_count
         action_state = self.swarm.agent_has_box
-
-        # a_dir_ir = self.count_directional_in_range(1)
-        # b_dir_ir = self.count_directional_in_range(0)
-        # w_dir_ir = self.count_directional_in_range(2)
-        # comb_dir_f = np.stack([a_dir_ir[0], b_dir_ir[0], w_dir_ir[0]]).sum(axis=0)
-        # comb_dir_b = np.stack([a_dir_ir[1], b_dir_ir[1], w_dir_ir[1]]).sum(axis=0)
         
         nearest_agent = self.get_nearest_object(1)
         nearest_box = self.get_nearest_object(0)
@@ -103,14 +89,6 @@ class DataModel:
             'velocity': rob_v,
             'agent_delivery_count': agent_delivery_count,
             'action_state': action_state,
-            # 'FOV_agent_density_forward': a_dir_ir[0],
-            # 'FOV_agent_density_behind': a_dir_ir[1],
-            # 'FOV_object_density_forward': b_dir_ir[0],
-            # 'FOV_object_density_behind': b_dir_ir[1],
-            # 'FOV_wall_density_forward': w_dir_ir[0],
-            # 'FOV_wall_density_behind': w_dir_ir[1],
-            # 'FOV_combined_density_forward': comb_dir_f,
-            # 'FOV_combined_density_behind': comb_dir_b,
             'nearest_agent_distance': nearest_agent[0],
             'nearest_box_distance': nearest_box[0],
             'nearest_wall_distance': nearest_wall[0],
