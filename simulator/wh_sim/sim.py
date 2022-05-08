@@ -11,7 +11,6 @@ import os
 from os.path import dirname, realpath
 import datetime
 import time
-import redis
 import json
 
 from . import Swarm, Warehouse, Robot, FaultySwarm
