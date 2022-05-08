@@ -1,4 +1,7 @@
-import redis
+try:
+    import redis
+except:
+    print("No redis module")
 
 class RedisConn:
     
