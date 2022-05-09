@@ -5,12 +5,12 @@ import multiprocessing as mp
 
 ###### Experiment parameters ######
 
-ex_id = 'e_1'
+ex_id = 'e_2'
 iterations = 200
 export_data = True
 verbose = False    
-fault_range = range(10,11) # inject 0-10 faults
-batch_id = '7may'
+fault_range = range(6,7) # inject 0-10 faults
+batch_id = '8may'
 global_var = {'log_lock': False}
 
 ###### Config class ######
@@ -40,8 +40,8 @@ def iterate_ex(sem, iterations, faults, st, export_data=True):
     p.join()
 
 def run_ex(iteration, faults, st, export_data=True):
-    _log(iteration, faults)
-    random_seed = gen_random_seed(i)
+    _log(iteration, faults[0])
+    random_seed = gen_random_seed(iteration)
 
     if export_data:
         data_model = DataModel(store_internal=True, compute_roc=True)
