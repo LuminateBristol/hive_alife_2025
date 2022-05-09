@@ -11,6 +11,7 @@ export_data = True
 verbose = False    
 fault_range = range(6,7) # inject 0-10 faults
 batch_id = '8may'
+log_dir = 'logs'
 global_var = {'log_lock': False}
 
 ###### Config class ######
@@ -65,9 +66,13 @@ def _log(iteration, faults):
     while global_var['log_lock']:
         continue
 
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     global_var['log_lock'] = True
-    with open('%s.log'%batch_id, 'a') as f:
-        f.write("Running ex iteration %d, faults %d"%(iteration, faults))    
+    log_file = os.path.join(log_dir, '%s.log'%batch_id)
+    with open(log_file, 'a') as f:
+        f.write("Running ex iteration %d, faults %d\n"%(iteration, faults))    
     global_var['log_lock'] = False
     
 ###### Run experiment ######
