@@ -1,6 +1,7 @@
 from simulator.wh_sim import *
 from simulator.lib import Config, SaveTo
 from simulator import CFG_FILES
+import multiprocessing as mp
 
 ###### Experiment parameters ######
 
@@ -27,14 +28,18 @@ def gen_random_seed(iteration):
     c = iteration
     return (a*P1 + b)*P2 + c
 
-def iterate_ex(iterations, faults, st, export_data=True):
+def iterate_ex(sem, iterations, faults, st, export_data=True):
     for i in range(iterations):
         if i%10 == 0:
             print("-- %d/%d iterations"%(i, iterations))
 
-        run_ex(i, faults, st, export_data)
+        p = mp.Process(target=run_ex, args=(i, faults, st, export_data))
+        p.start()
+    
+    p.join()
 
 def run_ex(iteration, faults, st, export_data=True):
+    _log(iteration, faults)
     random_seed = gen_random_seed(i)
 
     if export_data:
@@ -55,10 +60,21 @@ def run_ex(iteration, faults, st, export_data=True):
     if export_data:
         st.export_data(data_model, ex_id, faults[0], random_seed)
 
+log_lock = False
+def _log(iteration, faults):
+    while log_lock:
+        continue
+
+    log_lock = True
+    with open('%s.log'%batch_id, 'a') as f:
+        f.write("Running ex iteration %d, faults %d"%(iteration, faults))    
+    log_lock = False
+
 ###### Run experiment ######
 
 st = SaveTo(batch_id)
+sem = mp.Semaphore(mp.cpu_count())
 for it in fault_range:
     print("Running simulation with %d faulty robots"%it)
     faults = [it]
-    iterate_ex(iterations, faults, st, export_data=export_data)
+    iterate_ex(sem, iterations, faults, st, export_data=export_data)
