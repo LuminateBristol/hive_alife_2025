@@ -11,6 +11,7 @@ export_data = True
 verbose = False    
 fault_range = range(10,11) # inject 0-10 faults
 batch_id = '7may'
+global_var = {'log_lock': False}
 
 ###### Config class ######
 
@@ -60,16 +61,15 @@ def run_ex(iteration, faults, st, export_data=True):
     if export_data:
         st.export_data(data_model, ex_id, faults[0], random_seed)
 
-log_lock = False
 def _log(iteration, faults):
-    while log_lock:
+    while global_var['log_lock']:
         continue
 
-    log_lock = True
+    global_var['log_lock'] = True
     with open('%s.log'%batch_id, 'a') as f:
         f.write("Running ex iteration %d, faults %d"%(iteration, faults))    
-    log_lock = False
-
+    global_var['log_lock'] = False
+    
 ###### Run experiment ######
 
 st = SaveTo(batch_id)
