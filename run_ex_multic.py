@@ -52,7 +52,7 @@ def gen_batches(iterations, no_procs):
 
 def create_procs(iterations, faults, st, export_data=True, cores_available=1):
     procs = []
-    batches = gen_batches(iterations, mp.cpu_count())
+    batches = gen_batches(iterations, cores_available)
     for i in range(cores_available):
         p = mp.Process(target=iterate_ex, args=(batches[i], faults, st, export_data))
         p.start()

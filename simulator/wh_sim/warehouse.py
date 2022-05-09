@@ -115,7 +115,7 @@ class Warehouse:
 				self.box_c[box_id] = self.rob_c[closest_r] # change the box centre so it is aligned with its robot carrier's centre
 				self.robot_carrier[box_id] = closest_r # set the robot_carrier for box b to that robot ID
 
-		self.rob_d = self.swarm.random_walk(
+		self.rob_d = self.swarm.iterate(
 			self.rob_c, 
 			self.box_c, 
 			self.box_is_free, 

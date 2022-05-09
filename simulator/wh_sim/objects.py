@@ -51,9 +51,9 @@ class Swarm:
         self.computed_heading_prev = {} # stores previous computed heading
 
     # @TODO allow for multiple behaviours, heterogeneous swarm
-    def iterate(self, **kwargs):
+    def iterate(self, *args, **kwargs):
         self.update_hook() # allow for updates to the swarm
-        self.random_walk(**kwargs)
+        return self.random_walk(*args, **kwargs)
 
     # rob_c: robot center coordinates
     # box_c: box center coordinates

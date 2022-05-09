@@ -69,7 +69,7 @@ class Simulator:
 
         swarm.add_agents(robot_obj, cfg.get('warehouse', 'number_of_agents'))
         swarm.generate()        
-        fault_types = cfg.get('faults')        
+        fault_types = cfg.get('faults')
         count = 0
 
         for i, fault in enumerate(fault_types):
@@ -85,10 +85,10 @@ class Simulator:
         fault_type = fault['type']
         
         if fault_type == FaultySwarm.ALTER_AGENT_SPEED:
-            size=len(faulty_agents_range)
-            speed = np.random.exponential(scale=0.05, size=size)
-            time = np.random.choice(self.cfg.get('time_limit'), size, replace=True)
-            lookup = list(zip(time, list(faulty_agents_range), speed))
+            speed = fault['cfg']['speed_at_fault']
+            lookup = []
+            for i in faulty_agents_range:
+                lookup.append((0, i, speed))
             return {'ftype': FaultySwarm.ALTER_AGENT_SPEED, 'lookup': lookup}
 
         if fault_type == FaultySwarm.FAILED_BOX_PICKUP:

@@ -1,3 +1,5 @@
 **/__pycache__/*
-test/
+notebooks/
 data/
+stats/
+models/
