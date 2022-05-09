@@ -9,9 +9,10 @@ ex_id = 'e_2'
 iterations = 200
 export_data = True
 verbose = False    
-fault_range = range(6,7) # inject 0-10 faults
+fault_range = range(7,8) # inject 0-10 faults
 batch_id = '8may'
 log_dir = 'logs'
+cores = mp.cpu_count()
 global_var = {'log_lock': False}
 
 ###### Config class ######
@@ -30,20 +31,45 @@ def gen_random_seed(iteration):
     c = iteration
     return (a*P1 + b)*P2 + c
 
-def iterate_ex(sem, iterations, faults, st, export_data=True):
-    for i in range(iterations):
-        if i%10 == 0:
-            print("-- %d/%d iterations"%(i, iterations))
+def gen_batches(iterations, no_procs):
+    per_batch = int(iterations/no_procs)
+    batches = []
+    for i in range(no_procs):
+        start = i*per_batch
+        end = min((i+1)*per_batch, iterations)
+        batch = list(range(start, end))
+        batches.append(batch)
+        
+    if end < iterations:
+        remainder = list(range(end, iterations))
+        b_idx = 0
+        while len(remainder):
+            it = remainder.pop(0)
+            batches[b_idx].append(it)
+            b_idx = (b_idx+1)%len(batches)
+            
+    return batches
 
-        p = mp.Process(target=run_ex, args=(i, faults, st, export_data))
+def create_procs(iterations, faults, st, export_data=True, cores_available=1):
+    procs = []
+    batches = gen_batches(iterations, mp.cpu_count())
+    for i in range(cores_available):
+        p = mp.Process(target=iterate_ex, args=(batches[i], faults, st, export_data))
         p.start()
+        procs.append(p)
     
-    p.join()
+    return procs
+
+def iterate_ex(iteration_list, faults, st, export_data=True):
+    for idx, it in enumerate(iteration_list):
+        if idx%10 == 0:
+            print("-- %d/%d iterations"%(idx, len(iteration_list)))
+
+        # _log(iteration, faults[0])
+        run_ex(it, faults, st, export_data)
 
 def run_ex(iteration, faults, st, export_data=True):
-    _log(iteration, faults[0])
     random_seed = gen_random_seed(iteration)
-
     if export_data:
         data_model = DataModel(store_internal=True, compute_roc=True)
     else:
@@ -78,8 +104,9 @@ def _log(iteration, faults):
 ###### Run experiment ######
 
 st = SaveTo(batch_id)
-sem = mp.Semaphore(mp.cpu_count())
 for it in fault_range:
     print("Running simulation with %d faulty robots"%it)
     faults = [it]
-    iterate_ex(sem, iterations, faults, st, export_data=export_data)
+    procs = create_procs(iterations, faults, st, export_data, cores)
+    for p in procs:
+        p.join()
