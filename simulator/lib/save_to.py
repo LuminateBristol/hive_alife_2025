@@ -36,3 +36,20 @@ class SaveTo:
             data.to_csv(save_path, index=False)
         except Exception as e:
             print(e)
+
+class SaveSample(SaveTo):
+
+    def export_data(self, data_model, ex_id, faults, random_seed=None):
+        ts = datetime.datetime.now().timestamp()
+        data = data_model.sample_data()
+        dirname = self.gen_save_dirname(ex_id, faults)
+        if random_seed is None:
+            filename = '%d.csv'%ts
+        else:
+            filename = '%d.csv'%random_seed
+
+        save_path = os.path.join(dirname, filename)
+        try:
+            data.to_csv(save_path, index=False)
+        except Exception as e:
+            print(e)

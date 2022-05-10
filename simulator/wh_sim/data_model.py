@@ -140,7 +140,7 @@ class DataModel:
             metric_count += len(self.roc_metrics)
 
         for i in range(metric_count):
-            for j in range(self.number_of_agents):
+            for j in range(len(self.ag_ids)):
                 col = 'm%d_a%d'%(i,j)
                 head += [col]
 
@@ -153,17 +153,12 @@ class DataModel:
         if obj == 0:
             total_objs = self.warehouse.number_of_boxes
             obj_dist = self.swarm.box_dist
-            coord = self.warehouse.box_c
-            sum_axis = 1
         elif obj == 1:
             total_objs = self.swarm.number_of_agents
             obj_dist = self.swarm.agent_dist
-            coord = rob_c
-            sum_axis = 0
         elif obj == 2:
             total_objs = len(self.warehouse.map.wall_divisions)
             obj_dist = np.transpose(self.swarm.wall_dist)
-            coord = self.warehouse.map.wall_divisions
         else:
             raise Exception("Invalid obj parameter")
 
@@ -179,64 +174,12 @@ class DataModel:
 
         return obj_dist, None
 
-        # @TODO remove directional
-        # compute angle to object
-        # n_r = self.swarm.number_of_agents
-        # n_c = len(coord)
-        
-        # coord_norm_x = np.tile(coord[:,0], (n_r,1)) - np.transpose(np.tile(rob_c[:,0], (n_c,1)))
-        # coord_norm_y = np.tile(coord[:,1], (n_r,1)) - np.transpose(np.tile(rob_c[:,1], (n_c,1)))
-        
-        # obj_angles = np.arctan2(coord_norm_y.flatten(), coord_norm_x.flatten())
-        # obj_angles_M = np.reshape(obj_angles, (n_r, n_c))
-
-        # pi_2_arr = np.empty(n_r)
-        # pi_2_arr.fill(np.pi*2)
-        # pi_h_arr = np.empty(n_r)
-        # pi_h_arr.fill(np.pi/2)
-
-        # heading_angles = (self.swarm.computed_heading - np.pi)%(2*np.pi)
-        # heading_angles_M = np.transpose(np.tile(heading_angles, (n_c,1)))
-        # ha_norm = heading_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
-        # oa_norm = obj_angles_M%(2*np.pi) # Values: 0 <= x < 2*pi
-        # obj_arg = ha_norm - oa_norm
-
-        # # obj_arg values: -2*pi < x < 2*pi
-        # # We would like the arg to be between -pi and pi
-        # le_idx = np.less_equal(obj_arg, -np.pi)
-        # g_idx = np.greater(obj_arg, np.pi)
-        # obj_arg[le_idx] += 2*np.pi
-        # obj_arg[g_idx] -= 2*np.pi
-
-        # if obj == 0:
-        #     for idx, r_id in enumerate(self.warehouse.robot_carrier):
-        #         if r_id != -1:
-        #             obj_arg[r_id][idx] = np.nan # if robot is carrying box, set angle to box as 0
-        #             obj_dist[r_id][idx] = np.nan
-
-        # if obj == 1:
-        #     np.fill_diagonal(obj_arg, np.nan)
-        
-        # if in_range:
-        #     ir = np.transpose(ir)
-        #     obj_arg = np.multiply(obj_arg, ir)
-            
-        # return (obj_dist, obj_arg)
-
     def count_in_range(self, obj_type=0):
         dist, _ = self.get_object_distance(obj_type)
         count = np.count_nonzero(~np.isnan(dist), axis=1)
         if obj_type == 1:
             count = count-1 # don't count self
         return count
-
-    def count_directional_in_range(self, obj_type=0):
-        dist, arg = self.get_object_distance(obj_type)
-        in_front = np.logical_and(arg <= np.pi/2, arg >= -np.pi/2)
-        front_c = np.sum(in_front, axis=1)
-        total_c = self.count_in_range(obj_type)
-        behind_c = total_c - front_c
-        return (front_c, behind_c)
 
     # obj_type: 0 box, 1 agent, 2 wall
     def get_nearest_object(self, obj_type=0):
@@ -396,3 +339,251 @@ class ExportRedisData(DataModel):
         # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'box_coords'), json.dumps(warehouse.box_c.tolist()))
         # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'robot_coords'), json.dumps(warehouse.rob_c.tolist()))
         # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'boxes_to_be_delivered'), json.dumps(warehouse.to_be_delivered.tolist()))
+
+
+class MinimalDataModel(DataModel):
+
+    def __init__(self, faults, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ag_ids = []
+        self.faults = faults
+        self.export_cols = []
+        self.metric_data = {}
+        self.ag_ids = [0] # 0th index always captured   
+        self.export_cols = []         
+
+    def get_metric_data(self, warehouse):
+        self.swarm = warehouse.swarm
+        self.warehouse = warehouse      
+        
+        if self.number_of_agents is None:
+            self.number_of_agents = self.swarm.number_of_agents
+            self.number_of_boxes = self.warehouse.number_of_boxes
+        
+        if len(self.export_cols) == 0:
+            if self.number_of_agents == self.faults:
+                self.export_cols = ['f']
+            elif self.faults == 0:
+                self.export_cols = ['n']
+            else:
+                self.ag_ids = [0, self.faults] # capture F and N
+                self.export_cols = ['f', 'n']
+        
+        data = []
+        for aid in self.ag_ids:
+            d = self._get(aid)
+            data.append(d)
+
+        data = np.array(data)
+        for i,m in enumerate(self.metrics):
+            self.metric_data[m] = data[:,i]
+        
+        if self.compute_roc:
+            self.metric_data['#_nearest_agent_id'] = self.compute_roc_qual('nearest_agent_id')
+            self.metric_data['#_nearest_box_id'] = self.compute_roc_qual('nearest_box_id')
+            self.metric_data['#_nearest_wall_id'] = self.compute_roc_qual('nearest_wall_id')
+            self.metric_data['#_nearest_id'] = self.compute_roc_qual('nearest_id')
+            
+        if self.store_internal:
+            if self.df is None:
+                self.df = np.array([])
+
+            self.df = np.concatenate([self.df, self.get_write_data()])
+        
+        return self.metric_data
+
+    def _get(self, ag_id):
+        a_ir = self.count_in_range(ag_id, 1)
+        b_ir = self.count_in_range(ag_id, 0)
+        w_ir = self.count_in_range(ag_id, 2)
+        comb_ir = a_ir + b_ir + w_ir
+
+        rob_v = self.compute_velocity(ag_id)
+        agent_delivery_count = self.warehouse.rob_delivery_count[ag_id]
+        action_state = self.swarm.agent_has_box[ag_id]
+        
+        nearest_agent = self.get_nearest_object(ag_id, 1)
+        nearest_box = self.get_nearest_object(ag_id, 0)
+        nearest_wall = self.get_nearest_object(ag_id, 2)
+        nearest_dist = self.get_single_nearest(ag_id, [nearest_box, nearest_agent, nearest_wall])
+        heading = self.swarm.computed_heading[ag_id]
+        angular_velocity = self.compute_velocity(ag_id, angular=True)
+        
+        return (
+            a_ir, b_ir, w_ir, comb_ir, rob_v, agent_delivery_count, action_state, 
+            nearest_agent[0], nearest_box[0], nearest_wall[0], nearest_dist[0],
+            nearest_agent[1], nearest_box[1], nearest_wall[1], nearest_dist[1],
+            heading, angular_velocity
+        )
+
+    # obj_type: 0 box, 1 agent, 2 wall
+    def get_object_distance(self, ag_id, obj=0, in_range=True):
+        rob_c = self.warehouse.rob_c[ag_id]
+        if obj == 0:
+            total_objs = self.warehouse.number_of_boxes
+            obj_dist = self.swarm.box_dist[:, ag_id]
+        elif obj == 1:
+            total_objs = self.swarm.number_of_agents
+            obj_dist = self.swarm.agent_dist[ag_id]
+        elif obj == 2:
+            total_objs = len(self.warehouse.map.wall_divisions)
+            obj_dist = self.swarm.wall_dist[ag_id, :]
+        else:
+            raise Exception("Invalid obj parameter")
+
+        if in_range:
+            cam_range = self.swarm.camera_sensor_range_V[ag_id]
+            # cam_range_ = np.tile(cam_range, (total_objs, 1))
+            ir = (obj_dist < cam_range).astype(float)
+            ir[ir == 0] = np.nan
+            obj_dist = np.multiply(obj_dist, ir)
+
+        if obj ==0 or obj==2:
+            obj_dist = np.transpose(obj_dist)
+
+        return obj_dist, None
+
+    def count_in_range(self, ag_id, obj_type=0):
+        dist, _ = self.get_object_distance(ag_id, obj_type)
+        count = np.count_nonzero(~np.isnan(dist))
+        if obj_type == 1:
+            count = count-1 # don't count self
+        return count
+    
+    # obj_type: 0 box, 1 agent, 2 wall
+    def get_nearest_object(self, ag_id, obj_type=0):
+        dist, _ = self.get_object_distance(ag_id, obj_type)
+        foo = 99999
+        dist[np.isnan(dist)] = foo
+        # don't count self or any box currently lifted
+        # if obj_type in [0, 1]:
+        if obj_type == 1:
+            min_dist = np.partition(dist,kth=1)[1]
+            min_dist_idx = np.argpartition(dist,kth=1)[1]
+        else:
+            min_dist = np.min(dist)
+            min_dist_idx = np.argmin(dist)
+
+        md = min_dist.astype(float)
+        mdi = min_dist_idx.astype(float)
+        if md == foo:
+            md = np.nan
+            mdi = np.nan
+        
+        mdi = self._map_obj_id(mdi, obj_type)
+        return (md, mdi)
+
+    def _map_obj_id(self, obj_id, obj_type=0):
+        if obj_type == 0:
+            offset = 1
+        elif obj_type == 1:
+            offset = self.warehouse.number_of_boxes + 1
+        elif obj_type == 2:
+            offset = self.warehouse.number_of_boxes + self.swarm.number_of_agents + 1
+        
+        return obj_id+offset
+
+    def get_single_nearest(self, ag_id, nearest_arr=None):
+        if nearest_arr is None:
+            nearest_box = self.get_nearest_object(ag_id, 0)
+            nearest_agent = self.get_nearest_object(ag_id, 1)
+            nearest_wall = self.get_nearest_object(ag_id, 2)
+        else:
+            nearest_box = nearest_arr[0]
+            nearest_agent = nearest_arr[1]
+            nearest_wall = nearest_arr[2]
+
+        dist = np.array([nearest_box[0], nearest_agent[0], nearest_wall[0]])
+        foo = 99999
+        dist[np.isnan(dist)] = foo
+        md = np.min(dist)
+        dist_idx = np.array([nearest_box[1], nearest_agent[1], nearest_wall[1]])
+        if md == foo:
+            md = np.nan
+            mdi = 0
+        else:
+            mdi_ = np.argmin(dist)
+            mdi = dist_idx[mdi_]
+
+        return (md, mdi)
+
+    def compute_velocity(self, ag_id, angular=False):
+        # Find change in distance over 5 timesteps
+        t_d = self.velocity_d_timestep
+        t = (self.warehouse.counter - t_d)%t_d
+        if self.warehouse.counter > t_d and angular:
+            c = (self.swarm.computed_heading - self.swarm.computed_heading_prev[t])/t_d
+            return c[ag_id]
+        elif self.warehouse.counter > t_d:
+            change_v = (self.warehouse.rob_c - self.warehouse.rob_c_prev[t])/t_d
+            c_ = np.sum(np.multiply(change_v, change_v), axis=1)
+            c = np.sqrt(c_)
+            return c[ag_id]
+        else:
+            return 0
+
+    def compute_roc_qual(self, metric):
+        t_d = self.roc_window
+        t = (self.warehouse.counter - t_d)%t_d
+
+        no_ag = len(self.ag_ids)
+        data = self.metric_data[metric]
+        np.nan_to_num(data, copy=False)
+        data = data.reshape(1, no_ag)
+
+        if metric not in self.roc_data:
+            self.roc_data[metric] = data
+        elif self.roc_data[metric].shape[0] < self.roc_window: # not fully filled
+            self.roc_data[metric] = np.concatenate((self.roc_data[metric], data), axis=0)
+        else:
+            self.roc_data[metric][t] = data
+        
+        counts = []
+        for i in range(no_ag):
+            col = self.roc_data[metric][:, i]
+            u, c = np.unique(col, return_counts=True)
+            val = len(c)/self.roc_window
+            counts.append(val)
+        
+        return counts
+
+    def generate_df_head(self):
+        head = ['ts']
+        metric_count = len(self.metrics)
+
+        if self.compute_roc:
+            metric_count += len(self.roc_metrics)
+
+        for i in range(metric_count):
+            for j in self.export_cols:
+                col = 'm%d_%s'%(i,j)
+                head += [col]
+
+        head += ['d']
+        return head
+
+    def sample_data(self):
+        df = self.get_dataframe()
+        time = df['ts'].shape[0]
+        df.drop('ts', axis=1, inplace=True)
+        df.drop('d', axis=1, inplace=True)
+        n = []
+        f = []
+        for col in df.columns:
+            meta = col.split('_')
+            metric_id = int(meta[0][1:])
+            state = meta[1]
+            s = df[col].sample().tolist()
+            if state == 'n':
+                n += s
+            else:
+                f += s
+
+        export_d = {}
+        if len(n):
+            export_d['n'] = n
+        if len(f):
+            export_d['f'] = f
+        
+        return pd.DataFrame(export_d)
+        

@@ -1,19 +1,41 @@
 from simulator.wh_sim import *
-from simulator.lib import Config, SaveTo
+from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES
 import multiprocessing as mp
+import argparse
 
 ###### Experiment parameters ######
 
-ex_id = 'e_2'
-iterations = 200
-export_data = True
-verbose = False    
-fault_range = range(7,8) # inject 0-10 faults
-batch_id = '8may'
-log_dir = 'logs'
-cores = mp.cpu_count()
-global_var = {'log_lock': False}
+parser = argparse.ArgumentParser()
+parser.add_argument('--ex_id')
+parser.add_argument('--iterations')
+parser.add_argument('--it_offset')
+parser.add_argument('--export_data')
+parser.add_argument('--verbose')
+parser.add_argument('--faults')
+parser.add_argument('--batch_id')
+parser.add_argument('--cores')
+
+args = parser.parse_args()
+ex_id = args.ex_id
+iterations = args.iterations
+it_offset = args.it_offset
+export_data = args.export_data
+verbose = args.verbose
+faults = args.faults
+batch_id = args.batch_id
+cores = args.cores
+
+###### Hardcode parameters ######
+
+# ex_id = 'e_1'
+# iterations = 1
+# it_offset = 0
+# export_data = True
+# verbose = False    
+# faults = [0] # inject 0-10 faults
+# batch_id = '10may'
+# cores = 1
 
 ###### Config class ######
 
@@ -24,11 +46,12 @@ cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id)
 ###### Functions ######
 
 def gen_random_seed(iteration):
+    global it_offset
     P1 = 33331
     P2 = 73
     a = 1
     b = int(ex_id.split("_")[1])
-    c = iteration
+    c = iteration + it_offset
     return (a*P1 + b)*P2 + c
 
 def gen_batches(iterations, no_procs):
@@ -63,15 +86,14 @@ def create_procs(iterations, faults, st, export_data=True, cores_available=1):
 def iterate_ex(iteration_list, faults, st, export_data=True):
     for idx, it in enumerate(iteration_list):
         if idx%10 == 0:
-            print("-- %d/%d iterations"%(idx, len(iteration_list)))
+            print("-- %d/%d iterations"%(idx+1, len(iteration_list)))
 
-        # _log(iteration, faults[0])
         run_ex(it, faults, st, export_data)
 
 def run_ex(iteration, faults, st, export_data=True):
     random_seed = gen_random_seed(iteration)
     if export_data:
-        data_model = DataModel(store_internal=True, compute_roc=True)
+        data_model = MinimalDataModel(faults[0], store_internal=True, compute_roc=True)
     else:
         data_model = None
 
@@ -87,26 +109,11 @@ def run_ex(iteration, faults, st, export_data=True):
     # Save data
     if export_data:
         st.export_data(data_model, ex_id, faults[0], random_seed)
-
-def _log(iteration, faults):
-    while global_var['log_lock']:
-        continue
-
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    global_var['log_lock'] = True
-    log_file = os.path.join(log_dir, '%s.log'%batch_id)
-    with open(log_file, 'a') as f:
-        f.write("Running ex iteration %d, faults %d\n"%(iteration, faults))    
-    global_var['log_lock'] = False
     
 ###### Run experiment ######
 
-st = SaveTo(batch_id)
-for it in fault_range:
-    print("Running simulation with %d faulty robots"%it)
-    faults = [it]
-    procs = create_procs(iterations, faults, st, export_data, cores)
-    for p in procs:
-        p.join()
+st = SaveSample(batch_id)
+print("Running simulation with %d faulty robots"%faults[0])
+procs = create_procs(iterations, faults, st, export_data, cores)
+for p in procs:
+    p.join()

@@ -8,8 +8,8 @@ ex_id = 'e_1'
 iterations = 200
 export_data = True
 verbose = False    
-fault_range = range(10,11) # inject 0-10 faults
-batch_id = '7may'
+fault_range = range(1,2) # inject 0-10 faults
+batch_id = 'test'
 
 ###### Config class ######
 
@@ -35,10 +35,10 @@ def iterate_ex(iterations, faults, st, export_data=True):
         run_ex(i, faults, st, export_data)
 
 def run_ex(iteration, faults, st, export_data=True):
-    random_seed = gen_random_seed(i)
+    random_seed = gen_random_seed(iteration)
 
     if export_data:
-        data_model = DataModel(store_internal=True, compute_roc=True)
+        data_model = MinimalDataModel(faults[0], store_internal=True, compute_roc=True)
     else:
         data_model = None
 
