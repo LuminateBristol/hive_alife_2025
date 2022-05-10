@@ -23,17 +23,17 @@ it_offset = int(args.it_offset)
 export_data = bool(args.export_data)
 verbose = bool(args.verbose)
 faults = int(args.faults)
-batch_id = int(args.batch_id)
+batch_id = args.batch_id
 cores = int(args.cores)
 
 ###### Hardcode parameters ######
 
-# ex_id = 'e_1'
-# iterations = 1
+# ex_id = 'e_2'
+# iterations = 200
 # it_offset = 0
 # export_data = True
 # verbose = False    
-# faults = [0] # inject 0-10 faults
+# faults = [1] # inject 0-10 faults
 # batch_id = '10may'
 # cores = 1
 
