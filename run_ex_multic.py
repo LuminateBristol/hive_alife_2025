@@ -18,13 +18,13 @@ parser.add_argument('--cores')
 
 args = parser.parse_args()
 ex_id = args.ex_id
-iterations = args.iterations
-it_offset = args.it_offset
-export_data = args.export_data
-verbose = args.verbose
-faults = args.faults
-batch_id = args.batch_id
-cores = args.cores
+iterations = int(args.iterations)
+it_offset = int(args.it_offset)
+export_data = bool(args.export_data)
+verbose = bool(args.verbose)
+faults = int(args.faults)
+batch_id = int(args.batch_id)
+cores = int(args.cores)
 
 ###### Hardcode parameters ######
 
