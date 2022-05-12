@@ -1,15 +1,15 @@
 from simulator.wh_sim import *
-from simulator.lib import Config, SaveTo
+from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES
 
 ###### Experiment parameters ######
 
-ex_id = 'e_1'
+ex_id = 'e_2'
 iterations = 200
 export_data = True
 verbose = False    
-fault_range = range(1,2) # inject 0-10 faults
-batch_id = 'test'
+fault_range = range(4,7) # inject 0-10 faults
+batch_id = '10may'
 
 ###### Config class ######
 
@@ -57,7 +57,7 @@ def run_ex(iteration, faults, st, export_data=True):
 
 ###### Run experiment ######
 
-st = SaveTo(batch_id)
+st = SaveSample(batch_id)
 for it in fault_range:
     print("Running simulation with %d faulty robots"%it)
     faults = [it]
