@@ -22,7 +22,8 @@ class Simulator:
         check_collisions=False,
         data_model=None,
         random_seed=None,
-        fault_count=[0]):
+        fault_count=[0],
+        ad_model=None):
 
         self.cfg = config
         self.verbose = verbose
@@ -31,6 +32,7 @@ class Simulator:
         self.delivered_in = None
         self.fault_count = fault_count
         self.data_model = data_model
+        self.ad_model = ad_model
 
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
@@ -122,6 +124,9 @@ class Simulator:
         if self.data_model is not None:
             self.data_model.get_metric_data(self.warehouse) # updates metric data for timestep
         
+            if self.ad_model is not None:
+                self.ad_model.check_thresholds(self.data_model.metric_data)
+                # print(self.ad_model.)
         if self.verbose:
             if self.warehouse.counter == 1:
                 print("Progress |", end="", flush=True)

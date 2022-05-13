@@ -8,3 +8,4 @@ CFG_FILES = {
     'ex_1': os.path.join(path, 'cfg', 'ex_1.yaml'),
     'ex_2': os.path.join(path, 'cfg', 'ex_2.yaml')
 }
+

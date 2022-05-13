@@ -6,36 +6,36 @@ import argparse
 
 ###### Experiment parameters ######
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--ex_id')
-parser.add_argument('--iterations')
-parser.add_argument('--it_offset')
-parser.add_argument('--export_data')
-parser.add_argument('--verbose')
-parser.add_argument('--faults')
-parser.add_argument('--batch_id')
-parser.add_argument('--cores')
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--ex_id')
+# parser.add_argument('--iterations')
+# parser.add_argument('--it_offset')
+# parser.add_argument('--export_data')
+# parser.add_argument('--verbose')
+# parser.add_argument('--faults')
+# parser.add_argument('--batch_id')
+# parser.add_argument('--cores')
 
-args = parser.parse_args()
-ex_id = args.ex_id
-iterations = int(args.iterations)
-it_offset = int(args.it_offset)
-export_data = bool(args.export_data)
-verbose = bool(args.verbose)
-faults = int(args.faults)
-batch_id = args.batch_id
-cores = int(args.cores)
+# args = parser.parse_args()
+# ex_id = args.ex_id
+# iterations = int(args.iterations)
+# it_offset = int(args.it_offset)
+# export_data = bool(args.export_data)
+# verbose = bool(int(args.verbose))
+# faults = [int(args.faults)]
+# batch_id = args.batch_id
+# cores = int(args.cores)
 
 ###### Hardcode parameters ######
 
-# ex_id = 'e_2'
-# iterations = 200
-# it_offset = 0
-# export_data = True
-# verbose = False    
-# faults = [1] # inject 0-10 faults
-# batch_id = '10may'
-# cores = 1
+ex_id = 'e_2'
+iterations = 200
+it_offset = 0
+export_data = True
+verbose = False    
+faults = [7] # inject 0-10 faults
+batch_id = '10may'
+cores = 1
 
 ###### Config class ######
 
@@ -45,12 +45,12 @@ cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id)
 
 ###### Functions ######
 
-def gen_random_seed(iteration):
+def gen_random_seed(iteration, faults):
     global it_offset
     P1 = 33331
     P2 = 73
     a = 1
-    b = int(ex_id.split("_")[1])
+    b = int(ex_id.split("_")[1]) + faults[0]
     c = iteration + it_offset
     return (a*P1 + b)*P2 + c
 
@@ -91,7 +91,7 @@ def iterate_ex(iteration_list, faults, st, export_data=True):
         run_ex(it, faults, st, export_data)
 
 def run_ex(iteration, faults, st, export_data=True):
-    random_seed = gen_random_seed(iteration)
+    random_seed = gen_random_seed(iteration, faults[0])
     if export_data:
         data_model = MinimalDataModel(faults[0], store_internal=True, compute_roc=True)
     else:

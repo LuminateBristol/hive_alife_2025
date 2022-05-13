@@ -240,7 +240,7 @@ class DataModel:
                 idx = np.random.choice(idxs, 1) # break a tie in more than one nearest distance
                 mdi += dist_idx[idx,r_id].flatten().tolist()
         
-        return (md, mdi)
+        return (md, np.array(mdi))
         
     def compute_velocity(self, angular=False):
         # Find change in distance over 5 timesteps
@@ -277,7 +277,7 @@ class DataModel:
             val = len(c)/self.roc_window
             counts.append(val)
         
-        return counts
+        return np.array(counts)
 
 class ExportRedisData(DataModel):
     
@@ -385,10 +385,7 @@ class MinimalDataModel(DataModel):
             self.metric_data['#_nearest_id'] = self.compute_roc_qual('nearest_id')
             
         if self.store_internal:
-            if self.df is None:
-                self.df = np.array([])
-
-            self.df = np.concatenate([self.df, self.get_write_data()])
+            self._store_internal()
         
         return self.metric_data
 
@@ -415,6 +412,12 @@ class MinimalDataModel(DataModel):
             nearest_agent[1], nearest_box[1], nearest_wall[1], nearest_dist[1],
             heading, angular_velocity
         )
+
+    def _store_internal(self):
+        if self.df is None:
+            self.df = np.array([])
+
+        self.df = np.concatenate([self.df, self.get_write_data()])
 
     # obj_type: 0 box, 1 agent, 2 wall
     def get_object_distance(self, ag_id, obj=0, in_range=True):
@@ -587,3 +590,106 @@ class MinimalDataModel(DataModel):
         
         return pd.DataFrame(export_d)
         
+# Can minimalize even further:
+# Generate an array of random timesteps, t in [T_start, T_end]
+# Only sample data when warehouse.counter == t
+# Sampling on the fly :)
+
+class ExtremeMinDataModel(MinimalDataModel):
+
+    def __init__(self, faults, max_time, *args, **kwargs):
+        super().__init__(faults, *args, **kwargs)
+
+        # hardcode for now!
+        self.number_of_agents = 10#self.swarm.number_of_agents
+        self.number_of_boxes = 10#self.warehouse.number_of_boxes
+    
+        if self.number_of_agents == self.faults:
+            self.export_cols = ['f']
+        elif self.faults == 0:
+            self.export_cols = ['n']
+        else:
+            self.ag_ids = [0, self.faults] # capture F and N
+            self.export_cols = ['f', 'n']
+
+        self._generate_comp_timesteps(max_time)
+
+    def _generate_comp_timesteps(self, max_time):
+        sample_ts = {}
+        comp_ts = []
+        for j, ag_id in enumerate(self.ag_ids):
+            state = self.export_cols[j]
+            for i, m in enumerate(self.metrics):
+                if m == 'velocity':
+                    rchoice = np.arange(self.velocity_d_timestep+1,max_time)
+                else:
+                    rchoice = np.arange(1,max_time)
+                
+                x = np.random.choice(rchoice)
+                sample_ts["m%d_%s"%(i,state)] = x
+                comp_ts.append(x)
+                if m == 'velocity':
+                    maxx = max(0, x-self.velocity_d_timestep)
+                    comp_ts += range(maxx, x)
+                
+            if self.compute_roc:
+                for k, m in enumerate(self.roc_metrics):
+                    x = np.random.choice(np.arange(self.roc_window+1,max_time))
+                    sample_ts["m%d_%s"%(i+k+1,state)] = x
+                    maxx = max(0, x-self.roc_window)
+                    comp_ts += range(maxx, x+1)
+        
+        self.sample_ts = sample_ts
+        self.comp_ts = list(set(comp_ts))
+        self.comp_ts.sort()
+        self.no_comp = len(self.comp_ts)
+        self.c0 = 0
+        self.comp_ts_cur = self.comp_ts[self.c0]
+
+    def get_metric_data(self, warehouse):
+        c = warehouse.counter
+        if c == self.comp_ts_cur:
+            super().get_metric_data(warehouse)
+            
+            self.c0 += 1
+            if self.c0 < self.no_comp:
+                self.comp_ts_cur = self.comp_ts[self.c0]
+
+    def get_dataframe(self):
+        rows = self.no_comp
+        try:
+            cols = int(self.df.shape[0]/rows)
+            data = self.df.reshape((rows, cols))
+            head = self.generate_df_head()
+            df = pd.DataFrame(data, columns=head)
+            return df
+        except Exception as e:
+            print('Error, f%d'%self.faults, e)
+        
+    def sample_data(self):
+        df = self.get_dataframe()
+        time = df['ts'].shape[0] # these correspond to comp_ts list
+        df.drop('ts', axis=1, inplace=True)
+        df.drop('d', axis=1, inplace=True)
+        n = []
+        f = []
+        for col in df.columns:
+            meta = col.split('_')
+            metric_id = int(meta[0][1:])
+            state = meta[1]
+            ts = self.sample_ts[col]
+            ts_idx = self.comp_ts.index(ts)
+            s = df[col][ts_idx]
+            
+            if state == 'n':
+                n.append(s)
+            else:
+                f.append(s)
+        
+        export_d = {}
+        if len(n):
+            export_d['n'] = n
+        if len(f):
+            export_d['f'] = f
+        
+        return pd.DataFrame(export_d)
