@@ -5,9 +5,8 @@
 
 from simulator.wh_proc import *
 
-batch_id = '10may'
-# ex_id = 'e_1'
-ex_ids = ['e_1', 'e_3', 'e_4', 'e_5', 'e_6']
+batch_id = 'test'
+ex_ids = ['e_1', 'e_2', 'e_3', 'e_4', 'e_5', 'e_6']
 data_dir = "data/samples"
 export_dir = "stats"
 export_thresh = "models"
@@ -15,6 +14,7 @@ export_thresh = "models"
 ###### Run stats ######
 
 for ex_id in ex_ids:
+    print("Running stats: %s"%ex_id)
     sp = SigProc(batch_id, ex_id, data_dir, export_dir)
     sp.compute_sig()
     sp.export_sig()

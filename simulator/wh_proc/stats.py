@@ -4,11 +4,13 @@ import os
 import json
 import seaborn as sns
 
+# @TODO Move load/export path configuration to lib
+
 class SigProc:
 
     def __init__(self, batch_id, ex_id, data_dir, export_dir):
         self.ex_dir = "%s_%s"%(ex_id, batch_id)
-        self.data_dir = os.path.join(data_dir, self.ex_dir)
+        self.data_dir = os.path.join(data_dir, batch_id, ex_id)
         self.export_dir = export_dir
         dir_list = os.listdir(self.data_dir)
         
@@ -16,6 +18,9 @@ class SigProc:
         for f in dir_list:
             f_path = os.path.join(self.data_dir, f)
             metric = f.split('.')[0]
+            if metric in ['nearest_agent_id', 'nearest_wall_id', 'nearest_box_id', 'nearest_id', 'heading']:
+                continue
+
             files[metric] = f_path
 
         self.files = files
@@ -39,8 +44,14 @@ class SigProc:
         sig = {}
         for metric, f in self.files.items():
             df = pd.read_csv(f, header=0)
-            n = df['n'].tolist()
-            f = df['f'].tolist()
+            n = df['n']
+            f = df['f']
+            if metric in ['nearest_agent_distance', 'nearest_box_distance', 'nearest_wall_distance', 'nearest_combined_distance']:
+                n = n.fillna(100)
+                f = f.fillna(100)
+                
+            n = n.tolist()
+            f = f.tolist()                
             mwu_result = self.sig_measure(n, f)
             U = mwu_result.statistic
             es = self.comp_effect_size(U, len(n), len(f))
@@ -65,8 +76,8 @@ class SigProc:
 class DistPlot:
 
     def __init__(self, data_dir, batch_id, ex_id):
-        self.ex_dir = "%s_%s"%(ex_id, batch_id)
-        self.data_dir = os.path.join(data_dir, self.ex_dir)
+        # self.ex_dir = "%s_%s"%(ex_id, batch_id)
+        self.data_dir = os.path.join(data_dir, batch_id, ex_id)
         dir_list = os.listdir(self.data_dir)
         
         samples = {}
@@ -75,6 +86,9 @@ class DistPlot:
             metric = f.split('.')[0]
             filepath = os.path.join(self.data_dir, f)
             df = pd.read_csv(filepath, header=0)
+            if metric in ['nearest_agent_distance', 'nearest_box_distance', 'nearest_wall_distance', 'nearest_combined_distance']:
+                df = df.fillna(100)
+
             samples[metric] = df
             metrics.append(metric)
             del(df)
@@ -92,32 +106,44 @@ class DistPlot:
     
 class SigPlot:
 
-    def __init__(self, stats_dir, config=None):
+    def __init__(self, stats_dir, batch_id, config=None):
         stats = os.listdir(stats_dir)
         data = {}
         for f in stats:
-            ex_id = f.split('_')[1]
+            meta = f.split('_')
+            ex_id = meta[1]
+            bid = '_'.join(meta[2:]).split('.')[0]
+            if bid != batch_id:
+                continue
+
             f_path = os.path.join(stats_dir, f)
             with open(f_path, 'r') as f:
                 line = f.readline()
                 line_ = line.strip().replace('\'', '\"').replace('None', 'null')
                 sig = json.loads(line_)
             
-            data[ex_id] = sig
+            if config is not None:
+                ylab = config[int(ex_id)]
+            else:
+                ylab = ex_id
+
+            data[ylab] = sig
 
         self.data = data
 
     def plot(self):
         df = pd.DataFrame(self.data)
+        df = df.reindex(sorted(df.columns), axis=1)
+        df = df.reindex(sorted(df.index), axis=0)
         # _r reverses the normal order of the color map 'RdYlGn'
-        sns.set(rc={'figure.figsize':(18, 8.27)})
-        sns.heatmap(df.transpose(), cmap='RdYlGn_r', linewidths=0.5, annot=True)
+        sns.set(rc={'figure.figsize':(22, 6)})
+        sns.heatmap(df.transpose(), linewidths=0.5, annot=True)
 
 class ThreshProc:
 
     def __init__(self, data_dir, batch_id, ex_id, export_dir):
         self.ex_path = "%s_%s"%(ex_id, batch_id)
-        self.load_dir = os.path.join(data_dir, self.ex_path)
+        self.load_dir = os.path.join(data_dir, batch_id, ex_id)
         self.export_dir = export_dir
         self.process_data()
         self.data = {}

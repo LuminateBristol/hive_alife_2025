@@ -6,8 +6,8 @@ import multiprocessing as mp
 from simulator.wh_proc import *
 from simulator.wh_sim import *
 
-batch_id = '10may'
-ex_id = 'e_2'
+batch_id = 'test'
+ex_id = 'e_1'
 data_dir = "data"
 cores = 1
 

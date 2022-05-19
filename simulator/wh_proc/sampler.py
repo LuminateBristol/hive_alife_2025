@@ -5,7 +5,8 @@ import pandas as pd
 class FileList:
 
     def __init__(self, batch_id, ex_id, data_dir):
-        dir_list = os.listdir(data_dir) # root data dir
+        load_path = os.path.join(data_dir, batch_id)
+        dir_list = os.listdir(load_path) # root data dir
         subdir_list = {}
         eid = ex_id.split('_')[1]
         
@@ -15,8 +16,8 @@ class FileList:
                 continue
 
             meta = d.split('_')
-            if meta[0] != 'e' or meta[1] != eid or meta[3] != str(batch_id):
-                continue
+            # if meta[0] != 'e' or meta[1] != eid:
+            #     continue
 
             faults = int(meta[2][1:])
             subdir_list[faults] = d_path
@@ -140,3 +141,117 @@ class DataSampler:
 
     #     return 
         
+class CompileMinimalData:
+
+    SAMPLE_DIR = "min_samples"
+
+    def __init__(self, batch_id, ex_id, data_dir, metrics, faults, no_agents):
+        load_dir = os.path.join(data_dir, batch_id, "%s_f%d"%(ex_id, faults))
+        files = os.listdir(load_dir)
+
+        self.metrics = metrics
+        self.faults = faults
+        self.files = []
+        for f in files:
+            filepath = os.path.join(load_dir, f)
+            self.files.append(filepath)
+        
+        self.n_size = int(len(files)/2)
+        self.f_size = int(len(files)/2)
+        self.n_offset = self.f_size
+        if self.faults == 0:
+            self.f_size = 0
+        if self.faults == no_agents:
+            self.n_size = 0
+
+        self.export_dir = os.path.join(data_dir, self.SAMPLE_DIR, batch_id, ex_id)
+
+    def _mkdir(self, dirname):
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+    def compile(self, export=False):
+        n, f = self._compile_files()
+        no_metrics = len(self.metrics)
+        if len(n):
+            no_samples = int(len(n)/no_metrics)
+            arr_n = np.array(n).reshape((no_samples, no_metrics))
+            df_n = pd.DataFrame(arr_n, columns=self.metrics)
+        else:
+            df_n = None
+
+        if len(f):
+            no_samples = int(len(f)/no_metrics)
+            arr_f = np.array(f).reshape((no_samples, no_metrics))
+            df_f = pd.DataFrame(arr_f, columns=self.metrics)
+        else:
+            df_f = None        
+        
+        if export:
+            self._mkdir(self.export_dir)
+            export_path_n = os.path.join(self.export_dir, "n%d.csv"%self.faults)
+            export_path_f = os.path.join(self.export_dir, "f%d.csv"%self.faults)
+            if df_n is not None:
+                df_n.to_csv(export_path_n, index=0)
+            
+            if df_f is not None:
+                df_f.to_csv(export_path_f, index=0)
+
+        return df_n, df_f
+
+    def _compile_files(self):
+        data_n = []
+        data_f = []
+        
+        for i, f in enumerate(self.files):
+            df = pd.read_csv(f, header=0)
+            if i >= self.n_offset and i < self.n_offset+self.n_size:
+                data_n += df['n'].tolist()
+            if i < self.f_size:
+                data_f += df['f'].tolist()
+
+        return data_n, data_f
+
+class MinToStandard:
+
+    MIN_DIR = "min_samples"
+    STD_DIR = "samples"
+
+    def __init__(self, data_dir, batch_id, ex_id, metrics):
+        self.load_dir = os.path.join(data_dir, self.MIN_DIR, batch_id, ex_id)
+        self.export_dir = os.path.join(data_dir, self.STD_DIR, batch_id, ex_id)
+        self.metrics = metrics
+        files = {}
+        for f in os.listdir(self.load_dir):
+            fpath = os.path.join(self.load_dir, f)
+            files[fpath] = f[0] # don't care about the number of faults
+        self.files = files
+
+    def convert(self, export=False):
+        for m in self.metrics:
+            n, f = self.convert_metric(m)
+            samples = {'n':n,'f':f}
+            df = pd.DataFrame(samples)
+            self._mkdir(self.export_dir)
+            export_path = os.path.join(self.export_dir, "%s.csv"%m)
+            df.to_csv(export_path, index=None)
+            del(df)
+
+    def convert_metric(self, metric):
+        n = []
+        f = []
+        for fpath, state in self.files.items():
+            df = pd.read_csv(fpath)
+            data = df[metric].tolist()
+            if state == 'n':
+                n += data
+            if state == 'f':
+                f += data
+            del(df)
+        
+        return n, f
+
+    def _mkdir(self, dirname):
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+

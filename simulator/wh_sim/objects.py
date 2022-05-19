@@ -92,7 +92,7 @@ class Swarm:
         return
 
     def set_agent_box_state(self, agent_index, state):
-        self.agent_has_box[robot_index] = state
+        self.agent_has_box[agent_index] = state
         return True
 
     def dropoff_box(self, warehouse, active_boxes):

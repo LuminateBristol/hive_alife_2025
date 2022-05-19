@@ -5,12 +5,12 @@ import time
 
 ###### Experiment parameters ######
 
-ex_id = 'e_2'
+ex_id = 'e_1'
 iterations = 200
 export_data = True
 verbose = False    
-fault_range = range(6,11) # inject 0-10 faults
-batch_id = 'emin'
+fault_range = range(11) # inject 0-10 faults
+batch_id = 'test'
 
 ###### Config class ######
 

@@ -140,7 +140,7 @@ class DataModel:
             metric_count += len(self.roc_metrics)
 
         for i in range(metric_count):
-            for j in range(len(self.ag_ids)):
+            for j in range(self.number_of_agents):
                 col = 'm%d_a%d'%(i,j)
                 head += [col]
 
@@ -167,15 +167,22 @@ class DataModel:
             cam_range_ = np.tile(cam_range, (total_objs, 1))
             ir = (obj_dist < cam_range_).astype(float)
             ir[ir == 0] = np.nan
+            if obj == 1:
+                ir = np.transpose(ir)
             obj_dist = np.multiply(obj_dist, ir)
 
         if obj ==0 or obj==2:
             obj_dist = np.transpose(obj_dist)
+        
+        if obj == 0:
+            for idx, r_id in enumerate(self.warehouse.robot_carrier):
+                if r_id != -1:
+                    obj_dist[r_id][idx] = np.nan
 
-        return obj_dist, None
+        return obj_dist
 
     def count_in_range(self, obj_type=0):
-        dist, _ = self.get_object_distance(obj_type)
+        dist = self.get_object_distance(obj_type)
         count = np.count_nonzero(~np.isnan(dist), axis=1)
         if obj_type == 1:
             count = count-1 # don't count self
@@ -183,15 +190,14 @@ class DataModel:
 
     # obj_type: 0 box, 1 agent, 2 wall
     def get_nearest_object(self, obj_type=0):
-        dist, _ = self.get_object_distance(obj_type)
+        dist = self.get_object_distance(obj_type)
         foo = 99999
         dist[np.isnan(dist)] = foo
         # don't count self or any box currently lifted
         # if obj_type in [0, 1]:
         if obj_type == 1:
-            axis = (obj_type-1)%2
-            min_dist = np.partition(dist,kth=1,axis=axis)[1]
-            min_dist_idx = np.argpartition(dist,kth=1,axis=axis)[1]
+            min_dist = np.partition(dist,kth=1,axis=1)[:,1]
+            min_dist_idx = np.argpartition(dist,kth=1,axis=1)[:,1]
         else:
             min_dist = np.min(dist, axis=1)
             min_dist_idx = np.argmin(dist, axis=1)
@@ -287,8 +293,13 @@ class ExportRedisData(DataModel):
         'box_coords',
         'robot_coords',
         'boxes_to_be_delivered',
-        'metrics',
+        'camera_range'
         # 'ad_prediction'
+    ]
+
+    setup_keys = [
+        'fault_count',
+        'metrics'
     ]
 
     def __init__(self, export_vis_data=False, *args, **kwargs):
@@ -309,6 +320,9 @@ class ExportRedisData(DataModel):
         if self.export_vis_data:
             self._export_vis_data(ts, warehouse)
 
+        if ts == 1:
+            self._export_metadata(warehouse)
+
     def _export_metric_data(self, timestep, metric_data):                
         count = 0
         for metric, data in metric_data.items():
@@ -328,24 +342,32 @@ class ExportRedisData(DataModel):
             'no_robots': swarm.number_of_agents,
             'box_coords': json.dumps(warehouse.box_c.tolist()),
             'robot_coords': json.dumps(warehouse.rob_c.tolist()),
-            'boxes_to_be_delivered': json.dumps(warehouse.to_be_delivered.tolist())
+            'boxes_to_be_delivered': json.dumps(warehouse.to_be_delivered.tolist()),
+            'fault_count': json.dumps(swarm.fault_count),
+            'camera_range': json.dumps(swarm.camera_sensor_range_V.tolist())
         }
 
         for key, val in vis_data.items():
             self.rconn.set(self.rkeys.gen_timestep_key(timestep, key), val)
 
-        # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'no_boxes'), warehouse.number_of_boxes)
-        # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'no_robots'), swarm.number_of_agents)
-        # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'box_coords'), json.dumps(warehouse.box_c.tolist()))
-        # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'robot_coords'), json.dumps(warehouse.rob_c.tolist()))
-        # self.rconn.set(self.rkeys.gen_timestep_key(timestep, 'boxes_to_be_delivered'), json.dumps(warehouse.to_be_delivered.tolist()))
+    def _export_metadata(self, warehouse):
+        swarm = warehouse.swarm
+        metrics = self.metrics
+        if self.compute_roc:
+            metrics += self.roc_metrics
+        data = {
+            'fault_count': json.dumps(swarm.fault_count),
+            'metrics': json.dumps(metrics)
+        }
+
+        for key, val in data.items():
+            self.rconn.set(self.rkeys.gen_metadata_key(key), val)
 
 
 class MinimalDataModel(DataModel):
 
     def __init__(self, faults, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ag_ids = []
         self.faults = faults
         self.export_cols = []
         self.metric_data = {}
@@ -444,10 +466,18 @@ class MinimalDataModel(DataModel):
         if obj ==0 or obj==2:
             obj_dist = np.transpose(obj_dist)
 
-        return obj_dist, None
+        if obj == 0 and self.swarm.agent_has_box[ag_id]:
+            # Get the box ID the robot is carrying
+            try:
+                box_id = self.warehouse.robot_carrier.tolist().index(ag_id)
+            except:
+                print("no carrier")
+            obj_dist[box_id] = np.nan
+
+        return obj_dist
 
     def count_in_range(self, ag_id, obj_type=0):
-        dist, _ = self.get_object_distance(ag_id, obj_type)
+        dist = self.get_object_distance(ag_id, obj_type)
         count = np.count_nonzero(~np.isnan(dist))
         if obj_type == 1:
             count = count-1 # don't count self
@@ -455,7 +485,7 @@ class MinimalDataModel(DataModel):
     
     # obj_type: 0 box, 1 agent, 2 wall
     def get_nearest_object(self, ag_id, obj_type=0):
-        dist, _ = self.get_object_distance(ag_id, obj_type)
+        dist = self.get_object_distance(ag_id, obj_type)
         foo = 99999
         dist[np.isnan(dist)] = foo
         # don't count self or any box currently lifted
@@ -475,16 +505,6 @@ class MinimalDataModel(DataModel):
         
         mdi = self._map_obj_id(mdi, obj_type)
         return (md, mdi)
-
-    def _map_obj_id(self, obj_id, obj_type=0):
-        if obj_type == 0:
-            offset = 1
-        elif obj_type == 1:
-            offset = self.warehouse.number_of_boxes + 1
-        elif obj_type == 2:
-            offset = self.warehouse.number_of_boxes + self.swarm.number_of_agents + 1
-        
-        return obj_id+offset
 
     def get_single_nearest(self, ag_id, nearest_arr=None):
         if nearest_arr is None:

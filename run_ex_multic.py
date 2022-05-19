@@ -3,11 +3,12 @@ from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES
 import multiprocessing as mp
 import argparse
+import time
 
 ###### Experiment parameters ######
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--ex_id')
+parser = argparse.ArgumentParser()
+parser.add_argument('--ex_id')
 # parser.add_argument('--iterations')
 # parser.add_argument('--it_offset')
 # parser.add_argument('--export_data')
@@ -16,8 +17,8 @@ import argparse
 # parser.add_argument('--batch_id')
 # parser.add_argument('--cores')
 
-# args = parser.parse_args()
-# ex_id = args.ex_id
+args = parser.parse_args()
+ex_id = args.ex_id
 # iterations = int(args.iterations)
 # it_offset = int(args.it_offset)
 # export_data = bool(args.export_data)
@@ -26,16 +27,16 @@ import argparse
 # batch_id = args.batch_id
 # cores = int(args.cores)
 
-###### Hardcode parameters ######
+###### Hardcoded parameters ######
 
-ex_id = 'e_2'
+# ex_id = 'e_1'
 iterations = 200
 it_offset = 0
 export_data = True
 verbose = False    
-faults = [7] # inject 0-10 faults
-batch_id = '10may'
-cores = 1
+fault_range = range(11) # inject 0-10 faults
+batch_id = 'final'
+cores = 2
 
 ###### Config class ######
 
@@ -91,9 +92,10 @@ def iterate_ex(iteration_list, faults, st, export_data=True):
         run_ex(it, faults, st, export_data)
 
 def run_ex(iteration, faults, st, export_data=True):
-    random_seed = gen_random_seed(iteration, faults[0])
+    random_seed = gen_random_seed(iteration, faults)
     if export_data:
-        data_model = MinimalDataModel(faults[0], store_internal=True, compute_roc=True)
+        # data_model = MinimalDataModel(faults[0], store_internal=True, compute_roc=True)
+        data_model = ExtremeMinDataModel(faults[0], max_time=10000, store_internal=True, compute_roc=True)
     else:
         data_model = None
 
@@ -112,8 +114,18 @@ def run_ex(iteration, faults, st, export_data=True):
     
 ###### Run experiment ######
 
+log_time = []
 st = SaveSample(batch_id)
-print("Running simulation with %d faulty robots"%faults[0])
-procs = create_procs(iterations, faults, st, export_data, cores)
-for p in procs:
-    p.join()
+for it in fault_range:
+    t0 = time.time()
+    print("Running simulation with %d faulty robots"%it)
+    faults = [it]
+    procs = create_procs(iterations, faults, st, export_data, cores)
+    for p in procs:
+        p.join()
+    t1 = time.time()
+    dt = t1-t0
+    print("Time taken: %s"%str(dt), '\n')
+    log_time.append(dt)
+
+
