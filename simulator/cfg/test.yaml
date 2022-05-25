@@ -7,8 +7,8 @@ warehouse:
   box_radius: 12.5
   width: 500
   height: 500
-  number_of_agents: 10
-  number_of_boxes: 10
+  number_of_agents: 3
+  number_of_boxes: 2
   repulsion_wall: 25
   repulsion_object: 25
   object_position: 0
@@ -23,7 +23,7 @@ animate: False
 save_animation: False
 heading_bias: False
 box_attraction: False
-heading_change_rate: 10 # ticks per change in heading
+heading_change_rate: 1 # ticks per change in heading
 capture_data: False
 exit_on_completion: False
 

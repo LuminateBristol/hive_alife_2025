@@ -132,7 +132,7 @@ class Warehouse:
 		active_boxes = self.box_is_free == 0 # boxes which are on a robot
 		self.box_d = np.array((active_boxes,active_boxes)).T*self.rob_d[self.robot_carrier] # move the boxes by the amount equal to the robot carrying them 
 		self.box_c = self.box_c + self.box_d
-		self.boxes_in_dropoff = self.swarm.dropoff_box(self, active_boxes) # TODO does not include boxes which are inactive
+		self.boxes_in_dropoff = self.swarm.dropoff_box(self, active_boxes) # TODO does not include boxes which are inactive (already spawned in the drop off zone)
 		if any(self.boxes_in_dropoff) == 1: # if any boxes have been delivered
 			self.delivered = self.delivered + np.sum(self.boxes_in_dropoff) # add to the number of deliveries made
 			box_n = np.argwhere(self.boxes_in_dropoff == 1) # box IDs that have been delivered

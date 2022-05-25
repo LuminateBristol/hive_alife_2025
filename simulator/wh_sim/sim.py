@@ -22,7 +22,8 @@ class Simulator:
         check_collisions=False,
         data_model=None,
         random_seed=None,
-        fault_count=[0]):
+        fault_count=[0],
+        ad_model=None):
 
         self.cfg = config
         self.verbose = verbose
@@ -31,6 +32,7 @@ class Simulator:
         self.delivered_in = None
         self.fault_count = fault_count
         self.data_model = data_model
+        self.ad_model = ad_model
 
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
@@ -71,14 +73,16 @@ class Simulator:
         swarm.generate()        
         fault_types = cfg.get('faults')
         count = 0
-
+        fault_count = []
         for i, fault in enumerate(fault_types):
             end_count = self.fault_count[i]+count
+            fault_count.append(end_count)
             faulty_agents_range = range(count, end_count)
             fault_cfg = self.generate_fault_type(fault, faulty_agents_range)
             swarm.add_fault(**fault_cfg)    
             count = end_count
 
+        swarm.fault_count = fault_count
         return swarm
 
     def generate_fault_type(self, fault, faulty_agents_range):
@@ -122,6 +126,9 @@ class Simulator:
         if self.data_model is not None:
             self.data_model.get_metric_data(self.warehouse) # updates metric data for timestep
         
+            if self.ad_model is not None:
+                self.ad_model.predict(self.data_model.metric_data, counter)
+                
         if self.verbose:
             if self.warehouse.counter == 1:
                 print("Progress |", end="", flush=True)
@@ -154,10 +161,10 @@ class Simulator:
             print("\n")
 
 
-
 class SimTest(Simulator):
 
-    def run(self):
+    def run(self, testID=0):
+        self.testID = testID
         if self.verbose:
             print("Running with seed: %d"%self.random_seed)
 
@@ -172,82 +179,26 @@ class SimTest(Simulator):
             print("\n")
 
     def test_hook(self):
-        # self.test_FOV_metric_box()
-        # self.test_FOV_metric_agent()
-        # self.test_FOV_metric_wall()
-        self.test_count_lifted_box()
-
-    def test_FOV_metric_box(self, heading_0=0.):
-        no_ag = self.swarm.number_of_agents
-        self.swarm.heading = np.array([float(heading_0)]*no_ag)
-        centre = [self.warehouse.width/2, self.warehouse.height/2]
-        self.swarm.repulsion_o = 0
-        self.warehouse.rob_c = np.array([centre, [0,0], [30,0]])
-        rob_test = self.warehouse.rob_c[0]
-
-        step = 50
-        it = int(self.warehouse.counter/step)
-        r = 30
-        theta = heading_0 + (np.pi/4)*it
-        x = r*np.sin(theta)
-        y = r*np.cos(theta)
-        box_test = rob_test + [x, y]
-
-        self.warehouse.box_c = np.array([box_test, [0,0]])
-        data = self.data_model.get_model_data()
-        if self.warehouse.counter%10 == 1:
-            print("F: %d / B: %d"%(
-                data['FOV_object_density_forward'][0], 
-                data['FOV_object_density_behind'][0]))
-
-    def test_FOV_metric_agent(self, heading_0=0.):
-        no_ag = self.swarm.number_of_agents
-        self.swarm.heading = np.array([float(heading_0)]*no_ag)
-        centre = [self.warehouse.width/2, self.warehouse.height/2]
-        self.swarm.repulsion_o = 0
-        self.warehouse.rob_c = np.array([centre, [0,0], [30,0]])
-        rob_test = self.warehouse.rob_c[0]
-        self.warehouse.box_c = np.array([[30,0], [0,0]])
-
-        step = 50
-        it = int(self.warehouse.counter/step)
-        r = 30
-        theta = heading_0 + (np.pi/4)*it
-        x = r*np.sin(theta)
-        y = r*np.cos(theta)
-        rob_test_2 = rob_test + [x, y]
-        self.warehouse.rob_c[1] = rob_test_2
-
-        data = self.data_model.get_model_data()
-        if self.warehouse.counter%10 == 1:
-            print("F: %d / B: %d"%(
-                data['FOV_agent_density_forward'][0], 
-                data['FOV_agent_density_behind'][0]))
+        if self.testID == 0:
+            self.test_count_lifted_box()
+        if self.testID == 1:
+            self.test_walls_in_range()
+        if self.testID == 2:
+            self.test_agents_in_range()
             
-    def test_FOV_metric_wall(self, heading_0=0.):
-        no_ag = self.swarm.number_of_agents
-        self.swarm.heading = np.array([float(heading_0)]*no_ag)
-        rob_test = [self.warehouse.width-65.0, self.warehouse.height-25.0]
-        self.swarm.repulsion_o = 0
-        self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
-        self.warehouse.box_c = np.array([[30,0], [0,0]])
-
-        step = 50
-        it = int(self.warehouse.counter/step)
-        r = 30
-        theta = heading_0 + (np.pi/4)*it
-        self.swarm.heading[0] = float(theta)
-
-        data = self.data_model.get_model_data()
-        if self.warehouse.counter%10 == 1:
-            print("F: %d / B: %d"%(
-                data['FOV_wall_density_forward'][0], 
-                data['FOV_wall_density_behind'][0]))
 
     # shouldn't include lifted box in count
+    # 3 robots, 2 boxes
+    # one robot in the center of the arena, two robots in the bottom left corner (out of action)
+    # center robot has first box, is in 25cm range of second box
+    # boxes_in_range should be 1 (shouldn't count the lifted box)
+    # nearest box distance should be 25cm
+    # nearest ID should be ID of second box (should be 2)
+    # box1 = ID 1, box2 = ID2, agent1 = ID3 etc. >> IDs start at 1, with boxes first
     def test_count_lifted_box(self):
         no_ag = self.swarm.number_of_agents
         self.swarm.heading = np.array([0.]*no_ag)
+        self.swarm.robot_v *= 0
         rob_test = [self.warehouse.width/2, self.warehouse.height/2]
         self.swarm.repulsion_o = 0
         self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
@@ -260,4 +211,40 @@ class SimTest(Simulator):
                 str(data['boxes_in_range'][0]),
                 str(data['nearest_box_distance'][0]),
                 str(data['nearest_box_id'][0]),
+            ))
+
+    def test_walls_in_range(self):
+        no_ag = self.swarm.number_of_agents
+        self.swarm.heading = np.array([0.]*no_ag)
+        self.swarm.robot_v *= 0
+        rob_test = [self.warehouse.width/2, self.warehouse.height/2]
+        self.swarm.repulsion_o = 0
+        self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
+        box_test = rob_test
+        self.warehouse.box_c = np.array([box_test, np.add(rob_test,[25,0])])
+
+        data = self.data_model.get_model_data()
+        if self.warehouse.counter%10 == 1:
+            print("Walls in range: %s / Nearest dist: %s / Nearest id: %s"%(
+                str(data['walls_in_range']),
+                str(data['nearest_wall_distance']),
+                str(data['nearest_wall_id'])
+            ))
+
+    def test_agents_in_range(self):
+        no_ag = self.swarm.number_of_agents
+        self.swarm.heading = np.array([0.]*no_ag)
+        self.swarm.robot_v *= 0
+        rob_test = [self.warehouse.width/2, self.warehouse.height/2]
+        self.swarm.repulsion_o = 0
+        self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
+        box_test = rob_test
+        self.warehouse.box_c = np.array([box_test, np.add(rob_test,[25,0])])
+
+        data = self.data_model.get_model_data()
+        if self.warehouse.counter%10 == 1:
+            print("Agents in range: %s / Nearest dist: %s / Nearest id: %s"%(
+                str(data['agents_in_range'].tolist()),
+                str(data['nearest_agent_distance'].tolist()),
+                str(data['nearest_agent_id'].tolist())
             ))

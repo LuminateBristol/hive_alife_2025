@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">        
+    </head>
+
+    <body>
+        
+        <div id="btns">
+            <button id="reload" disabled>reload</button>
+            <button id="play" disabled>play</button>
+            <button class="step" data-step="-10" disabled><<</button>
+            <button class="step" data-step="-1" disabled><</button>
+            <button class="step" data-step="1" disabled>></button>
+            <button class="step" data-step="10" disabled>>></button>
+            <button id="pause" disabled>pause</button>
+        </div>    
+
+        <div id="visual">
+            <div id="time">
+                <p>Time is <span id="time_txt">0.00</span>s</p>
+            </div>
+            <div id="width_lab">Warehouse width (cm)</div>
+            <div id="height_lab">Warehouse height (cm)</div>
+            <canvas id="yaxis"></canvas> 
+            <canvas id="xaxis"></canvas>  
+            <canvas id="arena"></canvas>        
+        </div>
+
+        <div id="control">
+            {% include 'controls.html' %}
+        </div>
+
+        <div id="metadata">
+            <input type="hidden" name="scenario" value="{{ data['scenario'] }}">
+            {% for k, v in global_data['metadata'].items() %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+            {% endfor %}
+        </div>
+
+    </body>
+    
+    <script src="{{ url_for('static', filename='jquery-3.6.0-min.js') }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% if data['scenario'] %}
+    <script src="{{ url_for('static', filename=data['scenario']+'.js') }}"></script>
+    {% endif %}
+
+</html>

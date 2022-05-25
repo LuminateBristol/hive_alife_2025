@@ -35,13 +35,15 @@ class RedisKeys:
     def gen(self, l):
         return ':'.join(l)
 
-    # def gen_metadata_keys(self):
-    #     keys = {}
-    #     for it in self.metadata:
-    #         key = self.gen([self.base, 'metadata', it])
-    #         keys[it] = key
+    def gen_metadata_keys(self, metadata_keys):
+        keys = {}
+        for it in metadata_keys:
+            keys[it] = self.gen_metadata_key(it)
 
-    #     return keys
+        return keys
+
+    def gen_metadata_key(self, key):
+        return self.gen([self.base, 'metadata', key])
 
     def gen_timestep_keys(self, timestep, scenario_keys):
         keys = {}
