@@ -33,6 +33,7 @@ Data processing scripts:
 ### Data generation and analysis pipeline
 
 Standard pipeline:  
-- Generate data by running a simulation script for n iterations and a range of faults.  
-- Process generated data with the appropriate data processing script (dependend on the DataModel class used).  
-- Compute statistics: effect size and thresholds.
+
+1. Generate data by running a simulation script for n iterations and a range of faults.  
+2. Process generated data with the appropriate data processing script (dependend on the DataModel class used).  
+3. Compute statistics: effect size and thresholds.
