@@ -294,7 +294,6 @@ class ExportRedisData(DataModel):
         'robot_coords',
         'boxes_to_be_delivered',
         'camera_range'
-        # 'ad_prediction'
     ]
 
     setup_keys = [

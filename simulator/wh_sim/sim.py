@@ -127,10 +127,8 @@ class Simulator:
             self.data_model.get_metric_data(self.warehouse) # updates metric data for timestep
         
             if self.ad_model is not None:
-                pred = self.ad_model.predict(self.data_model.metric_data, counter)
-                # print(pred)
-                # self.ad_model.check_thresholds(self.data_model.metric_data)
-                # print(self.ad_model.)
+                self.ad_model.predict(self.data_model.metric_data, counter)
+                
         if self.verbose:
             if self.warehouse.counter == 1:
                 print("Progress |", end="", flush=True)
@@ -161,7 +159,6 @@ class Simulator:
         
         if self.verbose:
             print("\n")
-
 
 
 class SimTest(Simulator):

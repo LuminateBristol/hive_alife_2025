@@ -21,10 +21,10 @@ iterations = 10
 export_data = True
 verbose = False    
 fault_range = range(11) # inject 0-10 faults
-batch_id = 'test'
+batch_id = 'emin_sc'
 no_agents = 10
 # n = 5
-s = 0.1
+s = 0.15
 
 ###### Config class ######
 

@@ -1,12 +1,16 @@
 import os
 from os.path import dirname, realpath
 import json
-# try:
-#     import tensorflow.keras as keras
-# except:
-#     print("WARN: Tensorflow module not available")
-import pandas as pd
+from pathlib import Path
+import sys
 import numpy as np
+
+try:
+    dir_root = Path(__file__).resolve().parents[1]
+    sys.path.append(str(dir_root))
+    from simulator.lib import RedisConn, RedisKeys
+except Exception as e:
+    pass
 
 class ThresholdModel:
 
@@ -29,6 +33,7 @@ class ThresholdModel:
         self.df_res = None
         self.df_thresh = None
         self.data = {}
+        self.pred = [0]*self.no_ag
 
     def _load_thresh(self, t_path, s_path):
         with open(t_path, 'r') as f:
@@ -58,7 +63,7 @@ class ThresholdModel:
         self.counter = counter
         res = np.zeros(self.no_ag)
         if self.counter < self.time_w:
-            return res, res
+            return res
 
         res = self.check_thresholds(data)
         no_thresh = int(len(res)/self.no_ag)
@@ -71,7 +76,9 @@ class ThresholdModel:
  
             self.df_res = np.concatenate([self.df_res, res_])
         
-        return res_ >= self.k
+        pred = res_ >= self.k
+        self.pred = pred.tolist()
+        return pred
 
     def check_thresholds(self, data):
         self.counter += 1
@@ -118,7 +125,7 @@ class ThresholdModel:
             passed = mean_w < t_arr
         else:
             passed = mean_w > t_arr
-        
+            
         return passed.astype(int)
 
     def get_df_thresh(self):
@@ -129,3 +136,22 @@ class ThresholdModel:
     def get_df_res(self):
         rows = int(len(self.df_res)/self.no_ag)
         return self.df_res.reshape((rows, self.no_ag))
+
+
+class ExportThresholdModel(ThresholdModel):
+
+    KEY = 'pred'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rconn = RedisConn()
+        self.rkeys = RedisKeys()
+
+    def predict(self, *args, **kwargs):
+        pred = super().predict(*args, **kwargs)
+        if not self.rconn.is_connected():
+            self.rconn.reconnect()
+
+        key = self.rkeys.gen_timestep_key(self.counter, self.KEY)
+        self.rconn.set(key, json.dumps(pred.tolist()))
+        

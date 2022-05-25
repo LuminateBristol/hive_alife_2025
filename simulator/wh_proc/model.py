@@ -108,7 +108,40 @@ class ModelEv:
         ax.plot(a,color='tab:blue')
         ax.plot(se,color='tab:green')
         ax.plot(sp,color='tab:orange')
-        ax.legend(['A','SP','SE', 'Std A', 'Std SP', 'Std SE'])
+        ax.legend(['A','SE','SP', 'Std A', 'Std SE', 'Std SP'])
         ax.set_xlabel("Simulation timestep")
-        plt.show()
+        ax.set_ylabel("Score")
+        # plt.show()
         # plt.rcParams.update({'font.size': 15})
+
+class ROC_Ev:
+
+    # emin_sc_3, emin_sc_5
+    def __init__(self, data_dir, batch_id):
+        self.n_range = [3,5]
+        self.ex_ids = ["e_%d"%x for x in range(1,7)]
+        self.data_dir = data_dir
+        self.batch_id = batch_id
+        
+    def comp_roc(self, n, init_ts=0, end_ts=None):
+        data = {}
+        k_range = range(1,n+1)
+        for ex_id in self.ex_ids:
+            if ex_id not in data:
+                data[ex_id] = {}
+            
+            me = ModelEv(self.data_dir, "%s_%d"%(self.batch_id,n), ex_id)
+            for k in k_range:
+                results = me.evaluate(k)
+                if end_ts is None:
+                    end_ts = len(results['se'][0])
+
+                se_mean = results['se'][0][init_ts:end_ts].mean()
+                sp_mean = results['sp'][0][init_ts:end_ts].mean()
+                lab = "n%d_k%d"%(n,k)
+                data[ex_id][lab] = [se_mean, 1-sp_mean]
+
+        self.data = data
+        return data
+
+

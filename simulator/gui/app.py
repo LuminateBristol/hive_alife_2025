@@ -1,13 +1,14 @@
 from pathlib import Path
 import sys
+import os
 
 dir_root = Path(__file__).resolve().parents[1]
 sys.path.append(str(dir_root))
 dir_root_2 = Path(__file__).resolve().parents[2]
 sys.path.append(str(dir_root_2))
 from lib import RedisConn, RedisKeys, Config
-from wh_sim import ExportRedisData, Simulator
-from simulator import CFG_FILES
+from wh_sim import ExportRedisData, Simulator, ExportThresholdModel
+from simulator import CFG_FILES, MODEL_ROOT, STATS_ROOT
 
 from flask import Flask, request, render_template, redirect, jsonify
 import json
@@ -32,7 +33,7 @@ GLOBAL = {
         'robot_radius': cfg.get('robot', 'radius'),
         'box_radius': cfg.get('warehouse', 'box_radius'),
         'deposit_zones': [],
-        'sim_runtime': cfg.get('time_limit'),
+        'sim_runtime': cfg.get('time_limit')+1,
         'number_of_agents': cfg.get('warehouse', 'number_of_agents')
     },
     'scenarios': [
@@ -128,16 +129,32 @@ def fetch_metricdata(timestep, json_decode=False):
 
     return metricdata
 
+def fetch_ad_prediction(timestep, json_decode=False):
+    rk = RedisKeys()
+    if not r.is_connected():
+        r.reconnect()
+
+    try:
+        key = rk.gen_timestep_key(timestep, ExportThresholdModel.KEY)
+        val = r.get(key).strip().decode()
+        if json_decode:
+            val = json.loads(val)
+        return val
+    except Exception as e:
+        print("Could not retrieve key data: t %d, k %s, e %s"%(timestep,key,e))
+
 @app.route('/fetch-redis/<runtime>/<scenario>')
 def fetch_vis_data_from_run(runtime, scenario):
     simdata = {}
     metricdata = {}
+    ad_pred = {}
     for i in range(1, int(runtime)):
         simdata[i] = fetch_simdata(i, scenario)
         metricdata[i] = fetch_metricdata(i)
+        ad_pred[i] = fetch_ad_prediction(i)
         
     metadata = fetch_metadata()
-    data = {'metadata': metadata, 'simdata': simdata, 'metricdata': metricdata}
+    data = {'metadata': metadata, 'simdata': simdata, 'metricdata': metricdata, 'ad_pred': ad_pred}
     return jsonify(data)
 
 @app.route('/run-ex/<ex_id>/<no_faults>', methods=['POST'])
@@ -146,13 +163,17 @@ def run_experiment(ex_id, no_faults):
     cfg_file = CFG_FILES['ex_1']
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id)
     data_model = ExportRedisData(export_vis_data=True, compute_roc=True)
+    thresh_file = os.path.join(MODEL_ROOT, "%s_%s.txt"%(ex_id, "emin_sc"))
+    stats_file = os.path.join(STATS_ROOT, "%s_%s.txt"%(ex_id, "emin_sc"))
+    ad_model = ExportThresholdModel(10, thresh_file, stats_file, 3, 0.15, 2)
 
     faults = [int(no_faults)]
     # Create simulator object
     sim = Simulator(cfg_obj,
         data_model=data_model,
-        fault_count=faults)
+        fault_count=faults,
+        ad_model=ad_model,
+        random_seed=66764970)
 
     sim.run()
-    print(sim.random_seed)
     return jsonify(sim.random_seed)
