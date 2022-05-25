@@ -6,24 +6,24 @@ import argparse
 
 ###### Experiment parameters ######
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--ex_id')
-parser.add_argument('--n')
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--ex_id')
+# parser.add_argument('--n')
 
-args = parser.parse_args()
-ex_id = args.ex_id
-n = int(args.n)
+# args = parser.parse_args()
+# ex_id = args.ex_id
+# n = int(args.n)
 
 ###### Hardcoded parameters ######
 
-# ex_id = 'e_1'
+ex_id = 'e_1'
 iterations = 10
 export_data = True
 verbose = False    
 fault_range = range(11) # inject 0-10 faults
 batch_id = 'emin_sc'
 no_agents = 10
-# n = 5
+n = 5
 s = 0.15
 
 ###### Config class ######

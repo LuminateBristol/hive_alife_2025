@@ -9,34 +9,34 @@ import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ex_id')
-# parser.add_argument('--iterations')
-# parser.add_argument('--it_offset')
-# parser.add_argument('--export_data')
-# parser.add_argument('--verbose')
-# parser.add_argument('--faults')
-# parser.add_argument('--batch_id')
-# parser.add_argument('--cores')
+parser.add_argument('--iterations')
+parser.add_argument('--it_offset')
+parser.add_argument('--export_data')
+parser.add_argument('--verbose')
+parser.add_argument('--faults')
+parser.add_argument('--batch_id')
+parser.add_argument('--cores')
 
 args = parser.parse_args()
 ex_id = args.ex_id
-# iterations = int(args.iterations)
-# it_offset = int(args.it_offset)
-# export_data = bool(args.export_data)
-# verbose = bool(int(args.verbose))
-# faults = [int(args.faults)]
-# batch_id = args.batch_id
-# cores = int(args.cores)
+iterations = int(args.iterations)
+it_offset = int(args.it_offset)
+export_data = bool(args.export_data)
+verbose = bool(int(args.verbose))
+faults = [int(args.faults)]
+batch_id = args.batch_id
+cores = int(args.cores)
 
 ###### Hardcoded parameters ######
 
 # ex_id = 'e_1'
-iterations = 200
-it_offset = 0
-export_data = True
-verbose = False    
-fault_range = range(11) # inject 0-10 faults
-batch_id = 'final'
-cores = 2
+# iterations = 200
+# it_offset = 0
+# export_data = True
+# verbose = False    
+# fault_range = range(11) # inject 0-10 faults
+# batch_id = 'final'
+# cores = 2
 
 ###### Config class ######
 
