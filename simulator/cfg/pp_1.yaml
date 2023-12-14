@@ -1,0 +1,14 @@
+### Pick and Place Experiments
+
+e_1:
+  boxes: {'pink': 5,
+          'yellow': 5,
+          'blue': 5}
+  task_log: {'pink': [[250, 270], 0],
+           'yellow': [[250, 250], 0],
+           'blue': [[250,230], 0]}
+  tolerances:
+    place_tol: 1
+    abandon_tol: 50
+    pre_place_delta: 10
+  

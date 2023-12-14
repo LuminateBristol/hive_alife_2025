@@ -10,21 +10,24 @@ warehouse:
   number_of_agents: 10
   number_of_boxes: 10
   repulsion_wall: 25
-  repulsion_object: 25
+  repulsion_object: 15
   object_position: 0
   exit_width: 25
   # exit_zone:
   # - [475,0,25,500] # x_0, y_0, width, height
 
+# Select behaviour tree: see bt_setup for options
+behaviour_tree: 'pick_place' 
+
 faults: []
 
 time_limit: 10000
-animate: False
+animate: True
 save_animation: False
 heading_bias: False
 box_attraction: False
-heading_change_rate: 10 # ticks per change in heading
+heading_change_rate: 50 # ticks per change in heading
 capture_data: False
-exit_on_completion: False
+exit_on_completion: True
 
 
