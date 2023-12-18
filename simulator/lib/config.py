@@ -87,3 +87,22 @@ class Config(dict):
                 # return cfg
         return cfg
 
+    def set(self, key, value):
+        keys = key.split('.')
+        cfg = self.__dict__
+        
+        for k in keys[:-1]:
+            try:
+                cfg = cfg[k]
+            except (KeyError, TypeError):
+                raise Exception(f'Config key "{key}" not valid')
+
+        # Update the value for the specified key
+        try:
+            cfg[keys[-1]] = value
+        except (KeyError, TypeError):
+            raise Exception(f'Config key "{key}" not valid')
+
+    def print(self):
+        print(self.__dict__)
+

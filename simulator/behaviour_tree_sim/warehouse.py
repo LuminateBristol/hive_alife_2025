@@ -102,7 +102,7 @@ class Warehouse:
 
 	def iterate(self, heading_bias=False, box_attraction=False): # moves the robot and box positions forward in one time step
 		self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes) # the robots move using the random walk function which generates a new deviation (rob_d)
-				
+	
 		self.counter += 1
 		self.swarm.counter = self.counter
 

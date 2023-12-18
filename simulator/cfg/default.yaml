@@ -19,15 +19,21 @@ warehouse:
 # Select behaviour tree: see bt_setup for options
 behaviour_tree: 'pick_place' 
 
+# Set criteria for ending the simulation
+# 'delivered' - used for original forage sim - records when all boxes are delivered to one side of the arena
+# 'global_task_log' - tracks the progress of task for all robots - when all boxes are placed, sim ends
+# 'local_task_log' - tracks each robot's local task log - when all robots register all boxes placed, sim ends TODO: implement this!
+exit_criteria: 'global_task_log'
+
 faults: []
 
-time_limit: 10000
+time_limit: 15000
 animate: True
 save_animation: False
 heading_bias: False
 box_attraction: False
 heading_change_rate: 50 # ticks per change in heading
 capture_data: False
-exit_on_completion: True
+#exit_on_completion: True
 
 

@@ -23,7 +23,7 @@ class Robot:
         self.lifter_state = lifter_state
         self.pre_place_delta = pre_place_delta
     
-    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log):
+    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, use_hm):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="radius", access=py_trees.common.Access.WRITE)
@@ -34,10 +34,12 @@ class Robot:
         self.blackboard.register_key(key="arena_size", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="repulsion_w", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="repulsion_o", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="abandon_tol", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_delta", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="use_hm", access=py_trees.common.Access.WRITE)
 
         self.blackboard.rob_c = []
         self.blackboard.boxes = []
@@ -49,10 +51,12 @@ class Robot:
         self.blackboard.arena_size = [width, height]
         self.blackboard.repulsion_w = repulsion_w
         self.blackboard.repulsion_o = repulsion_o
-        self.blackboard.internal_task_log = copy.deepcopy(task_log) # Use deepcopy so each has a unique task_log object
         self.blackboard.place_tol = self.place_tol
         self.blackboard.abandon_tol = self.abandon_tol
         self.blackboard.pre_place_delta = self.pre_place_delta
+        self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so each has a unique task_log object
+        self.blackboard.global_task_log = task_log # No deepcopy used here so the same global object will be used for all robots (this is used to track the status of progress of the task)
+        self.blackboard.use_hm = use_hm
         
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
@@ -77,7 +81,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False):
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
             self.agents.append(ag)
@@ -86,7 +90,6 @@ class Swarm:
         # Each agent obj is of class 'Robot' above
         for ag in self.agents:
             # Add robot to swarm
-            print(f'Swarm objects: agent added to swarm {num}')
             ag.robot_index = num
             str_index = 'robot_' + str(ag.robot_index)
             num += 1
@@ -94,14 +97,14 @@ class Swarm:
             # Setup behavuour tree
             bt_module = bt_setup.behaviour_trees[bt_controller] # Get controller from the setup file
             ag.root = bt_module.create_root(robot_index = ag.robot_index)
-            py_trees.display.render_dot_tree(ag.root)
+            #py_trees.display.render_dot_tree(ag.root)
             ag.robot_tree = py_trees.trees.BehaviourTree(ag.root)
 
             # Setup blackboard
             name    = f'Pick Place DOTS: {str_index}'
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
-            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log)
+            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, use_hm)
             self.number_of_agents += 1   
 
     def add_map(self, map):

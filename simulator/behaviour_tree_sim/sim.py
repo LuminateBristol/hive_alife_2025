@@ -32,10 +32,12 @@ class Simulator:
         self.verbose = verbose
         # self.state_changes = 0 # intended to log changes in the system from normal (if faults are injected mid-runtime for example)
         self.exit_threads = False
+        self.exit_run = False
         self.delivered_in = None
         self.fault_count = fault_count
         self.data_model = data_model
         self.ad_model = ad_model
+        self.task_log = self.cfg.get('task_log')
 
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
@@ -80,7 +82,8 @@ class Simulator:
                          width=self.cfg.get('warehouse', 'width'),
                          height=self.cfg.get('warehouse', 'height'),
                          bt_controller=self.cfg.get('behaviour_tree'),
-                         task_log=self.cfg.get('task_log'))
+                         task_log=self.task_log,
+                         use_hm=self.cfg.get('use_hm'))
 
         # TODO: fault integration or delete
         ''' 
@@ -132,45 +135,35 @@ class Simulator:
     # iterate method called once per timestep
     def iterate(self):
         self.warehouse.iterate(self.cfg.get('heading_bias'), self.cfg.get('box_attraction'))
-        counter = self.warehouse.counter
-
-        # TODO: build a generic 'is task completed?' test here to close down simulation
-        '''
-        if self.delivered_in is None and delivered == self.warehouse.number_of_boxes:
-            self.delivered_in = counter
         
-        if self.data_model is not None:
-            self.data_model.get_metric_data(self.warehouse) # updates metric data for timestep
-        
-            if self.ad_model is not None:
-                self.ad_model.predict(self.data_model.metric_data, counter)
-                
-        if self.verbose:
-            if self.warehouse.counter == 1:
-                print("Progress |", end="", flush=True)
-            if self.warehouse.counter%100 == 0:
-                print("=", end="", flush=True)
+        self.exit_sim(delivered=self.warehouse.delivered, counter=self.warehouse.counter, global_task_log=self.task_log)
 
-        # TODO: build a generic 'is task completed?' test here to close down simulation
-        
-        self.exit_sim(delivered, counter)
-        '''
-
-    def exit_sim(self, delivered, counter):
-        if self.cfg.get('exit_on_completion') and delivered == self.cfg.get('warehouse', 'number_of_boxes') or counter > self.cfg.get('time_limit'):
+    def exit_sim(self, delivered=None, counter=None, global_task_log=None):
+        if self.cfg.get('exit_criteria') == 'delivered' and delivered == self.cfg.get('warehouse', 'number_of_boxes'):
             if self.verbose:
                 print("in", counter, "seconds")
             sr = float(delivered/self.cfg.get('warehouse', 'number_of_boxes'))
             if self.verbose:
                 print(delivered, "of", self.cfg.get('warehouse', 'number_of_boxes'), "collected =", sr*100, "%")
 
+        elif self.cfg.get('exit_criteria') == 'global_task_log':
+            for task in global_task_log:
+                if global_task_log[task]['status'] == 0:
+                    break
+            else:
+                print('All boxes placed - sim completed')    
+                self.exit_threads = True
+                self.exit_run = True
+        elif counter > self.cfg.get('time_limit'):
+            print('{counter} counts reached - Time limit expired')
             self.exit_threads = True
+            self.exit_run = True
 
     def run(self):
         if self.verbose:
             print("Running with seed: %d"%self.random_seed)
 
-        while self.warehouse.counter <= self.cfg.get('time_limit'):
+        while self.warehouse.counter <= self.cfg.get('time_limit') and self.exit_run is False:
             self.iterate()
         
         if self.delivered_in is None:
@@ -178,7 +171,8 @@ class Simulator:
         
         if self.verbose:
             print("\n")
-
+        
+        return self.warehouse.counter
 
 class SimTest(Simulator):
 

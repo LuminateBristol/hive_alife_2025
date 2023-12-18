@@ -104,7 +104,7 @@ class select_action(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='heading', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='internal_task_log', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='local_task_log', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="carrying_box", access=py_trees.common.Access.WRITE)
@@ -132,7 +132,7 @@ class select_action(py_trees.behaviour.Behaviour):
         elif self.blackboard.action == 'pick':
             box = self.blackboard.boxes[self.blackboard.target_box]
             # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[box.colour][1] == 1:
+            if self.blackboard.local_task_log[box.colour]['status'] == 1:
                 # Block has been placed - abandon
                 self.blackboard.action = 'abandon'
                 self.blackboard.rob_c[self.robot_index][2] = 0
@@ -149,7 +149,7 @@ class select_action(py_trees.behaviour.Behaviour):
         elif self.blackboard.action == 'pre_place':
             box = self.blackboard.boxes[self.blackboard.target_box]
             # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[box.colour][1] == 1:
+            if self.blackboard.local_task_log[box.colour]['status'] == 1:
                 # Block has been placed - abandon
                 self.blackboard.action = 'abandon'
                 self.blackboard.rob_c[self.robot_index][2] = 0
@@ -168,13 +168,13 @@ class select_action(py_trees.behaviour.Behaviour):
         elif self.blackboard.action == 'place':
             box = self.blackboard.boxes[self.blackboard.target_box]
             # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[box.colour][1] == 1:
+            if self.blackboard.local_task_log[box.colour]['status'] == 1:
                 # Block has been placed - abandon
                 self.blackboard.action = 'abandon'
                 self.blackboard.rob_c[self.robot_index][2] = 0
             else:
                 # Check block position vs target place position
-                desired_position = self.blackboard.internal_task_log[box.colour][0]
+                desired_position = self.blackboard.local_task_log[box.colour]['target_c']
                 dx = desired_position[0] - self.blackboard.rob_c[self.robot_index][0]
                 dy = desired_position[1] - self.blackboard.rob_c[self.robot_index][1]
                 distance = math.sqrt(dx ** 2 + dy ** 2)
@@ -208,7 +208,7 @@ class select_action(py_trees.behaviour.Behaviour):
             box.carry_status = 0
             self.blackboard.carrying_box = False
         
-        #print(f'Robot {self.robot_index} position {self.blackboard.rob_c[self.robot_index]} action {self.blackboard.action} task log: {self.blackboard.internal_task_log}')
+        #print(f'Robot {self.robot_index} position {self.blackboard.rob_c[self.robot_index]} action {self.blackboard.action} task log: {self.blackboard.local_task_log}')
         
         return py_trees.common.Status.SUCCESS
 
@@ -217,6 +217,7 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
     Checks if there are any blocks within camera_sensor_range
     1) If block found that needs placing - make target block
     2) If block found that has been placed - update internal task log to reflect this
+    3) If block found that has been placed - update the global task log so the simulator can track task completion progress
     '''
     def __init__(self,name, robot_index):
         super().__init__(name)
@@ -228,7 +229,8 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="max_v", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="camera_sensor_range", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.READ)
         self.setup()
 
@@ -249,16 +251,160 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
             distance_to_block = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
 
             # Check within threshold and whether block colour still needs to be placed
-            if distance_to_block < self.blackboard.camera_sensor_range and self.blackboard.internal_task_log[box.colour][1] != 1 and box.carry_status == 0:
-                target_place_position = self.blackboard.internal_task_log[box.colour][0]
+            if distance_to_block < self.blackboard.camera_sensor_range and self.blackboard.local_task_log[box.colour]['status'] != 1 and box.carry_status == 0:
+                target_place_position = self.blackboard.local_task_log[box.colour]['target_c']
                 
                 distance_to_placement_position = euclidean_boxes(target_place_position, box)
 
                 if distance_to_placement_position < self.blackboard.place_tol:
-                    self.blackboard.internal_task_log[box.colour][1] = 1
+                    self.blackboard.local_task_log[box.colour]['status'] = 1
+                    self.blackboard.global_task_log[box.colour]['status'] = 1
                 elif self.blackboard.target_box is None:
                     self.blackboard.target_box = self.blackboard.boxes.index(box)
                     box.carry_status = 1 # Block is being carried
+        
+        return py_trees.common.Status.SUCCESS
+
+class update_hive_mind(py_trees.behaviour.Behaviour):
+    '''
+    '''
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="use_hm", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='hm_session_id', access=py_trees.common.Access.WRITE)
+        self.url = "http://127.0.0.1:8000"
+        self.setup()
+
+    def setup(self):
+        self.blackboard.hm_session_id = 0
+        self.logger.debug(f"Select update_hive_mind::setup {self.name}")
+        
+    def initialise(self):
+        self.logger.debug(f"select update_hive_mind::initialise {self.name}")
+
+    # Login to HM instance
+    def login_pick_place_hm(self, username, password):
+        http = httplib2.Http()
+        # Set username and password
+        payload = {
+            "username": username,
+            "password": password
+        }
+
+        # Send POST request
+        response, content = http.request(
+            f"{self.url}/login",
+            method='POST',
+            body=json.dumps(payload)
+        )
+        
+        # Return response
+        if response.status == 200:
+            content_str = content.decode("utf-8")
+            response_data = json.loads(content_str)
+            self.blackboard.hm_session_id = response_data.get("session_id")
+            print(f"Successsful login to Hive Mind instance, new session ID: {self.blackboard.hm_session_id}")
+            return self.blackboard.hm_session_id
+        else:
+            raise Exception(f"Failed to login. Status code: {response.status}")
+
+    def get_task_data(self):
+        http = httplib2.Http()
+
+        # Send GET request
+        response, content = http.request(f"{self.url}/tasks/")
+
+        if response.status == 200:
+            # Decode the bytes to a string before parsing with json_tricks
+            content_str = content.decode("utf-8")
+            task_data = json.loads(json.loads(content_str))
+            task_dict = [dict(item) for item in task_data] # TODO: this is a  bit hacky - there will be a way to pass dict directly instead of these steps!
+            return task_dict
+        else:
+            raise Exception(f"Failed to get task data. Status code: {response.status}")
+
+    def update_task(self, task_id, new_task_status):
+        http = httplib2.Http()
+        # Set headers and new status payload
+        headers = {'Content-Type': 'application/json', 'session_id' : self.blackboard.hm_session_id}
+        payload = {
+            "new_status": new_task_status
+        }
+
+        # Send PUT request
+        response, content = http.request(
+            f"{self.url}/tasks/{task_id}",
+            method='PUT',
+            body=json.dumps(payload),
+            headers=headers
+        )
+
+        # Return response
+        if response.status == 200:
+            content_str = content.decode("utf-8")
+            updated_task = json.loads(content_str)
+            print(f"Updated HM Task: {updated_task}")
+            return updated_task
+        else:
+            raise Exception(f"Failed to update task. Status code: {response.status}")
+
+    def get_task_data_fake(self):
+        return self.blackboard.global_task_log
+    
+    def update_task_fake(self, colour, new_task_status):
+        self.blackboard.global_task_log[colour]['status'] = new_task_status
+        
+    def update(self):
+        # Using fake HM
+        if self.blackboard.use_hm == 'fake_hm':
+            task_data = self.get_task_data_fake()
+            for colour in task_data:
+                status = task_data[colour]['status']
+                if self.blackboard.local_task_log[colour]['status'] != status:
+                    if status == int(1):
+                        # Update internal task log
+                        self.blackboard.local_task_log[colour]['status'] = status
+                    elif status == int(0):
+                        # Update global task log (the fake HM)
+                        self.update_task_fake(colour, 1)
+                    else:
+                        print(f'Error - HM status is not 1 or 0 it is: {status} of type {type(status)}')
+        # Using real HM
+        elif self.blackboard.use_hm == 'hm':
+            if self.blackboard.hm_session_id:
+                # Get the task data
+                task_data = self.get_task_data() 
+                #print(f'Global task log print: {task_data}')
+
+                # Compare to internal task log
+                for task in task_data:
+                    id = task["task_id"]
+                    colour = task["colour"]
+                    status = task["status"]
+                    if self.blackboard.local_task_log[colour]['status'] != status:
+                        if status == int(1):
+                            # Update internal log to reflect placed carrier that has not yet been seen
+                            self.blackboard.local_task_log[colour]['status'] = status
+                        if status == int(0):
+                            # Update HM log to reflect seen placed carrier
+                            self.update_task(id, 1)
+                        else:
+                            print("Error - HM status is not 1 or 0 it is: {status} of type {type(status)}")
+
+            # Else login
+            else:
+                username = f'robot_{str(self.robot_index)}'
+                password = 'hm-v1-1234'
+                print(f"R {username}: Attempting to log in to HM, {username}, {password}")
+                login_response = self.login_pick_place_hm(username, password)
+                print(f'Logging in to HM {login_response}') 
         
         return py_trees.common.Status.SUCCESS
 
@@ -390,7 +536,7 @@ class pick(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.setup()
         
     def setup(self):
@@ -440,7 +586,7 @@ class pre_place(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_position", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_delta", access=py_trees.common.Access.READ)
         self.setup()
@@ -455,7 +601,7 @@ class pre_place(py_trees.behaviour.Behaviour):
         box = self.blackboard.boxes[self.blackboard.target_box]
 
         # Calcualte preplace position = delta cm left or right of the target position - pick closest
-        desired_position = self.blackboard.internal_task_log[box.colour][0]
+        desired_position = self.blackboard.local_task_log[box.colour]['target_c']
         delta = self.blackboard.pre_place_delta
         distance_1 = euclidean_agents(self.blackboard.rob_c[self.robot_index], [desired_position[0]+delta, desired_position[1]])
         distance_2 = euclidean_agents(self.blackboard.rob_c[self.robot_index], [desired_position[0]-delta, desired_position[1]])
@@ -506,7 +652,7 @@ class place(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.setup()
 
     def setup(self):
@@ -519,7 +665,7 @@ class place(py_trees.behaviour.Behaviour):
         box = self.blackboard.boxes[self.blackboard.target_box]
 
         # Calculate placement target position
-        desired_position = self.blackboard.internal_task_log[box.colour][0]
+        desired_position = self.blackboard.local_task_log[box.colour]['target_c']
 
         # Calculate heading and send to blackboard to send_path
         dx = desired_position[0] - self.blackboard.rob_c[self.robot_index][0]
@@ -559,7 +705,7 @@ class abandon(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="internal_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="map", access=py_trees.common.Access.READ)
         self.setup()
 
@@ -589,6 +735,9 @@ def create_root(robot_index):
 
     # Look for blocks
     look_blocks = look_for_blocks(name='Look for blocks', robot_index=robot_index)
+
+     # Update HM
+    update_hm = update_hive_mind(name='Update Hive Mind', robot_index=robot_index)
 
     # Select actiontalk_to_hive_mind(name='Talk to HM', robot_index=robot_index)
     action = select_action(name='Select action', robot_index=robot_index)
@@ -627,6 +776,7 @@ def create_root(robot_index):
     DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}')
     DOTS_actions.add_child(py_trees.decorators.Inverter(action))
     DOTS_actions.add_child(py_trees.decorators.Inverter(look_blocks))
+    DOTS_actions.add_child(py_trees.decorators.Inverter(update_hm))
     DOTS_actions.add_child(random_path)
     DOTS_actions.add_child(pick_box)
     DOTS_actions.add_child(pre_place_box)

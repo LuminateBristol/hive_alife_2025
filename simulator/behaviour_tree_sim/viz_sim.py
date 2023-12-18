@@ -118,7 +118,7 @@ class VizSim(Simulator):
             if self.warehouse.counter%100 == 0:
                 print("=", end="", flush=True)
 
-        self.exit_sim(delivered, counter)
+        self.exit_sim(delivered=delivered, counter=counter, global_task_log=self.task_log)
 
         dot = list(dot.values())
         h_line = list(h_line.values())
@@ -164,8 +164,8 @@ class VizSim(Simulator):
         fig = plt.gcf()
         fig.savefig(save_path, format=form, dpi=1200, bbox_inches="tight")        
 
-    def exit_sim(self, delivered, counter):
-        if self.cfg.get('exit_on_completion') and delivered == self.cfg.get('warehouse', 'number_of_boxes') or counter > self.cfg.get('time_limit'):
+    def exit_sim(self, delivered=None, counter=None, global_task_log=None):
+        if self.cfg.get('exit_criteria') == 'delivered' and delivered == self.cfg.get('warehouse', 'number_of_boxes') or counter > self.cfg.get('time_limit'):
             if self.verbose:
                 print("in", counter, "seconds")
             sr = float(delivered/self.cfg.get('warehouse', 'number_of_boxes'))
@@ -180,6 +180,24 @@ class VizSim(Simulator):
 
             if self.cfg.get('animate'):
                 exit()
+        
+        elif self.cfg.get('exit_criteria') == 'global_task_log':
+            for task in global_task_log:
+                if global_task_log[task]['status'] == 0:
+                    break
+            else:
+                print('All boxes placed - sim completed')    
+                self.exit_threads = True
+                self.exit_run = True
+                try:
+                    self.save_anim_t.join()
+                except:
+                    pass
+
+                if self.cfg.get('animate'):
+                    print('Pick place complete')
+                    self.anim.event_source.stop()
+                    exit()
 
     def run(self):
         if self.verbose:
@@ -203,7 +221,7 @@ class VizSim(Simulator):
             print("\n")
 
     def init_animate(self):
-        fig = plt.figure()
+        self.fig = plt.figure()
         plt.rcParams['font.size'] = '16'
         ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
 
@@ -257,12 +275,7 @@ class VizSim(Simulator):
                     fault_c[i], = ax.plot(fc_x_vec[i], fc_y_vec[i], "ko", markersize=marker_size+2, 
                         linewidth=2, color="r", fillstyle="none")
         
-        self.anim = animation.FuncAnimation(fig, self.iterate, frames=10000, interval=0.1, blit=True,
+        self.anim = animation.FuncAnimation(self.fig, self.iterate, frames=10000, interval=0.1, blit=True,
                                             fargs=(dot, boxes, h_line, None, cam_range))
 
-        plt.xlabel("Warehouse width (cm)")
-        plt.ylabel("Warehouse height (cm)")
-        ey = [0, self.cfg.get('warehouse', 'height')]
-        plt.plot(ey, ':')
-        
         plt.show()
