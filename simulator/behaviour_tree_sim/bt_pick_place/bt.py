@@ -89,7 +89,7 @@ def _generate_interobject_force(boxes, rob_c, robot_index, task, repulsion_o, ta
     if target_box is not None:
         too_close_boxes[target_box] = False
     proximity_to_boxes = np.array([rob_c[robot_index] - [box.x, box.y, 0] for box in boxes])
-    F_box = proximity_to_boxes[too_close_boxes, :2]                                     
+    F_box = proximity_to_boxes[too_close_boxes, :2]                                    
     F_box = np.sum(F_box, axis=0)                                                 
    
     return F_box, F_agent
@@ -204,8 +204,6 @@ class select_action(py_trees.behaviour.Behaviour):
         # No target block - return to random walk
         elif self.blackboard.target_box is None:
             self.blackboard.action = 'random_walk'
-            self.blackboard.target_box = None
-            box.carry_status = 0
             self.blackboard.carrying_box = False
         
         #print(f'Robot {self.robot_index} position {self.blackboard.rob_c[self.robot_index]} action {self.blackboard.action} task log: {self.blackboard.local_task_log}')
@@ -243,26 +241,30 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
 
     def update(self):
         for box in self.blackboard.boxes:
-            # Exclue block that robot is carrying and all other blocks that are being carried
-            if self.blackboard.target_box and box.carry_status == 1:
+            # Exclude block that robot is carrying and all other blocks that are being carried
+            if box == self.blackboard.target_box or box.carry_status == 1:
                 # Skip
                 continue
 
-            distance_to_block = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
+            else:
+                distance_to_block = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
 
-            # Check within threshold and whether block colour still needs to be placed
-            if distance_to_block < self.blackboard.camera_sensor_range and self.blackboard.local_task_log[box.colour]['status'] != 1 and box.carry_status == 0:
-                target_place_position = self.blackboard.local_task_log[box.colour]['target_c']
-                
-                distance_to_placement_position = euclidean_boxes(target_place_position, box)
+                # Check within threshold and whether block colour still needs to be placed
+                if distance_to_block < self.blackboard.camera_sensor_range and self.blackboard.local_task_log[box.colour]['status'] != 1:
+                    target_place_position = self.blackboard.local_task_log[box.colour]['target_c']
+                    
+                    distance_to_placement_position = euclidean_boxes(target_place_position, box)
 
-                if distance_to_placement_position < self.blackboard.place_tol:
-                    self.blackboard.local_task_log[box.colour]['status'] = 1
-                    self.blackboard.global_task_log[box.colour]['status'] = 1
-                elif self.blackboard.target_box is None:
-                    self.blackboard.target_box = self.blackboard.boxes.index(box)
-                    box.carry_status = 1 # Block is being carried
-        
+                    # If placed:
+                    if distance_to_placement_position < self.blackboard.place_tol:
+                        self.blackboard.local_task_log[box.colour]['status'] = 1
+                        self.blackboard.global_task_log[box.colour]['status'] = 1
+
+                    # Else if we are not already targeting a box - set to target
+                    elif self.blackboard.target_box == None:
+                        self.blackboard.target_box = self.blackboard.boxes.index(box)
+                        box.carry_status = 1
+            
         return py_trees.common.Status.SUCCESS
 
 class update_hive_mind(py_trees.behaviour.Behaviour):
@@ -443,8 +445,15 @@ class send_path(py_trees.behaviour.Behaviour):
         F_y = F[1] # total force in y
 
         computed_heading = np.arctan2(F_y, F_x)
-        move_x = np.cos(computed_heading) * self.blackboard.max_v
-        move_y = np.sin(computed_heading) * self.blackboard.max_v
+
+        # Set speed based on task (if picking or placing then use half speed)
+        if self.blackboard.action == 'random_walk':
+            max_v = self.blackboard.max_v
+        else:
+            max_v = self.blackboard.max_v / 2
+
+        move_x = np.cos(computed_heading) * max_v
+        move_y = np.sin(computed_heading) * max_v
 
         self.blackboard.rob_c[self.robot_index][0] += move_x
         self.blackboard.rob_c[self.robot_index][1] += move_y

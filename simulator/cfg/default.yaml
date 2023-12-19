@@ -1,7 +1,7 @@
 robot:
   radius: 12.5
   max_v: 2
-  camera_sensor_range: 50
+  camera_sensor_range: 40
 
 warehouse:
   box_radius: 12.5
@@ -9,9 +9,9 @@ warehouse:
   height: 500
   number_of_agents: 10
   number_of_boxes: 10
-  repulsion_wall: 25
+  repulsion_wall: 15
   repulsion_object: 15
-  object_position: 0
+  object_position: 2
   exit_width: 25
   # exit_zone:
   # - [475,0,25,500] # x_0, y_0, width, height
@@ -32,7 +32,7 @@ animate: True
 save_animation: False
 heading_bias: False
 box_attraction: False
-heading_change_rate: 50 # ticks per change in heading
+heading_change_rate: 100 # ticks per change in heading
 capture_data: False
 #exit_on_completion: True
 

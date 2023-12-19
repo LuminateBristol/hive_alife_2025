@@ -10,7 +10,11 @@ import copy
 ###### Experiment parameters ######
 
 iterations = 5
+<<<<<<< HEAD
 experiments = ['e_2']
+=======
+experiments = ['e_2b']
+>>>>>>> fd3c662fa721b3b326208e80e76657fac5c14324
 export_data = False
 verbose = True    
 batch_id = 'test'
