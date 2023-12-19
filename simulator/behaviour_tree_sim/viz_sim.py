@@ -247,7 +247,7 @@ class VizSim(Simulator):
         for i in range(len(x_data)):
             dot[i], = ax.plot(x_data[i], y_data[i], marker[i],
                 markersize = marker_size, fillstyle = 'none')
-
+            
         '''  
         box, = ax.plot(
             [self.warehouse.boxes[i].x for i in range(self.cfg.get('warehouse', 'number_of_boxes'))],
@@ -257,9 +257,10 @@ class VizSim(Simulator):
             color='red',
             markersize = marker_size-5)
         ''' 
+
         boxes=[]
-        for box in self.warehouse.boxes:
-            box, = ax.plot(box.x, box.y, marker='s', color=box.colour, markersize=marker_size-5)
+        for boxi in self.warehouse.boxes:
+            box, = ax.plot(boxi.x, boxi.y, marker='s', color=boxi.colour, markersize=marker_size-5)
             boxes.append(box)
 
         h_x_vec, h_y_vec = self.generate_dot_heading_arrow()

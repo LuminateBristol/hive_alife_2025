@@ -1,22 +1,32 @@
 ### Pick and Place Experiments
 # Note with current implementation - the same colours in boxes also NEED to feature in tasklog
 
-e_1:
-  range_of_agents: [10,11] # Used for batch runs only - repeats experiment for this range of agents
+e_2b:
+# 6 of each colour, equal ratios, arena divider = 0.25, bugs fixed (double placement of boxes), agents half speeed when picking and placing
+  range_of_agents: [1,10] # Used for batch runs only - repeats experiment for this range of agents
 
-  range_of_boxes: [1, 3] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
   colour_ratio: {'pink': 1,
                  'yellow': 1,
-                 'blue': 1} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+                 'blue': 1,
+                 'red': 1,
+                 'green': 1,
+                 'purple': 1} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
 
   boxes: {'pink': 1,
           'yellow': 1,
-          'blue': 1}
+          'blue': 1,
+          'red': 1,
+          'green': 1,
+          'purple': 1}
 
-  task_log: {'pink': {'target_c': [250, 270], 'status': 0},
-             'yellow': {'target_c': [250, 250], 'status': 0},
-             'blue': {'target_c': [250,230], 'status': 0}}
+  task_log: {'pink': {'target_c': [250, 290], 'status': 0},
+             'yellow': {'target_c': [250, 270], 'status': 0},
+             'blue': {'target_c': [250, 250], 'status': 0},
+             'red': {'target_c': [250, 230], 'status': 0},
+             'green': {'target_c': [250, 210], 'status': 0},
+             'purple': {'target_c': [250, 190], 'status': 0}}
 
   tolerances:
     place_tol: 1
@@ -27,5 +37,5 @@ e_1:
   # None for no HM
   # fake_hm for fake hive mind
   # hm for real hm
-  use_hm: None
+  use_hm: fake_hm
   use_hm_batch: [None, fake_hm] # Used for batch runs only - a list of different use_hm options to be run

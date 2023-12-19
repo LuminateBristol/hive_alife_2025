@@ -9,7 +9,8 @@ class Warehouse:
 
 	RANDOM_OBJ_POS = 0
 	OBJ_POS_1 = 1		# Boxes aligned along left wall, agents aligned along right 
-	OBJ_POS_TEST = 2
+	OBJ_POS_2 = 2	    # Boxes and robots spread out only in the outer 2/3rds of the arena - central area is empty
+	OBJ_POS_TEST = 3
 
 	def __init__(self, width, height, boxes, box_radius, swarm, exit_width,
 		init_object_positions=RANDOM_OBJ_POS,
@@ -33,6 +34,8 @@ class Warehouse:
 		for colour in boxes:
 			for i in range(boxes[colour]):
 				  self.boxes.append(Box(colour=colour))
+				  print(colour)
+		
 		self.number_of_boxes = len(self.boxes)
 		self.map = Map(width, height)
 		self.swarm = swarm
@@ -84,12 +87,46 @@ class Warehouse:
 			XY_box = np.array(list_n_box)[XY_idx_box]
 			XY_idx_agent = np.random.choice(len(list_n_agent),self.swarm.number_of_agents,replace=False) # select N unique coordinates at random from the list of possible positions
 			XY_agent = np.array(list_n_agent)[XY_idx_agent]
-			
+
 			c_select = [] # central coordinates (empty list) 
 			for j in range(self.number_of_boxes): #for the total number of units: x, y
 				c_select.append([self.radius + ((self.radius*2))*XY_box[j][0], self.radius + ((self.radius*2))*XY_box[j][1], 0])
 			for j in range(self.swarm.number_of_agents): #for the total number of units: x, y, heading
 				c_select.append([self.radius + ((self.radius*2))*XY_agent[j][0], self.radius + ((self.radius*2))*XY_agent[j][1], 0])
+
+			for b in range(self.number_of_boxes):
+				self.boxes[b].x = c_select[b][0]
+				self.boxes[b].y = c_select[b][1]
+			for r in range(self.swarm.number_of_agents):
+				self.rob_c.append(c_select[r+self.number_of_boxes]) # assign initial robot positions
+		
+		elif conf == self.OBJ_POS_2:
+			divider_obj = self.radius*3
+			divider_wh = 0.25
+			possible_x = int((self.width)/(divider_obj)) # number of positions possible on the x axis
+			possible_y = int((self.height)/(divider_obj)) # number of positions possible on the y axis
+			list_n = [] # empty list of possible positions 
+			h = 0 # initiate all headings as 0 - random heading will be calculated in the behaviour tree
+			print(possible_x//3)
+			print(2*possible_y//3)
+			
+			for x in range(possible_x):
+				for y in range(possible_y):		
+					if x <= divider_wh * possible_x or x >= (1-divider_wh) * possible_x or y <= divider_wh * possible_y or y >= (1-divider_wh)* possible_y:
+							list_n.append([x, y, h])	# list of possible positions in the warehouse
+			print(list_n)
+			
+			N = self.number_of_boxes + self.swarm.number_of_agents # total number of units to assign positions to
+			XY_idx = np.random.choice(len(list_n),N,replace=False) # select N unique coordinates at random from the list of possible positions
+			XY = np.array(list_n)[XY_idx]
+
+			print(list_n)
+			
+			c_select = [] # central coordinates (empty list) 
+			for j in range(N): #for the total number of units 
+				c_select.append([self.radius + ((divider_obj))*XY[j][0], self.radius + ((divider_obj))*XY[j][1], 0]) # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
+
+			print(c_select)
 
 			for b in range(self.number_of_boxes):
 				self.boxes[b].x = c_select[b][0]
@@ -102,7 +139,7 @@ class Warehouse:
 
 	def iterate(self, heading_bias=False, box_attraction=False): # moves the robot and box positions forward in one time step
 		self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes) # the robots move using the random walk function which generates a new deviation (rob_d)
-	
+
 		self.counter += 1
 		self.swarm.counter = self.counter
 

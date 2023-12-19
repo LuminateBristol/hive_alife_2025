@@ -9,8 +9,8 @@ import copy
 
 ###### Experiment parameters ######
 
-iterations = 2
-experiments = ['e_1']
+iterations = 5
+experiments = ['e_2b']
 export_data = False
 verbose = True    
 batch_id = 'test'
