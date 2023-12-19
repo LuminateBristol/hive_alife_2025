@@ -1,4 +1,4 @@
-from .bt_random_walk.bt import *
+from .bt_pick_place import *
 from .objects import *
 from .faults import *
 from .warehouse import *

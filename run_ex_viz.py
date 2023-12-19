@@ -1,4 +1,4 @@
-from simulator.behaviour_tree_sim.bt_random_walk import * # TODO: update this so the config file is used to launch the correct simulator for the chosen project
+from simulator.behaviour_tree_sim.bt_pick_place import * # TODO: update this so the config file is used to launch the correct simulator for the chosen project
 from simulator.behaviour_tree_sim import*
 from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES, MODEL_ROOT, STATS_ROOT
