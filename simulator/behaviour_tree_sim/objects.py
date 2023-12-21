@@ -68,7 +68,7 @@ class Box:
         self.y = None
         self.colour = colour
         self.id = id
-        self.carry_status = 0 # Set to 1 if being carried, 0 if not
+        self.action_status = 0 # Set to 1 if being carried or if placed so other robots ignore
         
 class Swarm:
     def __init__(self, repulsion_o, repulsion_w, heading_change_rate=1):

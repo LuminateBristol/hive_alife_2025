@@ -27,7 +27,7 @@ exit_criteria: 'global_task_log'
 
 faults: []
 
-time_limit: 15000
+time_limit: 30000 ###
 animate: True
 save_animation: False
 heading_bias: False

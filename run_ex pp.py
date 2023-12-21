@@ -10,11 +10,7 @@ import copy
 ###### Experiment parameters ######
 
 iterations = 5
-<<<<<<< HEAD
-experiments = ['e_2']
-=======
-experiments = ['e_2b']
->>>>>>> fd3c662fa721b3b326208e80e76657fac5c14324
+experiments = ['e_7']
 export_data = False
 verbose = True    
 batch_id = 'test'
@@ -62,7 +58,7 @@ def iterate_ex(iterations, faults=None):
 def run_ex(iteration, pp_id, faults, csvname, fieldnames, st=None):
 
     # Setup config for this experiment
-    cfg_obj = Config(cfg_file, default_cfg_file, pp_ex=pp_1, pp_id=pp_id) 
+    cfg_obj = Config(cfg_file, default_cfg_file, pp_ex=pp_1, pp_id=pp_id)
 
     task_log = copy.deepcopy(cfg_obj.get('task_log'))
     range_of_agents = cfg_obj.get('range_of_agents')
@@ -90,7 +86,7 @@ def run_ex(iteration, pp_id, faults, csvname, fieldnames, st=None):
                 print(f'Running....num agents: {agentnum}, boxes: {boxes}, task_log: {task_log}. hive_mind: {use_hm}')
 
                 # Create simulator object
-                sim = Simulator(cfg_obj,  #TODO: not working with VizSim and parameters do not reset in the instance of simulator for each run! deepcopy?
+                sim = VizSim(cfg_obj,  #TODO: not working with VizSim and parameters do not reset in the instance of simulator for each run! deepcopy?
                     verbose=verbose)
 
                 counter = sim.run() # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps

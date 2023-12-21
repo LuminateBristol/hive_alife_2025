@@ -1,18 +1,16 @@
 ### Pick and Place Experiments
 # Note with current implementation - the same colours in boxes also NEED to feature in tasklog
 
-e_2b:
+e_7:
 # 6 of each colour, equal ratios, arena divider = 0.25, bugs fixed (double placement of boxes), agents half speeed when picking and placing
-  range_of_agents: [1,10] # Used for batch runs only - repeats experiment for this range of agents
+  range_of_agents: [5,10] # Used for batch runs only - repeats experiment for this range of agents
 
-  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+  range_of_boxes: [2, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
   colour_ratio: {'pink': 1,
                 'yellow': 1,
                 'blue': 1,
-                'red': 1,
-                'green': 1,
-                'purple': 1} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+                'red': 1} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
 
   boxes: {'pink': 4,
           'yellow': 4,
@@ -20,13 +18,21 @@ e_2b:
           'red': 4,
           'green': 4,
           'purple': 4}
+  
+  task_log: {0: {'colour': 'pink', 'target_c': [12.5, 160], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [12.5, 320], 'status': 0},
+             2: {'colour':'blue', 'target_c': [160,488.5], 'status': 0},
+             3: {'colour':'red', 'target_c': [320, 488.5], 'status': 0},
+             4: {'colour':'pink', 'target_c': [488.5, 160], 'status': 0},
+             5: {'colour':'yellow', 'target_c': [488.5,320], 'status': 0},
+             6: {'colour':'blue', 'target_c': [160, 12.5], 'status': 0},
+             7: {'colour':'red', 'target_c': [320,12.5], 'status': 0}}
 
-  task_log: {'pink': {'target_c': [250, 290], 'status': 0},
-             'yellow': {'target_c': [250, 270], 'status': 0},
-             'blue': {'target_c': [250,250], 'status': 0},
-             'red': {'target_c': [250, 230], 'status': 0},
-             'green': {'target_c': [250, 210], 'status': 0},
-             'purple': {'target_c': [250,190], 'status': 0}}
+  tolerances:
+    place_tol: 1
+    abandon_tol: 50
+    pre_place_delta: 10
+
 
   use_hm: None
   use_hm_batch: [None, fake_hm] # Used for batch runs only - a list of different use_hm options to be run
