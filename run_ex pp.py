@@ -9,8 +9,8 @@ import copy
 
 ###### Experiment parameters ######
 
-iterations = 5
-experiments = ['e_2b']
+iterations = 20
+experiments = ['e_6']
 export_data = False
 verbose = True    
 batch_id = 'test'
@@ -86,7 +86,7 @@ def run_ex(iteration, pp_id, faults, csvname, fieldnames, st=None):
                 print(f'Running....num agents: {agentnum}, boxes: {boxes}, task_log: {task_log}. hive_mind: {use_hm}')
 
                 # Create simulator object
-                sim = VizSim(cfg_obj,  #TODO: not working with VizSim and parameters do not reset in the instance of simulator for each run! deepcopy?
+                sim = Simulator(cfg_obj,  #TODO: not working with VizSim and parameters do not reset in the instance of simulator for each run! deepcopy?
                     verbose=verbose)
 
                 counter = sim.run() # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps

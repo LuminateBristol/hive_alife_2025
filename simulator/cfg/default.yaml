@@ -27,7 +27,7 @@ exit_criteria: 'global_task_log'
 
 faults: []
 
-time_limit: 15000
+time_limit: 30000 ##### 15000 #####
 animate: True
 save_animation: False
 heading_bias: False
@@ -35,5 +35,3 @@ box_attraction: False
 heading_change_rate: 100 # ticks per change in heading
 capture_data: False
 #exit_on_completion: True
-
-
