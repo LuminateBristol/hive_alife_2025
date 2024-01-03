@@ -109,6 +109,7 @@ class select_action(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="carrying_box", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_position", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="target_place_id", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="map", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="abandon_tol", access=py_trees.common.Access.READ)
@@ -117,6 +118,7 @@ class select_action(py_trees.behaviour.Behaviour):
     def setup(self): 
         self.logger.debug(f"Select action::setup {self.name}")
         self.blackboard.target_box = None
+        self.blackboard.target_place_id = None
         self.blackboard.action = 'random_walk'
         self.blackboard.carrying_box = False
 
@@ -131,59 +133,77 @@ class select_action(py_trees.behaviour.Behaviour):
         # Pick block
         elif self.blackboard.action == 'pick':
             box = self.blackboard.boxes[self.blackboard.target_box]
-            # Check if block has been placed since last tick
-            if self.blackboard.local_task_log[box.colour]['status'] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.rob_c[self.robot_index][2] = 0
-            else:
-                # Check if block has been picked (i.e. robot is under block centroid)
-                centroid_distance = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
-        
-                if centroid_distance < self.blackboard.place_tol:
-                    # Set the target block
-                    self.blackboard.action = 'pre_place'
-                    self.blackboard.carrying_box = True
+            # Check if box has been placed since last tick
+            for id, value in self.blackboard.local_task_log.items():
+                # Check status of all boxes of that colour
+                if value['colour'] == box.colour and value['status'] == 1:
+                    # Box has been placed - revert to random walk
+                    self.blackboard.action = 'random_walk'
+                elif value['colour'] == box.colour and value['status'] != 1:
+                    # Check if box has been picked (i.e. robot is under box centroid)
+                    centroid_distance = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
+                    if centroid_distance < self.blackboard.place_tol:
+                        # Set the target box
+                        self.blackboard.action = 'pre_place'
+                        self.blackboard.carrying_box = True
+                        break
         
         # Pre-place block
         elif self.blackboard.action == 'pre_place':
             box = self.blackboard.boxes[self.blackboard.target_box]
-            # Check if block has been placed since last tick
-            if self.blackboard.local_task_log[box.colour]['status'] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.rob_c[self.robot_index][2] = 0
+            # Check if box has been placed in target position since last tick
+            if self.blackboard.local_task_log[self.blackboard.target_place_id]['status'] == 1:
+                for id, value in self.blackboard.local_task_log.items():
+                    if value['colour'] == box.colour and value['status'] == 0:
+                        # Box need placing elsewhere
+                        self.blackboard.target_place_id = id
+                        break
+                    else:
+                        self.blackboard.target_place_id = None
+                if self.blackboard.target_place_id == None:
+                    # Box colour has been placed - abandon
+                    self.blackboard.action = 'abandon'
+                    self.blackboard.rob_c[self.robot_index][2] = 0
+
+            # Otherwise continue checking pre-place position
             else:
-                # Check block position vs target preplace position
                 desired_position = self.blackboard.pre_place_position
                 dx = desired_position[0] - self.blackboard.rob_c[self.robot_index][0]
                 dy = desired_position[1] - self.blackboard.rob_c[self.robot_index][1]
                 distance = math.sqrt(dx ** 2 + dy ** 2)
-                # Check if reached pre-place position - move to place_block
                 if distance < self.blackboard.place_tol:
                     self.blackboard.action = 'place'
                     self.blackboard.pre_place_position = None
-        
+    
         # Place block
         elif self.blackboard.action == 'place':
             box = self.blackboard.boxes[self.blackboard.target_box]
-            # Check if block has been placed since last tick
-            if self.blackboard.local_task_log[box.colour]['status'] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.rob_c[self.robot_index][2] = 0
+            # Check if box has been placed in target position since last tick
+            if self.blackboard.local_task_log[self.blackboard.target_place_id]['status'] == 1:
+                for id, value in self.blackboard.local_task_log.items():
+                    if value['colour'] == box.colour and value['status'] == 0:
+                        # Box need placing elsewhere
+                        self.blackboard.target_place_id = id
+                        break
+                    else:
+                        self.blackboard.target_place_id = None
+                if self.blackboard.target_place_id == None:
+                    # Box colour has been placed - abandon
+                    self.blackboard.action = 'abandon'
+                    self.blackboard.rob_c[self.robot_index][2] = 0
+
+            # Otherwise continue checking place position
             else:
-                # Check block position vs target place position
-                desired_position = self.blackboard.local_task_log[box.colour]['target_c']
+                desired_position = self.blackboard.local_task_log[self.blackboard.target_place_id]['target_c']
                 dx = desired_position[0] - self.blackboard.rob_c[self.robot_index][0]
                 dy = desired_position[1] - self.blackboard.rob_c[self.robot_index][1]
                 distance = math.sqrt(dx ** 2 + dy ** 2)
-                # Check if reached placed position - revert to random_walk
                 if distance < self.blackboard.place_tol:
+                # Block placed
                     self.blackboard.action = 'random_walk'
                     self.blackboard.target_box = None
+                    self.blackboard.target_place_id = None
                     self.blackboard.carrying_box = False
-                    box.carry_status = 0
         
         # Abandon
         elif self.blackboard.action == 'abandon':
@@ -198,15 +218,17 @@ class select_action(py_trees.behaviour.Behaviour):
             ):
                 self.blackboard.action = 'random_walk'
                 self.blackboard.target_box = None
-                box.carry_status = 0
+                self.blackboard.target_place_id = None
+                box.action_status = 0
                 self.blackboard.carrying_box = False
         
         # No target block - return to random walk
         elif self.blackboard.target_box is None:
             self.blackboard.action = 'random_walk'
             self.blackboard.carrying_box = False
+            self.blackboard.target_place_id = None
         
-        #print(f'Robot {self.robot_index} position {self.blackboard.rob_c[self.robot_index]} action {self.blackboard.action} task log: {self.blackboard.local_task_log}')
+        #print(f'Robot {self.robot_index} id {self.blackboard.target_place_id} action {self.blackboard.action} task log: {self.blackboard.local_task_log}')
         
         return py_trees.common.Status.SUCCESS
 
@@ -230,6 +252,7 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="target_place_id", access=py_trees.common.Access.READ)
         self.setup()
 
     def setup(self):
@@ -241,29 +264,30 @@ class look_for_blocks(py_trees.behaviour.Behaviour):
 
     def update(self):
         for box in self.blackboard.boxes:
-            # Exclude block that robot is carrying and all other blocks that are being carried
-            if box == self.blackboard.target_box or box.carry_status == 1:
+            # Exclude block that robot is carrying
+            if self.blackboard.boxes.index(box) == self.blackboard.target_box:
                 # Skip
                 continue
 
             else:
                 distance_to_block = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
 
-                # Check within threshold and whether block colour still needs to be placed
-                if distance_to_block < self.blackboard.camera_sensor_range and self.blackboard.local_task_log[box.colour]['status'] != 1:
-                    target_place_position = self.blackboard.local_task_log[box.colour]['target_c']
-                    
-                    distance_to_placement_position = euclidean_boxes(target_place_position, box)
-
-                    # If placed:
-                    if distance_to_placement_position < self.blackboard.place_tol:
-                        self.blackboard.local_task_log[box.colour]['status'] = 1
-                        self.blackboard.global_task_log[box.colour]['status'] = 1
-
-                    # Else if we are not already targeting a box - set to target
-                    elif self.blackboard.target_box == None:
-                        self.blackboard.target_box = self.blackboard.boxes.index(box)
-                        box.carry_status = 1
+                # Check within threshold 
+                if distance_to_block < self.blackboard.camera_sensor_range:
+                    for id, value in self.blackboard.local_task_log.items():
+                        # Check status in task log
+                        if value['colour'] == box.colour and value['status'] != 1:
+                            # Check if box has been placed:
+                            target_place = self.blackboard.local_task_log[id]['target_c']
+                            distance = euclidean_boxes(target_place, box)
+                            # If placed
+                            if distance < self.blackboard.place_tol:
+                                self.blackboard.local_task_log[id]['status'] = 1
+                                self.blackboard.global_task_log[id]['status'] = 1
+                            # Else if we are not already targeting a box and box is free - target box
+                            elif self.blackboard.target_box is None and box.action_status == 0:
+                                self.blackboard.target_box = self.blackboard.boxes.index(box)
+                                box.action_status = 1
             
         return py_trees.common.Status.SUCCESS
 
@@ -598,6 +622,7 @@ class pre_place(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_position", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="pre_place_delta", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="target_place_id", access=py_trees.common.Access.WRITE)
         self.setup()
 
     def setup(self):
@@ -607,10 +632,29 @@ class pre_place(py_trees.behaviour.Behaviour):
         self.logger.debug(f"Carry::initialise {self.name}")
 
     def update(self):
-        box = self.blackboard.boxes[self.blackboard.target_box]
+        # If no target_place_id has been set yet:
+        if self.blackboard.target_place_id is None:
+            box = self.blackboard.boxes[self.blackboard.target_box]
 
+            # Find closest placement position from the task log
+            closest_id = None
+            min_distance = float('inf')
+            for id, value in self.blackboard.local_task_log.items():
+                if value['colour'] == box.colour and value['status'] != 1:
+                    distance = euclidean_agents(self.blackboard.rob_c[self.robot_index], value['target_c'])
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_id = id
+            self.blackboard.target_place_id = closest_id
+        
+        if self.blackboard.target_place_id is None:
+            print('Error - no target place id found for the target block despite moving into pre-place')
+            print(f'R{self.robot_index}, task_log {self.blackboard.local_task_log}, box picked id {box.id} colour {box.colour}')
+        
+        # Check a target_place_id has been found
+        #if self.blackboard.target_place_id is not None:
         # Calcualte preplace position = delta cm left or right of the target position - pick closest
-        desired_position = self.blackboard.local_task_log[box.colour]['target_c']
+        desired_position = self.blackboard.local_task_log[self.blackboard.target_place_id]['target_c'] # TODO: this causes error occasionally of a None type KeyError - temporary hacky fix with the if statement above
         delta = self.blackboard.pre_place_delta
         distance_1 = euclidean_agents(self.blackboard.rob_c[self.robot_index], [desired_position[0]+delta, desired_position[1]])
         distance_2 = euclidean_agents(self.blackboard.rob_c[self.robot_index], [desired_position[0]-delta, desired_position[1]])
@@ -628,7 +672,7 @@ class pre_place(py_trees.behaviour.Behaviour):
         dy = pre_place_y - self.blackboard.rob_c[self.robot_index][1]
         heading = math.atan2(dy, dx)
         self.blackboard.rob_c[self.robot_index][2] = heading
-        
+    
         return py_trees.common.Status.SUCCESS
 
 class check_action_place(py_trees.behaviour.Behaviour):
@@ -662,6 +706,7 @@ class place(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="target_place_id", access=py_trees.common.Access.WRITE)
         self.setup()
 
     def setup(self):
@@ -674,7 +719,7 @@ class place(py_trees.behaviour.Behaviour):
         box = self.blackboard.boxes[self.blackboard.target_box]
 
         # Calculate placement target position
-        desired_position = self.blackboard.local_task_log[box.colour]['target_c']
+        desired_position = self.blackboard.local_task_log[self.blackboard.target_place_id]['target_c']
 
         # Calculate heading and send to blackboard to send_path
         dx = desired_position[0] - self.blackboard.rob_c[self.robot_index][0]
@@ -783,9 +828,9 @@ def create_root(robot_index):
 
     # Robot actions
     DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}')
-    DOTS_actions.add_child(py_trees.decorators.Inverter(action))
     DOTS_actions.add_child(py_trees.decorators.Inverter(look_blocks))
     DOTS_actions.add_child(py_trees.decorators.Inverter(update_hm))
+    DOTS_actions.add_child(py_trees.decorators.Inverter(action))
     DOTS_actions.add_child(random_path)
     DOTS_actions.add_child(pick_box)
     DOTS_actions.add_child(pre_place_box)

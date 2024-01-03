@@ -101,25 +101,34 @@ class Warehouse:
 		
 		elif conf == self.OBJ_POS_2:
 			divider_obj = self.radius*3
-			divider_wh = 0.25
+			divider_wh = 0.03 # TODO: paramaterise this and add to the default cfg file similar to the conf above
+			divider_div = 0	  # TODO: paramaterise this and add to the default cfg file similar to the conf above
 			possible_x = int((self.width)/(divider_obj)) # number of positions possible on the x axis
 			possible_y = int((self.height)/(divider_obj)) # number of positions possible on the y axis
 			list_n = [] # empty list of possible positions 
 			h = 0 # initiate all headings as 0 - random heading will be calculated in the behaviour tree
 			
 			for x in range(possible_x):
-				for y in range(possible_y):		
-					if x <= divider_wh * possible_x or x >= (1-divider_wh) * possible_x or y <= divider_wh * possible_y or y >= (1-divider_wh)* possible_y:
+				for y in range(possible_y):
+					if divider_div:		
+						if x <= divider_wh * possible_x or x >= (1-divider_wh) * possible_x or y <= divider_wh * possible_y or y >= (1-divider_wh)* possible_y:
+							list_n.append([x, y, h])	# list of possible positions in the warehouse
+					else:
+						print(possible_x)
+						print(divider_wh*possible_x)
+						if x >= divider_wh * possible_x and x <= (1-divider_wh) * possible_x and y >= divider_wh * possible_y and y <= (1-divider_wh)* possible_y:
 							list_n.append([x, y, h])	# list of possible positions in the warehouse
 			
 			N = self.number_of_boxes + self.swarm.number_of_agents # total number of units to assign positions to
 			XY_idx = np.random.choice(len(list_n),N,replace=False) # select N unique coordinates at random from the list of possible positions
+			print(XY_idx)
 			XY = np.array(list_n)[XY_idx]
+			print(XY)
 			
 			c_select = [] # central coordinates (empty list) 
 			for j in range(N): #for the total number of units 
 				c_select.append([self.radius + ((divider_obj))*XY[j][0], self.radius + ((divider_obj))*XY[j][1], 0]) # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
-
+			print(c_select)
 			for b in range(self.number_of_boxes):
 				self.boxes[b].x = c_select[b][0]
 				self.boxes[b].y = c_select[b][1]
