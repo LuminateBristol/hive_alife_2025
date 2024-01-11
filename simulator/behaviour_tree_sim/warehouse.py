@@ -12,9 +12,7 @@ class Warehouse:
 	OBJ_POS_2 = 2	    # Boxes and robots spread out only in the outer 2/3rds of the arena - central area is empty
 	OBJ_POS_TEST = 3
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width,
-		init_object_positions=RANDOM_OBJ_POS,
-		check_collisions=False):
+	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
 
 		self.width = width
 		self.height = height
@@ -43,7 +41,7 @@ class Warehouse:
 		self.rob_c = [] 
 		self.generate_object_positions(int(init_object_positions))
 		
-		self.rob_c = np.array(self.rob_c) # convert list to array 
+		self.rob_c = np.array(self.rob_c) # convert list to array  
 
 	def generate_object_positions(self, conf):
 		if conf == self.RANDOM_OBJ_POS:

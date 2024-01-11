@@ -10,7 +10,7 @@ import copy
 ###### Experiment parameters ######
 
 iterations = 20
-experiments = ['a_3']
+experiments = ['b_1']
 export_data = False
 verbose = True    
 batch_id = 'test'
@@ -19,7 +19,7 @@ batch_id = 'test'
 
 default_cfg_file = CFG_FILES['default']
 cfg_file = CFG_FILES['ex_1']
-pp_1 = CFG_FILES['pp_1']
+pp_1 = CFG_FILES['pp_B']
 task_log = None
 
 ###### Functions ######
@@ -27,7 +27,7 @@ def create_savefile(exp_name):                              # TODO: refactor sav
     current_date = datetime.now().strftime('%Y-%m-%d')
     csvname = f"{current_date}_{exp_name}.csv"
     with open(csvname, 'a', newline='') as csvfile:
-        fieldnames = ['num_robots', 'boxes', 'use_hm', 'fake_hm', 'counter']
+        fieldnames = ['num_robots', 'boxes', 'use_hm', 'fake_hm', 'counter', 'carry_counter']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
          # Write the header if the file is empty
@@ -35,7 +35,7 @@ def create_savefile(exp_name):                              # TODO: refactor sav
             writer.writeheader()
     return csvname, fieldnames
 
-def save_data(csvname, fieldnames, num_agents, boxes, use_hm, counter): # TODO: refactor save data
+def save_data(csvname, fieldnames, num_agents, boxes, use_hm, counter, carry_counter): # TODO: refactor save data
     with open(csvname, 'a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -44,7 +44,8 @@ def save_data(csvname, fieldnames, num_agents, boxes, use_hm, counter): # TODO: 
             'boxes': boxes,
             'use_hm': use_hm,
             'fake_hm': True,                                            # TODO: refactor fake_hm (and the rest of this writer object)
-            'counter': counter
+            'counter': counter,
+            'carry_counter': carry_counter
         })
 
 def iterate_ex(iterations, faults=None):
@@ -85,14 +86,14 @@ def run_ex(iteration, pp_id, faults, csvname, fieldnames, st=None):
 
                 print(f'Running....num agents: {agentnum}, boxes: {boxes}, task_log: {task_log}. hive_mind: {use_hm}')
 
-                # CrSimulatorimulator object
+                # Create simulator object
                 sim = Simulator(cfg_obj,  #TODO: not working with VizSim and parameters do not reset in the instance of simulator for each run! deepcopy?
                     verbose=verbose)
 
-                counter = sim.run() # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps
+                counter, carry_counter = sim.run() # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps
 
                 # Save data
-                save_data(csvname, fieldnames, agentnum, boxes, use_hm, counter)
+                save_data(csvname, fieldnames, agentnum, boxes, use_hm, counter, carry_counter)
 
 ###### Run experiment ######
 

@@ -232,6 +232,29 @@ class select_action(py_trees.behaviour.Behaviour):
         
         return py_trees.common.Status.SUCCESS
 
+class update_carry_count(py_trees.behaviour.Behaviour):
+
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.robot_index = robot_index
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='carry_count', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='carrying_box', access=py_trees.common.Access.READ)
+
+    def setup(self):
+        self.logger.debug(f"Update_carry_count::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"Update_carry_count::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.carry_count is not None:
+            if self.blackboard.carrying_box:
+                self.blackboard.carry_count[self.robot_index] += 1
+        
+        return py_trees.common.Status.SUCCESS
+
 class look_for_blocks(py_trees.behaviour.Behaviour):
     '''
     Checks if there are any blocks within camera_sensor_range
@@ -796,6 +819,10 @@ def create_root(robot_index):
     # Select actiontalk_to_hive_mind(name='Talk to HM', robot_index=robot_index)
     action = select_action(name='Select action', robot_index=robot_index)
 
+    # Update carry counter - this tracks how many timesteps the robots spend carrying boxes
+    # Used for post-processing data analysis only
+    carry_count = update_carry_count(name='Update Carry Count', robot_index=robot_index)
+
     # Random path behaviour
     random_path = py_trees.composites.Sequence(name='Random walk')
     random_path.add_child(check_action_random_walk(name='Check if random walk', robot_index=robot_index))
@@ -831,6 +858,7 @@ def create_root(robot_index):
     DOTS_actions.add_child(py_trees.decorators.Inverter(look_blocks))
     DOTS_actions.add_child(py_trees.decorators.Inverter(update_hm))
     DOTS_actions.add_child(py_trees.decorators.Inverter(action))
+    DOTS_actions.add_child(py_trees.decorators.Inverter(carry_count))
     DOTS_actions.add_child(random_path)
     DOTS_actions.add_child(pick_box)
     DOTS_actions.add_child(pre_place_box)
