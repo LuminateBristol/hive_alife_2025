@@ -35,6 +35,7 @@ class Simulator:
         self.exit_run = False
         self.delivered_in = None
         self.fault_count = fault_count
+        self.carry_count = [] # Used to count the amount of time that robots spend carrying - this same object is references by each robot's behaviour tree to keep track
         self.data_model = data_model
         self.ad_model = ad_model
         self.task_log = self.cfg.get('task_log')
@@ -78,12 +79,15 @@ class Simulator:
             heading_change_rate=cfg.get('heading_change_rate')
         )
 
+        self.carry_count = [0] * cfg.get('warehouse', 'number_of_agents')
+
         swarm.add_agents(robot_obj, cfg.get('warehouse', 'number_of_agents'),
                          width=self.cfg.get('warehouse', 'width'),
                          height=self.cfg.get('warehouse', 'height'),
                          bt_controller=self.cfg.get('behaviour_tree'),
                          task_log=self.task_log,
-                         use_hm=self.cfg.get('use_hm'))
+                         use_hm=self.cfg.get('use_hm'),
+                         carry_count = self.carry_count)
 
         # TODO: fault integration or delete
         ''' 
@@ -172,7 +176,7 @@ class Simulator:
         if self.verbose:
             print("\n")
         
-        return self.warehouse.counter
+        return self.warehouse.counter, self.carry_count
 
 class SimTest(Simulator):
 

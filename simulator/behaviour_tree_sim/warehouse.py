@@ -12,9 +12,7 @@ class Warehouse:
 	OBJ_POS_2 = 2	    # Boxes and robots spread out only in the outer 2/3rds of the arena - central area is empty
 	OBJ_POS_TEST = 3
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width,
-		init_object_positions=RANDOM_OBJ_POS,
-		check_collisions=False):
+	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
 
 		self.width = width
 		self.height = height
@@ -43,7 +41,7 @@ class Warehouse:
 		self.rob_c = [] 
 		self.generate_object_positions(int(init_object_positions))
 		
-		self.rob_c = np.array(self.rob_c) # convert list to array 
+		self.rob_c = np.array(self.rob_c) # convert list to array  
 
 	def generate_object_positions(self, conf):
 		if conf == self.RANDOM_OBJ_POS:
@@ -114,16 +112,12 @@ class Warehouse:
 						if x <= divider_wh * possible_x or x >= (1-divider_wh) * possible_x or y <= divider_wh * possible_y or y >= (1-divider_wh)* possible_y:
 							list_n.append([x, y, h])	# list of possible positions in the warehouse
 					else:
-						print(possible_x)
-						print(divider_wh*possible_x)
 						if x >= divider_wh * possible_x and x <= (1-divider_wh) * possible_x and y >= divider_wh * possible_y and y <= (1-divider_wh)* possible_y:
 							list_n.append([x, y, h])	# list of possible positions in the warehouse
 			
 			N = self.number_of_boxes + self.swarm.number_of_agents # total number of units to assign positions to
 			XY_idx = np.random.choice(len(list_n),N,replace=False) # select N unique coordinates at random from the list of possible positions
-			print(XY_idx)
 			XY = np.array(list_n)[XY_idx]
-			print(XY)
 			
 			c_select = [] # central coordinates (empty list) 
 			for j in range(N): #for the total number of units 

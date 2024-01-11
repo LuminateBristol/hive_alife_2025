@@ -23,7 +23,7 @@ class Robot:
         self.lifter_state = lifter_state
         self.pre_place_delta = pre_place_delta
     
-    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, use_hm):
+    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, use_hm, carry_count = []):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="radius", access=py_trees.common.Access.WRITE)
@@ -40,6 +40,7 @@ class Robot:
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="use_hm", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="carry_count", access=py_trees.common.Access.WRITE)
 
         self.blackboard.rob_c = []
         self.blackboard.boxes = []
@@ -57,6 +58,7 @@ class Robot:
         self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so each has a unique task_log object
         self.blackboard.global_task_log = task_log # No deepcopy used here so the same global object will be used for all robots (this is used to track the status of progress of the task)
         self.blackboard.use_hm = use_hm
+        self.blackboard.carry_count = carry_count
         
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
@@ -81,7 +83,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False, carry_count = None):
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
             self.agents.append(ag)
@@ -104,7 +106,7 @@ class Swarm:
             name    = f'Pick Place DOTS: {str_index}'
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
-            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, use_hm)
+            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, use_hm, carry_count)
             self.number_of_agents += 1   
 
     def add_map(self, map):
