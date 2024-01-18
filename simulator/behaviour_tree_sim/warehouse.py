@@ -122,7 +122,6 @@ class Warehouse:
 			c_select = [] # central coordinates (empty list) 
 			for j in range(N): #for the total number of units 
 				c_select.append([self.radius + ((divider_obj))*XY[j][0], self.radius + ((divider_obj))*XY[j][1], 0]) # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
-			print(c_select)
 			for b in range(self.number_of_boxes):
 				self.boxes[b].x = c_select[b][0]
 				self.boxes[b].y = c_select[b][1]

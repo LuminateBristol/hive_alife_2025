@@ -76,7 +76,7 @@ e_6:
   
 e_7:
 # 8 place points at outside of arena
-# 2 of each colour, equal ratios, divider_wh = 1
+# 2 colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [4, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
@@ -102,7 +102,7 @@ e_7:
 
 e_8:
 # 8 place points at outside of arena
-# 4 of each colour, equal ratios, divider_wh = 1
+# 4 colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [2, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
@@ -132,7 +132,7 @@ e_8:
 
 e_9:
 # 8 place points at outside of arena
-# 8 of each colour, equal ratios, divider_wh = 1
+# 8 colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
