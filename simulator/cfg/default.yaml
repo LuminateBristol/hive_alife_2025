@@ -5,8 +5,8 @@ robot:
 
 warehouse:
   box_radius: 12.5
-  width: 500
-  height: 500
+  width: 1000
+  height: 1000
   number_of_agents: 10
   number_of_boxes: 10
   repulsion_wall: 10
@@ -27,12 +27,12 @@ exit_criteria: 'global_task_log'
 
 faults: []
 
-time_limit: 30000 ###
+time_limit: 50000 ###
 animate: True
 save_animation: False
 heading_bias: False
 box_attraction: False
-heading_change_rate: 100 # ticks per change in heading
+heading_change_rate: 200 # ticks per change in heading
 capture_data: False
 #exit_on_completion: True
 

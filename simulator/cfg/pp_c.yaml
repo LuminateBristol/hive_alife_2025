@@ -1,8 +1,10 @@
 ### Pick and Place Experiments
 # Note with current implementation - the same colours in boxes also NEED to feature in tasklog
-b_1:
+
+c_1:
 # 4 place points at outside of arena
 # 1 colour, equal ratios, divider_wh = 1
+# 1000x1000 arena
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [4, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
@@ -21,9 +23,10 @@ b_1:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_2:
+c_2:
 # 4 place points at outside of arena
 # 2 colours, equal ratios, divider_wh = 1
+# 1000x1000 arena
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [2, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
@@ -33,17 +36,17 @@ b_2:
   boxes: {'pink': 4,
           'yellow': 4}
   
-  task_log: {0: {'colour': 'pink', 'target_c': [12.5, 250], 'status': 0}, 
-             1: {'colour':'yellow', 'target_c': [250, 12.5], 'status': 0},
-             2: {'colour':'pink', 'target_c': [250 ,488.5], 'status': 0},
-             3: {'colour':'yellow', 'target_c': [488.5, 250], 'status': 0}}
+  task_log: {0: {'colour': 'pink', 'target_c': [12.5, 500], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [500, 12.5], 'status': 0},
+             2: {'colour':'pink', 'target_c': [500 ,988.5], 'status': 0},
+             3: {'colour':'yellow', 'target_c': [988.5, 500], 'status': 0}}
 
   tolerances:
     place_tol: 1
     abandon_tol: 50
     pre_place_delta: 10
 
-b_3:
+c_3:
 # 4 place points at outside of arena
 # 4 colours, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
@@ -67,7 +70,7 @@ b_3:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_4:
+c_4:
 # 8 place points at outside of arena
 # 2 of each colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
@@ -93,9 +96,10 @@ b_4:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_5:
+c_5:
 # 8 place points at outside of arena
 # 4 of each colour, equal ratios, divider_wh = 1
+# 1000x1000 arena
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
   range_of_boxes: [2, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
 
@@ -123,7 +127,7 @@ b_5:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_6:
+c_6:
 # 8 place points at outside of arena
 # 8 of each colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
@@ -157,7 +161,7 @@ b_6:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_7:
+c_7:
 # 12 place points at outside of arena
 # 2 of each colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
@@ -189,7 +193,7 @@ b_7:
     abandon_tol: 50
     pre_place_delta: 10
 
-b_9:
+c_9:
 # 12 place points at outside of arena
 # 6 colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
@@ -225,7 +229,7 @@ b_9:
     abandon_tol: 50
     pre_place_delta: 10
 
-e_10:
+c_10:
 # 12 place points at outside of arena
 # 12 colour, equal ratios, divider_wh = 1
   range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents

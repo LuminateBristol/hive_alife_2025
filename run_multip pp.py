@@ -2,6 +2,7 @@ from simulator.behaviour_tree_sim import *
 from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES
 
+from multiprocessing import Pool
 
 import time
 from datetime import datetime
@@ -11,7 +12,7 @@ import copy
 ###### Experiment parameters ######
 
 iterations = 50
-experiments = ['c_2']
+experiments = ['c_1']
 export_data = False
 verbose = True    
 batch_id = 'test'
@@ -24,6 +25,7 @@ pp_1 = CFG_FILES['pp_c']
 task_log = None
 
 ###### Functions ######
+
 def create_savefile(exp_name):                              # TODO: refactor save data
     current_date = datetime.now().strftime('%Y-%m-%d')
     csvname = f"{current_date}_{exp_name}.csv"
@@ -96,11 +98,25 @@ def run_ex(iteration, pp_id, faults, csvname, fieldnames, st=None):
                 # Save data
                 save_data(csvname, fieldnames, agentnum, boxes, use_hm, counter, carry_counter)
 
+def run_experiment(args):
+    iteration, pp_id, faults, csvname, fieldnames = args
+    run_ex(iteration, pp_id, faults, csvname, fieldnames)
+
+def iterate_ex_parallel(iterations, faults=None):
+    pool = Pool()  # This defaults to the number of available CPU cores
+
+    args_list = [(i, exp, faults, *create_savefile(exp)) for i in range(iterations) for exp in experiments]
+
+    pool.map(run_experiment, args_list)
+
+    pool.close()
+    pool.join()
+
 ###### Run experiment ######
 
 log_time = []
 t0 = time.time()
-iterate_ex(iterations)
+iterate_ex_parallel(iterations)
 t1 = time.time()
 dt = t1-t0
 print("Time taken: %s"%str(dt), '\n')
