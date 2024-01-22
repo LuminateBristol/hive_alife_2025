@@ -134,19 +134,16 @@ class select_action(py_trees.behaviour.Behaviour):
         elif self.blackboard.action == 'pick':
             box = self.blackboard.boxes[self.blackboard.target_box]
             # Check if box has been placed since last tick
-            for id, value in self.blackboard.local_task_log.items():
-                # Check status of all boxes of that colour
-                if value['colour'] == box.colour and value['status'] == 1:
-                    # Box has been placed - revert to random walk
-                    self.blackboard.action = 'random_walk'
-                elif value['colour'] == box.colour and value['status'] != 1:
-                    # Check if box has been picked (i.e. robot is under box centroid)
-                    centroid_distance = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
-                    if centroid_distance < self.blackboard.place_tol:
-                        # Set the target box
-                        self.blackboard.action = 'pre_place'
-                        self.blackboard.carrying_box = True
-                        break
+            if all(item['status'] == 1 for item in self.blackboard.local_task_log.values() if item['colour'] == box.colour):
+                self.blackboard.action = 'random_walk'
+                self.blackboard.target_box = 0
+            else:
+                centroid_distance = euclidean_boxes(self.blackboard.rob_c[self.robot_index], box)
+                if centroid_distance < self.blackboard.place_tol:
+                    # Set the target box
+                    self.blackboard.action = 'pre_place'
+                    self.blackboard.carrying_box = True
+
         
         # Pre-place block
         elif self.blackboard.action == 'pre_place':

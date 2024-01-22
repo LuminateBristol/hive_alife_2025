@@ -1,0 +1,116 @@
+### Pick and Place Experiments
+# Note with current implementation - the same colours in boxes also NEED to feature in tasklog
+f_1:
+# 8 place points at outside of arena
+# 2 of each colour, equal ratios, divider_wh = 1
+  range_of_agents: [1, 20] # Used for batch runs only - repeats experiment for this range of agents
+  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+
+  colour_ratio: {'pink': 8} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+
+  boxes: {'pink': 4,
+          'yellow': 4}
+  
+  task_log: {0: {'colour': 'pink', 'target_c': [217, 300], 'status': 0}, 
+             1: {'colour':'pink', 'target_c': [283, 300], 'status': 0},
+             2: {'colour':'pink', 'target_c': [300, 283], 'status': 0},
+             3: {'colour':'pink', 'target_c': [300, 217], 'status': 0},
+             4: {'colour':'pink', 'target_c': [283, 200], 'status': 0},
+             5: {'colour':'pink', 'target_c': [217, 200], 'status': 0},
+             6: {'colour':'pink', 'target_c': [200, 217], 'status': 0},
+             7: {'colour':'pink', 'target_c': [200, 283], 'status': 0}}
+
+  tolerances:
+    place_tol: 1
+    abandon_tol: 50
+    pre_place_delta: 10
+
+f_2:
+# 8 place points at outside of arena
+# 2 of each colour, equal ratios, divider_wh = 1
+  range_of_agents: [1, 20] # Used for batch runs only - repeats experiment for this range of agents
+  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+
+  colour_ratio: {'pink': 4,
+                'yellow': 4} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+
+  boxes: {'pink': 4,
+          'yellow': 4}
+  
+  task_log: {0: {'colour': 'pink', 'target_c': [217, 300], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [283, 300], 'status': 0},
+             2: {'colour':'pink', 'target_c': [300, 283], 'status': 0},
+             3: {'colour':'yellow', 'target_c': [300, 217], 'status': 0},
+             4: {'colour':'pink', 'target_c': [283, 200], 'status': 0},
+             5: {'colour':'yellow', 'target_c': [217, 200], 'status': 0},
+             6: {'colour':'pink', 'target_c': [200, 217], 'status': 0},
+             7: {'colour':'yellow', 'target_c': [200, 283], 'status': 0}}
+
+  tolerances:
+    place_tol: 1
+    abandon_tol: 50
+    pre_place_delta: 10
+
+f_3:
+# 8 place points at outside of arena
+# 4 of each colour, equal ratios, divider_wh = 1
+  range_of_agents: [1, 20] # Used for batch runs only - repeats experiment for this range of agents
+  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+
+  colour_ratio: {'pink': 2,
+                'yellow': 2,
+                'blue': 2,
+                'red': 2} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+
+  boxes: {'pink': 2,
+          'yellow': 2,
+          'blue': 2,
+          'red': 2}
+  
+  task_log: {0: {'colour': 'pink', 'target_c': [217, 300], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [283, 300], 'status': 0},
+             2: {'colour':'blue', 'target_c': [300, 283], 'status': 0},
+             3: {'colour':'red', 'target_c': [300, 217], 'status': 0},
+             4: {'colour':'pink', 'target_c': [283, 200], 'status': 0},
+             5: {'colour':'yellow', 'target_c': [217, 200], 'status': 0},
+             6: {'colour':'blue', 'target_c': [200, 217], 'status': 0},
+             7: {'colour':'red', 'target_c': [200, 283], 'status': 0}}
+
+  tolerances:
+    place_tol: 1
+    abandon_tol: 50
+    pre_place_delta: 10
+
+f_4:
+# 8 place points at outside of arena
+# 8 of each colour, equal ratios, divider_wh = 1
+  range_of_agents: [1,20] # Used for batch runs only - repeats experiment for this range of agents
+  range_of_boxes: [1, 10] # Used for batch runs only - repeats experiment for this range of boxes for each colour
+
+  colour_ratio: {'pink': 1,
+                'yellow': 1,
+                'blue': 1,
+                'red': 1,
+                'green': 1,
+                'purple': 1,
+                'grey': 1,
+                'orange': 1} # Used for batch runs only - ratio of coloured boxes such that total boxes = range num*ratio for num in range_of_boxes
+
+  boxes: {'pink': 2,
+          'yellow': 2,
+          'blue': 2,
+          'red': 2}
+  
+  task_log: {0: {'colour': 'pink', 'target_c': [217, 300], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [283, 300], 'status': 0},
+             2: {'colour':'blue', 'target_c': [300, 283], 'status': 0},
+             3: {'colour':'red', 'target_c': [300, 217], 'status': 0},
+             4: {'colour':'green', 'target_c': [283, 200], 'status': 0},
+             5: {'colour':'purple', 'target_c': [217, 200], 'status': 0},
+             6: {'colour':'grey', 'target_c': [200, 217], 'status': 0},
+             7: {'colour':'orange', 'target_c': [200, 283], 'status': 0}}
+
+  tolerances:
+    place_tol: 1
+    abandon_tol: 150
+    pre_place_delta: 10

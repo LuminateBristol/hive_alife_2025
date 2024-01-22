@@ -99,8 +99,8 @@ class Warehouse:
 		
 		elif conf == self.OBJ_POS_2:
 			divider_obj = self.radius*3
-			divider_wh = 0.03 # TODO: paramaterise this and add to the default cfg file similar to the conf above
-			divider_div = 0	  # TODO: paramaterise this and add to the default cfg file similar to the conf above
+			divider_wh = 0.35 # TODO: paramaterise this and add to the default cfg file similar to the conf above
+			divider_div = 1   # TODO: paramaterise this and add to the default cfg file similar to the conf above
 			possible_x = int((self.width)/(divider_obj)) # number of positions possible on the x axis
 			possible_y = int((self.height)/(divider_obj)) # number of positions possible on the y axis
 			list_n = [] # empty list of possible positions 

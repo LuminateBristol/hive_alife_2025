@@ -12,7 +12,7 @@ import copy
 ###### Experiment parameters ######
 
 iterations = 50
-experiments = ['c_1']
+experiments = ['d_1', 'd_2', 'd_3']
 export_data = False
 verbose = True    
 batch_id = 'test'
@@ -21,7 +21,7 @@ batch_id = 'test'
 
 default_cfg_file = CFG_FILES['default']
 cfg_file = CFG_FILES['ex_1']
-pp_1 = CFG_FILES['pp_c']
+pp_1 = CFG_FILES['pp_d']
 task_log = None
 
 ###### Functions ######
