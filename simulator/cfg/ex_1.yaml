@@ -1,0 +1,10 @@
+#### Experiments
+
+e_1:
+  faults:
+    - type: 2
+      cfg:
+        speed_at_fault: 0.1
+
+  data_dir: "e_1"
+  description: "Robot moves at severely\nreduced speed"
