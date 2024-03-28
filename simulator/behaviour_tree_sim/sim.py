@@ -1,5 +1,3 @@
-# TODO: integrate fault stuff more rigorously or delete it entirely?
-
 from pathlib import Path
 import sys
 from .objects import Swarm
@@ -87,23 +85,8 @@ class Simulator:
                          bt_controller=self.cfg.get('behaviour_tree'),
                          task_log=self.task_log,
                          use_hm=self.cfg.get('use_hm'),
+                         hm_mode=self.cfg.get('hm_mode'),
                          carry_count = self.carry_count)
-
-        # TODO: fault integration or delete
-        ''' 
-        fault_types = cfg.get('faults')
-        count = 0
-        fault_count = []
-        for i, fault in enumerate(fault_types):
-            end_count = self.fault_count[i]+count
-            fault_count.append(end_count)
-            faulty_agents_range = range(count, end_count)
-            fault_cfg = self.generate_fault_type(fault, faulty_agents_range)
-            swarm.add_fault(**fault_cfg)    
-            count = end_count
-
-        swarm.fault_count = fault_count
-        '''
         
         return swarm
 

@@ -1,4 +1,4 @@
-from simulator.behaviour_tree_sim.bt_pick_place import * # TODO: update this so the config file is used to launch the correct simulator for the chosen project
+from simulator.behaviour_tree_sim.bt_logistics import * 
 from simulator.behaviour_tree_sim import*
 from simulator.lib import Config, SaveSample
 from simulator import CFG_FILES, MODEL_ROOT, STATS_ROOT
@@ -16,7 +16,7 @@ verbose = True
 default_cfg_file = CFG_FILES['default']
 cfg_file = CFG_FILES['ex_1']
 pp_1 = CFG_FILES['pp_1']
-cfg_obj = Config(cfg_file, default_cfg_file, pp_ex=pp_1, pp_id='e_1', ex_id=ex_id)
+cfg_obj = Config(default_cfg_file, pp_ex=pp_1)
 
 ###### Faults Setup ######
 
