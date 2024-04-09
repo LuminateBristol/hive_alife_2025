@@ -1,7 +1,7 @@
 
 # DOTS 2D Simulator - Python
 
-This simulator is designed to be used as a basic experimentation and setup tool for the DOTS robots. It allows users to test behaviour based controllers on robots at high speed and with basic physics. Written in Python for ease of use.
+This simulator is designed to be used as a basic experimentation and setup tool for the DOTS robots. It allows users to test behaviour based controllers on robots at high speed and with basic physics.
 
 This simulator is based on previous project work which can be found here: https://bitbucket.org/suet_lee/metric_extraction_ddmefd/src/master/
 
@@ -29,9 +29,10 @@ The object-oriented approach of this simulator means that there is an interlinki
 ![File Structure](images/dot_2d_flow.jpg)
 
 
-#### Simulator Files
-| bt_logistics   | Logistics task behaviour tree                                                              |
+#### Simulator Files (simulator)
+| Simulator File | Description                                                                                |
 |----------------|--------------------------------------------------------------------------------------------|
+| bt_logistics   | Logistics task behaviour tree                                                              |
 | bt_random_walk | Random walk behaviour tree                                                                 |
 | bt_setup.py    | File convention setup for behaviour trees                                                  |
 | faults.py      | Used for fault analysis only                                                               |
