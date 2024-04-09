@@ -57,7 +57,7 @@ The object-oriented approach of this simulator means that there is an interlinki
 
 #### Library Files (lib)
 
-| Config File | Description                                                    |
+| Library File | Description                                                    |
 |-------------|----------------------------------------------------------------|
 | Config.py   | Functions for parsing the config files into useable parameters |
 | Redis.py    | Data storage - not used in this implementation                 |
