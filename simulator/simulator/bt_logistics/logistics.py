@@ -67,8 +67,6 @@ def euclidean_boxes(agent, box):
     x2, y2 = box.x, box.y
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
-# TODO: euclidean angle generalised formula
-
 def _generate_interobject_force(boxes, rob_c, robot_index, task, repulsion_o, target_box = None, box_attraction=False):
     '''
     Function to generate interobject forces between agents and other agents / boxes

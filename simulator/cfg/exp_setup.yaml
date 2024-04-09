@@ -1,0 +1,43 @@
+### Experimental setup
+# An additional setup file that can be used to setup experiment specific parameters
+
+exp_1:
+  # Random walk example experimental setup
+  exit_criteria: 'counter'
+
+  number_of_agents: 10
+
+  behaviour_tree: 'random_walk' 
+
+  boxes: {'pink': 4,
+          'yellow': 4}
+
+  tolerances:
+    place_tol: 2
+    abandon_tol: 50
+    pre_place_delta: 10
+
+
+exp_2:
+  # Logistics task example experimental setup
+  exit_criteria: 'global_task_log'
+
+  number_of_agents: 10
+
+  behaviour_tree: 'logistics' 
+
+  boxes: {'pink': 1,
+          'yellow': 1,
+          'red': 1,
+          'blue': 1}
+
+  tolerances:
+    place_tol: 2
+    abandon_tol: 50
+    pre_place_delta: 10
+
+  # Logistics task example experimental setup
+  task_log: {0: {'colour': 'pink', 'target_c': [12.5, 250], 'status': 0}, 
+             1: {'colour':'yellow', 'target_c': [250, 12.5], 'status': 0},
+             2: {'colour':'red', 'target_c': [250 ,488.5], 'status': 0},
+             3: {'colour':'blue', 'target_c': [488.5, 250], 'status': 0}}

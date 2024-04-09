@@ -16,7 +16,6 @@ class Config(dict):
 
         cfg_ex = yaml.safe_load(open(cfg_path))        
         cfg_override = {}
-        internal_task_log = {}
 
         if 'config_override' in kwargs:
             cfg_override = kwargs['config_override']
@@ -24,15 +23,6 @@ class Config(dict):
         if 'ex_id' in kwargs:
             ex_id = kwargs['ex_id']
             cfg_ex = cfg_ex[ex_id]
-         
-        if 'pp_ex' in kwargs:
-            pp_cfg = kwargs['pp_ex']
-            pp_ex = yaml.safe_load(open(pp_cfg))
-        
-        if 'pp_id' in kwargs:
-            pp_id = kwargs['pp_id']
-            pp_ex = pp_ex[pp_id]
-
 
         if len(cfg_base) == 0 and len(cfg_override) == 0:
             self.__dict__.update(cfg_ex)

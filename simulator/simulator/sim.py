@@ -37,7 +37,7 @@ class Simulator:
         self.data_model = data_model
         self.ad_model = ad_model
         self.task_log = self.cfg.get('task_log')
-
+        
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
         else:
@@ -70,7 +70,6 @@ class Simulator:
             pre_place_delta = cfg.get('tolerances', 'pre_place_delta')
         )
         
-        # NOTE: if running with faults - change this initialisation from Swarm to FaultySwarm class from faults.py
         swarm = Swarm(
             repulsion_o=cfg.get('warehouse', 'repulsion_object'), 
             repulsion_w=cfg.get('warehouse', 'repulsion_wall'),
@@ -86,7 +85,8 @@ class Simulator:
                          task_log=self.task_log,
                          use_hm=self.cfg.get('use_hm'),
                          hm_mode=self.cfg.get('hm_mode'),
-                         carry_count = self.carry_count)
+                         carry_count = self.carry_count,
+                         print_bt = cfg.get('print_bt'))
         
         return swarm
 

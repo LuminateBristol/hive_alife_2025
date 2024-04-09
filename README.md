@@ -1,26 +1,72 @@
+
+# DOTS 2D Simulator - Python
+
+This simulator is designed to be used as a basic experimentation and setup tool for the DOTS robots. It allows users to test behaviour based controllers on robots at high speed and with basic physics. Written in Python for ease of use.
+
+This simulator is based on previous project work which can be found here: https://bitbucket.org/suet_lee/metric_extraction_ddmefd/src/master/
+
+
+
+## Installation
+
+Install the simulator by simply cloning this repository. Note that some dependent libraries will need to be installed. All code is written in Python.
+
+
+    
+## Documentation
+
 ### Overview
+This simulator has been built for use with behaviour tree controllers. The file system currently includes two examples, a random walk and a logistics task.
 
-The code in this repository is based on an existing 2D DOTS simulator created for previous projects: https://bitbucket.org/suet_lee/metric_extraction_ddmefd/src/master/
+### Modifying the Swarm Behaviours 
+Behaviour trees are currently implemented using the PyTrees library. This is very well documented here: https://py-trees.readthedocs.io/en/devel/
 
-This new version has been modified to accept behaviour tree controllers. Much of the project specific work from the previous simulator has also been removed and Hive Mind specific code has been added. In time the main branch of this simulator will be modified to be a generalised 2D dots simulator and all subsequenct branches will be project specific with only generalised code allowed for merge into main.
+Users are encouraged to create new or modify existing behaviour trees for their own simulations using the same structure given in this repo. The behaviour tree can be split into multiple files as long as the root of the tree is called in the same way.
+
+### File structure
+The object-oriented approach of this simulator means that there is an interlinking relationship between different objects in the file structure. The diagram below gives and overview as to how each part fits together.
+
+![File Structure](images/dot_2d_flow.jpg)
 
 
-### Scripts
+#### Simulator Files
+| bt_logistics   | Logistics task behaviour tree                                                              |
+|----------------|--------------------------------------------------------------------------------------------|
+| bt_random_walk | Random walk behaviour tree                                                                 |
+| bt_setup.py    | File convention setup for behaviour trees                                                  |
+| faults.py      | Used for fault analysis only                                                               |
+| objects.py     | Contains the classes for all objects (robots, swarm and boxes)                             |
+| sim.py         | Contains the classes and functions for running the simulator                               |
+| viz_sim.py     | Contains the classes and functions for running the simulator with matplotlib visualisation |
+| warehouse.py   | Contains the classes and functions for settup up the warehouse                             |
 
-Simulation run scripts:
+#### Config Files (cfg)
 
-| Name | Description |
-| ----------- | ----------- |
-| run_ex.py | Run the experiment with given configuration, visualisation optional | 
-| run_ex_multipp.py | Multiprocessing runs of the experiment, no visualisation |
+| Config File    | Description                                                          |
+|----------------|----------------------------------------------------------------------|
+| default.yaml   | Sets up the general parameters of the simulation including:          |
+|                | - robot parameters (size, speed, sensor range)                       |
+|                | - warehouse parameters (size, physics, object size)                  |
+|                | - simulator parameters (timeout, save options)                       |
+| exp_setup.yaml | Sets up the specific experimental parameters for each run including: |
+|                | - number of agents                                                   |
+|                | - beheviour tree controller                                          |
+|                | - object setup                                                       |
+|                | - tolerances                                                         |
 
-Simulator scripts:
+#### Library Files (lib)
 
-| Name | Description |
-| ----------- | ----------- |
-| sim.py | Sets up the simulator based on the provided config files - calls wearehouse.py|
-| warehouse.py | Sets up the warehouse including walls, box locations and robot locations - calls various from objects.py |
-| objects.py | Sets up the indivudual boxes, robots and swarm objects |
-| bt_logistics.py | Behaviour tree controller for the logistics task |
-| bt_random_walk.py | Behaviour tree controller for random walk |
+| Config File | Description                                                    |
+|-------------|----------------------------------------------------------------|
+| Config.py   | Functions for parsing the config files into useable parameters |
+| Redis.py    | Data storage - not used in this implementation                 |
+| Save_to.py  | Data saving - not used in this implementation                  |
 
+
+## Contributing
+
+Contributions are always welcome!
+
+As every user is likely to have a slightly different simulation setup, we encourage users to create a branch for their own use. If you develop a new behaviour tree that may be useful to others, we can add it to the examples or keep it as an aptly named seperate branch.
+
+Enjoy!

@@ -85,7 +85,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False, hm_mode='task', carry_count = None):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False, hm_mode='task', carry_count = None, print_bt = False):
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
             self.agents.append(ag)
@@ -101,7 +101,8 @@ class Swarm:
             # Setup behavuour tree
             bt_module = bt_setup.behaviour_trees[bt_controller] # Get controller from the setup file
             ag.root = bt_module.create_root(robot_index = ag.robot_index)
-            #py_trees.display.render_dot_tree(ag.root)
+            if print_bt:
+                py_trees.display.render_dot_tree(ag.root) # Uncomment to print png of behaviour tree
             ag.robot_tree = py_trees.trees.BehaviourTree(ag.root)
 
             # Setup blackboard
