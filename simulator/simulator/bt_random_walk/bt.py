@@ -109,94 +109,8 @@ class select_action(py_trees.behaviour.Behaviour):
 
     def update(self):
         if self.blackboard.action == 'random_walk':
-            if self.blackboard.target_block is not None:
-                self.blackboard.action = 'pick_block'
-                self.blackboard.target_position = None
-        '''
-        # Pick block
-        elif self.blackboard.action == 'pick_block':
-            block = blocks[self.blackboard.target_block]
-            # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[block.color][2] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.target_position = None
-                self.blackboard.target_angle = None
-            else:
-                # Check if block has been picked (i.e. robot is under block centroid)
-                centroid_distance = math.sqrt((block.x - self.blackboard.x)**2 + (block.y - self.blackboard.y)**2)
         
-                if centroid_distance < ROBOT_SIZE / 2 + BLOCK_SIZE / 2:
-                    # Set the target block
-                    self.blackboard.action = 'pre_place_block'
-                    self.blackboard.target_position = None
-
-        # Pre-place block
-        elif self.blackboard.action == 'pre_place_block':
-            block = blocks[self.blackboard.target_block]
-            # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[block.color][2] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.target_position = None
-                self.blackboard.target_angle = None
-            else:
-                # Check block position vs target preplace position
-                block = blocks[self.blackboard.target_block]
-                desired_position = self.blackboard.target_position
-                dx = desired_position[0] - self.blackboard.x
-                dy = desired_position[1] - self.blackboard.y
-                distance = math.sqrt(dx ** 2 + dy ** 2)
-                # Check if reached pre-place position - move to place_block
-                if distance < PLACE_TOL:
-                    self.blackboard.action = 'place_block'
-                    self.blackboard.target_position = None
-        
-        # Place block
-        elif self.blackboard.action == 'place_block':
-            block = blocks[self.blackboard.target_block]
-            # Check if block has been placed since last tick
-            if self.blackboard.internal_task_log[block.color][2] == 1:
-                # Block has been placed - abandon
-                self.blackboard.action = 'abandon'
-                self.blackboard.target_position = None
-                self.blackboard.target_angle = None
-            else:
-                # Check block position vs target preplace position
-                block = blocks[self.blackboard.target_block]
-                desired_position = self.blackboard.target_position
-                dx = desired_position[0] - self.blackboard.x
-                dy = desired_position[1] - self.blackboard.y
-                distance = math.sqrt(dx ** 2 + dy ** 2)
-                # Check if reached placed position - revert to random_walk
-                if distance < PLACE_TOL:
-                    self.blackboard.action = 'random_walk'
-                    self.blackboard.target_block = None
-                    block.status = 0
-        
-        # Abandon
-        elif self.blackboard.action == 'abandon':
-            block = blocks[self.blackboard.target_block]
-            # If within ABANDON_TOL pixels of the edge of the arena - revert back to explore
-            # i.e. if close to edge of arena - drop the block, leave it there and carry on random walk
-            if (
-                self.blackboard.x < ABANDON_TOL
-                or self.blackboard.x > WIDTH - ABANDON_TOL
-                or self.blackboard.y < ABANDON_TOL
-                or self.blackboard.y > HEIGHT - ABANDON_TOL
-            ):
-                self.blackboard.action = 'random_walk'
-                self.blackboard.target_block = None
-                block.status = 0
-        
-        # No target block - return to random walk
-        elif self.blackboard.target_block is None:
-            self.blackboard.action = 'random_walk'
-
-        print(f'R:{self.robot_index}: Target block is: {self.blackboard.target_block}')
-        print(f'R:{self.robot_index}: Action selected {self.blackboard.action}')
-        '''
-        return py_trees.common.Status.SUCCESS
+            return py_trees.common.Status.SUCCESS
 
 class check_action_random_walk(py_trees.behaviour.Behaviour):
 
@@ -295,20 +209,22 @@ def create_root(robot_index):
 
     root = py_trees.composites.Sequence(
         name    = f'Pick Place DOTS: {str_index}',
+        memory  = False
     )
 
     # Select actiontalk_to_hive_mind(name='Talk to HM', robot_index=robot_index)
     action = select_action(name='Select action', robot_index=robot_index)
+    action_behaviour = py_trees.decorators.Inverter(name='select_action', child=action)
 
     # Random path behaviour
-    random_path = py_trees.composites.Sequence(name='Random walk')
+    random_path = py_trees.composites.Sequence(name='Random walk', memory=False)
     random_path.add_child(check_action_random_walk(name='Check if random walk', robot_index=robot_index))
     random_path.add_child(random_walk(name='Random Walk', robot_index=robot_index))
     random_path.add_child(send_path(name='Send Path Random Walk', robot_index=robot_index))
 
     # Robot actions
-    DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}')
-    DOTS_actions.add_child(py_trees.decorators.Inverter(action))
+    DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}', memory=False)
+    DOTS_actions.add_child(action_behaviour)
     DOTS_actions.add_child(random_path)
 
     root.add_child(DOTS_actions)
