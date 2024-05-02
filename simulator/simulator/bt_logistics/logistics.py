@@ -808,6 +808,7 @@ def create_root(robot_index):
 
     root = py_trees.composites.Sequence(
         name    = f'Pick Place DOTS: {str_index}',
+        memory = False
     )
 
     # Look for blocks
@@ -824,41 +825,45 @@ def create_root(robot_index):
     carry_count = update_carry_count(name='Update Carry Count', robot_index=robot_index)
 
     # Random path behaviour
-    random_path = py_trees.composites.Sequence(name='Random walk')
+    random_path = py_trees.composites.Sequence(name='Random walk', memory = False)
     random_path.add_child(check_action_random_walk(name='Check if random walk', robot_index=robot_index))
     random_path.add_child(random_walk(name='Random Walk', robot_index=robot_index))
     random_path.add_child(send_path(name='Send Path Random Walk', robot_index=robot_index))
 
     # Pick box behaviour
-    pick_box = py_trees.composites.Sequence(name='Pick Box Seq')
+    pick_box = py_trees.composites.Sequence(name='Pick Box Seq', memory = False)
     pick_box.add_child(check_action_pick(name='Check if pick', robot_index=robot_index))
     pick_box.add_child(pick(name='Pick Box', robot_index=robot_index))
     pick_box.add_child(send_path(name='Send Path Pick', robot_index=robot_index))
 
     # Pre-place block behaviour
-    pre_place_box = py_trees.composites.Sequence(name='Pre-Place Box')
+    pre_place_box = py_trees.composites.Sequence(name='Pre-Place Box', memory = False)
     pre_place_box.add_child(check_action_pre_place(name='Check if pre-place', robot_index=robot_index))
     pre_place_box.add_child(pre_place(name='Pre-place Box', robot_index=robot_index))
     pre_place_box.add_child(send_path(name='Send Path Pre Place', robot_index=robot_index))
 
     # Place block behaviour
-    place_box = py_trees.composites.Sequence(name='Place Box')
+    place_box = py_trees.composites.Sequence(name='Place Box', memory = False)
     place_box.add_child(check_action_place(name='Check if place', robot_index=robot_index))
     place_box.add_child(place(name='Place Box', robot_index=robot_index))
     place_box.add_child(send_path(name='Send Path Place', robot_index=robot_index))
 
     # Place block behaviour
-    abandon_pick = py_trees.composites.Sequence(name='Abandon')
+    abandon_pick = py_trees.composites.Sequence(name='Abandon', memory = False)
     abandon_pick.add_child(check_action_abandon(name='Check if abandon', robot_index=robot_index))
     abandon_pick.add_child(abandon(name='Abandon', robot_index=robot_index))
     abandon_pick.add_child(send_path(name='Send Path Abandon', robot_index=robot_index))
 
     # Robot actions
-    DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}')
-    DOTS_actions.add_child(py_trees.decorators.Inverter(look_blocks))
-    DOTS_actions.add_child(py_trees.decorators.Inverter(update_hm))
-    DOTS_actions.add_child(py_trees.decorators.Inverter(action))
-    DOTS_actions.add_child(py_trees.decorators.Inverter(carry_count))
+    DOTS_actions = py_trees.composites.Selector(name    = f'DOTS Actions {str_index}', memory = False)
+    inverted_look_blocks = py_trees.decorators.Inverter(name='inverted', child=look_blocks)
+    DOTS_actions.add_child(inverted_look_blocks)
+    inverted_update_hm = py_trees.decorators.Inverter(name='inverted', child=update_hm)
+    DOTS_actions.add_child(inverted_update_hm)
+    inverted_action = py_trees.decorators.Inverter(name='inverted', child=action)
+    DOTS_actions.add_child(inverted_action)
+    inverted_carry_count = py_trees.decorators.Inverter(name='inverted', child=carry_count)
+    DOTS_actions.add_child(inverted_carry_count)
     DOTS_actions.add_child(random_path)
     DOTS_actions.add_child(pick_box)
     DOTS_actions.add_child(pre_place_box)

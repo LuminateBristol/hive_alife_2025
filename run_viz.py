@@ -14,7 +14,7 @@ batch_id = 'test'
 
 default_cfg_file = CFG_FILES['default']
 cfg_file = CFG_FILES['exp_setup']
-ex_id = 'exp_1'
+ex_id = 'exp_2'
 task_log = None
 
 ###### Functions ######
