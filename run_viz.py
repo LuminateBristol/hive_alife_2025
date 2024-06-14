@@ -14,14 +14,15 @@ batch_id = 'test'
 
 default_cfg_file = CFG_FILES['default']
 cfg_file = CFG_FILES['exp_setup']
-ex_id = 'exp_2'
+map_file = CFG_FILES['map']
+ex_id = 'exp_1'
 task_log = None
 
 ###### Functions ######
 def run_ex():
 
     # Setup config for this experiment
-    cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id)
+    cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
 
     agentnum = cfg_obj.get('number_of_agents')
     boxes = cfg_obj.get('boxes')

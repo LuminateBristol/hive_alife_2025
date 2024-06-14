@@ -1,5 +1,3 @@
-# TODO: update random walks to use actual collision not random wall checks
-
 import random
 import math
 import py_trees
@@ -14,34 +12,57 @@ import csv
 import time
 from scipy.spatial.distance import cdist
 
+
+def distance_to_wall(robot_c, wall):
+    # Find distance to wall using the assumption that the closest point shall be perpendicular to the robot:
+    # https://stackoverflow.com/questions/5204619/how-to-find-the-point-on-an-edge-which-is-the-closest-point-to-another-point
+
+    # Check within wall limits
+    wall_limits = (min(wall.start[0], wall.end[0]) <= robot_c[0] <= max(wall.start[0], wall.end[0]) or min(wall.start[1], wall.end[1]) <= robot_c[1] <= max(wall.start[1], wall.end[1]))
+    if not wall_limits:
+        return [0,0]
+
+    # Check for vertical wall
+    if wall.start[0] == wall.end[0]:
+        x_closest, y_closest=wall.start[0], robot_c[1]
+    # Check for horizontal wall
+    elif wall.start[1] == wall.end[1]: 
+        x_closest, y_closest=robot_c[0], wall.start[1]
+    else:
+        # Find gradient of the wall (m1) and of the line between the robot and the wall (m2)
+        m1 = (wall.end[1]-wall.start[0]) / (wall.end[0]-wall.start[0])
+        m2 = -1/m1
+
+        # Find the point on the line that is closest (ie perpendicular) to the robot
+        x_closest = (m1*wall.start[0] - m2*robot_c[0] - wall.start[1]) / (m1-m2)
+        y_closest = m2* (x_closest-robot_c[0]) + robot_c[1]
+
+    # Find distance to wall in each direction
+    dist_to_wall = [robot_c[0]-x_closest, robot_c[1]-y_closest]
+    
+    return dist_to_wall
+                                             
 def _generate_wall_avoidance_force(rob_c, map, robot_index, repulsion_w): # input the warehouse map 
     '''
     Function to compute the force vector for wall-based collisions.
     1) compute robot distance from walls
-    2) compute if robots are within safe distance from the walls
-    3) compute exponential force vector - increases exponentially with closeness to the walls
-
-    HH 1 - Reduced this down to work with a single robot by removing the rob_c element and using min/max values only
-    HH 2 - Removed the 'interaction' calculation that checks if the robot is outside the limits of the walls as it is not needed
-    HH note - Not sure if the map boxbound method is the most efficient approach for this but kept to keep in line with previous sim code
+    2) Use inverse square explonent to calculate force based on distance from wall
     '''
-    ## 1) Distance from agent to walls
-    # distance from the closest vertical wall to your agent
-    difference_in_x = min(map.planeh-rob_c[robot_index][1], key=abs)
-    # distance from the closest horizontal wall to your agent
-    difference_in_y = min(map.planev-rob_c[robot_index][0], key=abs)
+    Fy = 0
+    Fx = 0
 
-    ## 2) Compute exponential force vectors
-    repulsion = repulsion_w
+    # For each wall - compute a force vector based on an inverse square exponential - ie very close walls = very high repulsion force
+    for wall in map.walls:
+        # Get distance to wall
+        distance_vec = distance_to_wall(rob_c[robot_index], wall)
 
-    Fy = np.exp(-2*abs(difference_in_x) + repulsion) # exponent calculation
-    Fy = Fy*(difference_in_x*-1)                     # vector components * -1 to reverse the sign to move robot away from wall
+        # Output force from wall using inverse exponent and repulsion factor
+        Fx += np.exp(-2*abs(distance_vec[0]) + repulsion_w) * np.sign(distance_vec[0])
+        Fy += np.exp(-2*abs(distance_vec[1]) + repulsion_w) * np.sign(distance_vec[1])
 
-    Fx = np.exp(-2*abs(difference_in_y) + repulsion) # exponent calculation
-    Fx = Fx*(difference_in_y*-1)                     # vector components * -1 to reverse the sign to move robot away from wall
-    
     # Combine to one vector variable
     F = np.array([Fx, Fy])
+    
     return F
 
 def _generate_heading_force(heading):
@@ -190,6 +211,7 @@ class send_path(py_trees.behaviour.Behaviour):
         f_h = _generate_heading_force(heading)
         f_w = _generate_wall_avoidance_force(self.blackboard.rob_c, self.blackboard.map, self.robot_index, self.blackboard.repulsion_w)
         f_b, f_a = _generate_interobject_force(self.blackboard.boxes, self.blackboard.rob_c, self.robot_index, self.blackboard.action, self.blackboard.repulsion_o)
+        
         #print(f'fh {f_h}, fw {f_w}, fb {f_b}, fa {f_a}')
         F = f_h + f_w + f_b + f_a
         F_x = F[0] # total force in x

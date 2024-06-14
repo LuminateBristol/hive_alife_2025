@@ -10,11 +10,11 @@ class Warehouse:
 	OBJ_POS_2 = 2	    # Boxes and robots spread out only in the outer 2/3rds of the arena - central area is empty
 	OBJ_POS_TEST = 3
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
+	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
 
 		self.width = width
 		self.height = height
-		self.box_range = box_radius*2.0#box_range # range at which a box can be picked up 
+		self.box_range = box_radius*2.0	#box_range # range at which a box can be picked up 
 		self.radius = box_radius # physical radius of the box (approximated to a circle even though square in animation)
 		if exit_width is None:
 			self.exit_width = int(0.05*self.width) # if it is too small then it will avoid the wall and be less likely to reach the exit zone 
@@ -32,7 +32,7 @@ class Warehouse:
 				  self.boxes.append(Box(colour=colour))
 		
 		self.number_of_boxes = len(self.boxes)
-		self.map = Map(width, height)
+		self.map = Map(width, height, wallsh, wallsv)
 		self.swarm = swarm
 		swarm.add_map(self.map)
 
@@ -176,13 +176,14 @@ class BoxBounds:
 
 class Map:
 
-	def __init__(self, width, height, wall_divisions=10):
+	def __init__(self, width, height, wallsh, wallsv, wall_divisions=10):
 		self.width = width
 		self.height = height
-		self.obstacles = [] # contains a list of all walls that make up an environment
-		self.walls = np.array([]) # same as obsticales variable but as a numpy array
-		self.wallh = np.array([]) # a list of only horizontal walls
-		self.wallv = np.array([]) # a list of only vertical walls
+		self._wallsh = wallsh
+		self._wallsv = wallsv
+		self.walls = np.array([]) # a list of all walls
+		self.wallsh = np.array([]) # a list of only horizontal walls
+		self.wallsv = np.array([]) # a list of only vertical walls
 		self.planeh = np.array([]) # a list of horizontal avoidance planes formed by walls
 		self.planev = np.array([]) # a list of horizontal vertical planes formed by walls
 
@@ -191,7 +192,26 @@ class Map:
 	
 	# @TODO could wall generation be refactored?
 	def generate(self):		
-		map_bounds = BoxBounds(self.height, self.width, [self.width/2, self.height/2]); 
+		# Updated map generation:
+		# For more complex map builds, the map can be described wall by wall (note it is possible to automate the wall generation from coordinates but this is not done here)
+		
+		# Horizontal walls
+		for wall in range(len(self._wallsh)):
+			self.wallsh = np.append(self.wallsh, WallBounds())
+			self.wallsh[wall].start = self._wallsh[wall][0]; self.wallsh[wall].end = self._wallsh[wall][1]
+
+		# Vertical walls
+		for wall in range(len(self._wallsv)):
+			self.wallsv = np.append(self.wallsv, WallBounds())
+			self.wallsv[wall].start = self._wallsv[wall][0]; self.wallsv[wall].end = self._wallsv[wall][1]
+
+		# All Walls
+		self.walls = np.append(self.walls, self.wallsh)
+		self.walls = np.append(self.walls, self.wallsv)
+
+		'''
+		map_bounds = BoxBounds(self.height, self.width, [self.width/2, self.height/2]); # TODO - not sure if the box bound are needed when all we are really intersted in is walls?
+
 		[self.obstacles.append(map_bounds.walls[x]) for x in range(0, len(map_bounds.walls))] # Create obstacles objects as a list of WallBounds objects for each wall
 
 		# Setup generalised parameters for the vertical and horizontal walls
@@ -227,6 +247,7 @@ class Map:
 
 			self.walls[2*n] = np.array([self.obstacles[n].start[0], self.obstacles[n].start[1]])
 			self.walls[2*n+1] = np.array([self.obstacles[n].end[0], self.obstacles[n].end[1]])
+			'''
 	
 	def generate_wall_divisions(self, divisions=10):
 		wall_divisions = np.array([])

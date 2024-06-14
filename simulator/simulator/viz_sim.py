@@ -16,6 +16,22 @@ class VizSim(Simulator):
         self.snapshot_s = [1]#[50,1250,2250]
         self.verbose = True
 
+    def plot_walls(self, ax):
+        # Plot horizontal walls
+        for wall in self.cfg.get('wallsh'):
+            start, end = wall
+            x0, y0 = start
+            x1, y1 = end
+            ax.plot([x0, x1], [y0, y1], 'k-')  # 'k-' means black solid line
+
+        # Plot vertical walls 
+        for wall in self.cfg.get('wallsv'):
+            start, end = wall
+            x0, y0 = start
+            x1, y1 = end
+            ax.plot([x0, x1], [y0, y1], 'k-')
+
+
     def generate_dot_positional_data(self, faulty=False):
         if faulty:
             #HH f_current = self.fault_count
@@ -108,6 +124,7 @@ class VizSim(Simulator):
                 self.ad_model.predict(self.data_model.metric_data, counter)
 
         dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, fault_c, cam_range)
+        
         if snapshot:
             self.take_snapshot(counter)
         # time.sleep(self.sim_delay)
@@ -225,12 +242,13 @@ class VizSim(Simulator):
         plt.rcParams['font.size'] = '16'
         ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
 
+        self.plot_walls(ax)
+
         # assume all swarm radius same
         marker_size = 12.5
         robot_r = self.cfg.get('robot', 'radius')
         camera_sensor_range = self.cfg.get('robot', 'camera_sensor_range')
         cam_range_marker_size = marker_size/robot_r*camera_sensor_range
-        print(self.warehouse.rob_c)
         cam_range, = ax.plot(
             [self.warehouse.rob_c[i,0] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
             [self.warehouse.rob_c[i,1] for i in range(self.cfg.get('warehouse', 'number_of_agents'))], 
@@ -247,16 +265,6 @@ class VizSim(Simulator):
         for i in range(len(x_data)):
             dot[i], = ax.plot(x_data[i], y_data[i], marker[i],
                 markersize = marker_size, fillstyle = 'none')
-            
-        '''  
-        box, = ax.plot(
-            [self.warehouse.boxes[i].x for i in range(self.cfg.get('warehouse', 'number_of_boxes'))],
-            [self.warehouse.boxes[i].y for i in range(self.cfg.get('warehouse', 'number_of_boxes'))], 
-            marker='s',
-            #c=[self.warehouse.boxes[i].colour for i in range(self.cfg.get('warehouse', 'number_of_boxes'))], 
-            color='red',
-            markersize = marker_size-5)
-        ''' 
 
         boxes=[]
         for boxi in self.warehouse.boxes:

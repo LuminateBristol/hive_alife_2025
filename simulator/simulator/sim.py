@@ -57,6 +57,8 @@ class Simulator:
             self.cfg.get('warehouse', 'box_radius'), 
             self.swarm, 
             self.cfg.get('warehouse', 'exit_width'),
+            self.cfg.get('wallsh'),
+            self.cfg.get('wallsv'),
             self.cfg.get('warehouse', 'object_position'),
             check_collisions=check_collisions)            
 

@@ -23,6 +23,10 @@ class Config(dict):
         if 'ex_id' in kwargs:
             ex_id = kwargs['ex_id']
             cfg_ex = cfg_ex[ex_id]
+        
+        if 'map' in kwargs:
+            map = kwargs['map']
+            map_file = yaml.safe_load(open(map))  
 
         if len(cfg_base) == 0 and len(cfg_override) == 0:
             self.__dict__.update(cfg_ex)
@@ -39,8 +43,9 @@ class Config(dict):
             pass
         
         try:
-            cfg = self._overwrite(cfg, pp_ex)
+            cfg = self._overwrite(cfg, map_file)
         except:
+            print('Map not loaded')
             pass
 
         self.__dict__.update(cfg)

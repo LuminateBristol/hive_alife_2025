@@ -5,7 +5,7 @@ exp_1:
   # Random walk example experimental setup
   exit_criteria: 'counter'
 
-  number_of_agents: 10
+  number_of_agents: 1
 
   behaviour_tree: 'random_walk' 
 
@@ -22,7 +22,7 @@ exp_2:
   # Logistics task example experimental setup
   exit_criteria: 'global_task_log'
 
-  number_of_agents: 10
+  number_of_agents: 1
 
   behaviour_tree: 'logistics' 
 

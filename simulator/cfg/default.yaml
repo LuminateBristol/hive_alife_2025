@@ -11,7 +11,7 @@ warehouse:
   box_radius: 12.5
   width: 500
   height: 500
-  repulsion_wall: 25
+  repulsion_wall: 20
   repulsion_object: 25
   object_position: 2
   exit_width: 25
