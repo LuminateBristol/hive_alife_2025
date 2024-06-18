@@ -12,7 +12,6 @@ class VizSim(Simulator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.faulty = self.fault_count[0] > 0
         self.snapshot_s = [1]#[50,1250,2250]
         self.verbose = True
 
@@ -109,21 +108,12 @@ class VizSim(Simulator):
         return x_data, y_data
 
     # iterate method called once per timestep
-    def iterate(self, frame, dot=None, boxes=None, h_line=None, fault_c=None, cam_range=None, snapshot=False):
+    def iterate(self, frame, dot=None, boxes=None, h_line=None, cam_range=None, snapshot=False):
         self.warehouse.iterate(self.cfg.get('heading_bias'), self.cfg.get('box_attraction'))
         delivered = self.warehouse.delivered
         counter = self.warehouse.counter
 
-        if self.delivered_in is None and delivered == self.warehouse.number_of_boxes:
-            self.delivered_in = counter
-
-        if self.faulty and self.data_model is not None:
-            self.data_model.get_metric_data(self.warehouse) # updates metric data for timestep
-        
-            if self.ad_model is not None:
-                self.ad_model.predict(self.data_model.metric_data, counter)
-
-        dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, fault_c, cam_range)
+        dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, cam_range)
         
         if snapshot:
             self.take_snapshot(counter)
@@ -142,7 +132,7 @@ class VizSim(Simulator):
 
         return dot + h_line + boxes + [cam_range]
 
-    def animate(self, i, counter, dot=None, boxes=None, h_line=None, fault_c=None, cam_range=None):
+    def animate(self, i, counter, dot=None, boxes=None, h_line=None, cam_range=None):
         cam_range.set_data(
             [self.warehouse.rob_c[i,0] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
             [self.warehouse.rob_c[i,1] for i in range(self.cfg.get('warehouse', 'number_of_agents'))]
@@ -158,15 +148,6 @@ class VizSim(Simulator):
         h_x_vec, h_y_vec = self.generate_dot_heading_arrow()
         for i in range(self.swarm.number_of_agents):
             h_line[i].set_data(h_x_vec[i], h_y_vec[i])
-
-        if self.faulty:
-            fc_x_vec, fc_y_vec = self.generate_fault_circle()
-            if fc_x_vec is not None and fc_y_vec is not None:
-                for i in range(self.swarm.number_of_agents):
-                    fault_c[i].set_data(fc_x_vec[i], fc_y_vec[i])
-
-        realtime = int(np.ceil(counter/50))
-        # plt.title("Time is "+str(realtime)+"s")
 
         return dot, boxes, h_line, cam_range
 
@@ -221,15 +202,7 @@ class VizSim(Simulator):
             print("Running with seed: %d"%self.random_seed)
 
         self.init_animate()
-
-        if self.cfg.get('save_animation'):
-            try:
-                self.save_anim_t = threading.Thread(target=self.save_animation)
-                self.save_anim_t.start()
-            except Exception as e:
-                print(e)
-        else: 
-            plt.show()
+        plt.show()
         
         if self.delivered_in is None:
             self.delivered_in = self.warehouse.counter
@@ -275,16 +248,8 @@ class VizSim(Simulator):
         h_line = {}
         for i in range(self.swarm.number_of_agents):
             h_line[i], = ax.plot(h_x_vec[i], h_y_vec[i], linestyle="dashed", color="#4CB580")
-
-        if self.faulty:
-            fc_x_vec, fc_y_vec = self.generate_fault_circle()
-            fault_c = {}
-            if fc_x_vec is not None and fc_y_vec is not None:
-                for i in range(self.swarm.number_of_agents):
-                    fault_c[i], = ax.plot(fc_x_vec[i], fc_y_vec[i], "ko", markersize=marker_size+2, 
-                        linewidth=2, color="r", fillstyle="none")
         
         self.anim = animation.FuncAnimation(self.fig, self.iterate, frames=10000, interval=0.1, blit=True,
-                                            fargs=(dot, boxes, h_line, None, cam_range))
+                                            fargs=(dot, boxes, h_line, cam_range))
 
         plt.show()

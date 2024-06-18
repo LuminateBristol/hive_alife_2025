@@ -135,19 +135,6 @@ class Warehouse:
 		self.counter += 1
 		self.swarm.counter = self.counter
 
-	# wrapper functions to help with managing variables
-	def is_box_free(self, bid=None):
-		if bid is None:
-			return self.box_is_free
-		
-		return self.box_is_free[bid]
-
-	def is_robot_carrying_box(self, rid=None):
-		if rid is None:
-			return self.swarm.agent_has_box
-		
-		return self.swarm.agent_has_box[rid]
-
 class WallBounds:
 
     def __init__(self):
@@ -208,46 +195,6 @@ class Map:
 		# All Walls
 		self.walls = np.append(self.walls, self.wallsh)
 		self.walls = np.append(self.walls, self.wallsv)
-
-		'''
-		map_bounds = BoxBounds(self.height, self.width, [self.width/2, self.height/2]); # TODO - not sure if the box bound are needed when all we are really intersted in is walls?
-
-		[self.obstacles.append(map_bounds.walls[x]) for x in range(0, len(map_bounds.walls))] # Create obstacles objects as a list of WallBounds objects for each wall
-
-		# Setup generalised parameters for the vertical and horizontal walls
-		# We do not know which is which in the obstacles object so large general arrays are used
-		self.walls = np.zeros((2*len(self.obstacles), 2))
-		self.wallh = np.zeros((2*len(self.obstacles), 2))
-		self.wallv = np.zeros((2*len(self.obstacles), 2))
-		self.planeh = np.zeros(len(self.obstacles))
-		self.planev = np.zeros(len(self.obstacles))
-		self.limx = np.zeros((len(self.obstacles), 2))
-		self.limy = np.zeros((len(self.obstacles), 2))
-
-		for n in range(0, len(self.obstacles)):
-			# if wall is vertical
-			if self.obstacles[n].start[0] == self.obstacles[n].end[0]:
-				self.wallv[2*n] = np.array([self.obstacles[n].start[0], self.obstacles[n].start[1]])
-				self.wallv[2*n+1] = np.array([self.obstacles[n].end[0], self.obstacles[n].end[1]])
-
-				# planev: plane of vertical wall defined by two extents [x1, x2]
-				self.planev[n] = self.wallv[2*n][0]
-				# limy: limits of the horizontal wall i.e. y limits over which the robot is beyond the length of the wall
-				self.limy[n] = np.array([np.min([self.obstacles[n].start[1], self.obstacles[n].end[1]])-0.5, np.max([self.obstacles[n].start[1], self.obstacles[n].end[1]])+0.5])
-
-			# if wall is horizontal
-			if self.obstacles[n].start[1] == self.obstacles[n].end[1]:
-				self.wallh[2*n] = np.array([self.obstacles[n].start[0], self.obstacles[n].start[1]])
-				self.wallh[2*n+1] = np.array([self.obstacles[n].end[0], self.obstacles[n].end[1]])
-
-				# planeh: plane of horizontal wall defined by two extents [y1, y2]
-				self.planeh[n] = self.wallh[2*n][1]
-				# limx: limits of the horizontal wall i.e. x limits over which the robot is beyond the length of the wall
-				self.limx[n] = np.array([np.min([self.obstacles[n].start[0], self.obstacles[n].end[0]])-0.5, np.max([self.obstacles[n].start[0], self.obstacles[n].end[0]])+0.5])
-
-			self.walls[2*n] = np.array([self.obstacles[n].start[0], self.obstacles[n].start[1]])
-			self.walls[2*n+1] = np.array([self.obstacles[n].end[0], self.obstacles[n].end[1]])
-			'''
 	
 	def generate_wall_divisions(self, divisions=10):
 		wall_divisions = np.array([])

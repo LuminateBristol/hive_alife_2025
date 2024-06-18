@@ -1,8 +1,20 @@
-from simulator.simulator import *
-from simulator.lib import Config
-from simulator import CFG_FILES
+import sys
+import os
 import time
 import copy
+
+# We need to setup  parent directories to properly import other modules
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, parent_dir)
+
+from simulator_files import *
+from lib import Config
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
+sys.path.insert(0, parent_dir)
+from simulator import CFG_FILES
+
 
 ###### Experiment parameters ######
 
@@ -23,6 +35,7 @@ def run_ex():
 
     # Setup config for this experiment
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
+    cfg_obj.print()
 
     agentnum = cfg_obj.get('number_of_agents')
     boxes = cfg_obj.get('boxes')
