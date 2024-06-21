@@ -1,19 +1,9 @@
 from pathlib import Path
-import sys
-from .objects import Swarm
 
 dir_root = Path(__file__).resolve().parents[1]
 
 import numpy as np
-import pandas as pd
 import random
-import threading
-import os
-from os.path import dirname, realpath
-import datetime
-import time
-import json
-
 from . import Swarm, Warehouse, Robot
 
 class Simulator:
@@ -24,7 +14,7 @@ class Simulator:
 
         self.cfg = config
         self.verbose = verbose
-        self.task_log = self.cfg.get('task_log')
+        self.exit_run = False
         
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
@@ -63,8 +53,6 @@ class Simulator:
             repulsion_w=cfg.get('warehouse', 'repulsion_wall'),
             heading_change_rate=cfg.get('heading_change_rate')
         )
-
-        self.carry_count = [0] * cfg.get('warehouse', 'number_of_agents')
 
         swarm.add_agents(robot_obj, cfg.get('warehouse', 'number_of_agents'),
                          width=self.cfg.get('warehouse', 'width'),

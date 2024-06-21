@@ -1,7 +1,6 @@
 import sys
 import os
 import time
-import copy
 
 # We need to setup  parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -21,31 +20,28 @@ from simulator import CFG_FILES
 export_data = False
 verbose = True    
 batch_id = 'test'
+ex_id = 'exp_1'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 
-default_cfg_file = CFG_FILES['default']
-cfg_file = CFG_FILES['exp_setup']
-map_file = CFG_FILES['map']
-ex_id = 'exp_1'
-task_log = None
+default_cfg_file = CFG_FILES['default']     # Config for general parameters in cfg folder NOTE: change this file to update general parameters
+cfg_file = CFG_FILES['exp_setup']           # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
+map_file = CFG_FILES['map']                 # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
 
 ###### Functions ######
 def run_ex():
 
     # Setup config for this experiment
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
-    cfg_obj.print()
+    #cfg_obj.print()
 
     agentnum = cfg_obj.get('number_of_agents')
     boxes = cfg_obj.get('boxes')
-    task_log = cfg_obj.get('task_log')
     
     # Set up config file with parameters for this run
     cfg_obj.set('warehouse.number_of_agents', agentnum)
     cfg_obj.set('boxes', boxes)
-    cfg_obj.set('task_log', copy.deepcopy(task_log))
-
+    
     # Create simulator object
     sim = VizSim(cfg_obj, verbose=verbose)
 

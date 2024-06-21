@@ -18,7 +18,7 @@ warehouse:
 
 faults: []
 
-time_limit: 30000 
+time_limit: 5000 
 animate: True
 save_animation: False
 heading_bias: False

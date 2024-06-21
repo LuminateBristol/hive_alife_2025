@@ -1,12 +1,6 @@
 from . import Simulator
 from matplotlib import pyplot as plt, animation
-from functools import partial
-import time
 import numpy as np
-import sys
-from os.path import dirname, realpath
-import os
-from IPython.display import HTML
 
 class VizSim(Simulator):
 
@@ -32,44 +26,15 @@ class VizSim(Simulator):
 
 
     def generate_dot_positional_data(self, faulty=False):
-        if faulty:
-            #HH f_current = self.fault_count
-            #HH f_max = 10#self.cfg.fault_count_max
-            uh_range = []
-            x_data = []
-            y_data = []
-            marker = []
-            heading = []
-            count = 0            
-            
-            # unhealthy agents
-            for c in f_current:
-                count_end = count+c
-                dots_x = [self.warehouse.rob_c[i,0] for i in range(count, count_end)]
-                dots_y = [self.warehouse.rob_c[i,1] for i in range(count, count_end)]
-                x_data.append(dots_x)
-                y_data.append(dots_y)
-                marker.append('kp')
-                count = count_end
 
-            h_range = range(count, self.cfg.get('warehouse', 'number_of_agents'))
-            print(f'healthy range is {h_range}')
-            if len(h_range) > 0:
-                dots_x = [self.warehouse.rob_c[i,0] for i in h_range]
-                dots_y = [self.warehouse.rob_c[i,1] for i in h_range]
-                x_data.append(dots_x)
-                y_data.append(dots_y)                
-                marker.append('ko')               
-        
-        else:
-            agent_range = range(self.cfg.get('warehouse', 'number_of_agents'))
-            x_data = [
-                [self.warehouse.rob_c[i,0] for i in agent_range]
-            ]
-            y_data = [
-                [self.warehouse.rob_c[i,1] for i in agent_range]
-            ]
-            marker = ['ko']
+        agent_range = range(self.cfg.get('warehouse', 'number_of_agents'))
+        x_data = [
+            [self.warehouse.rob_c[i,0] for i in agent_range]
+        ]
+        y_data = [
+            [self.warehouse.rob_c[i,1] for i in agent_range]
+        ]
+        marker = ['ko']
 
         return (x_data, y_data, marker)
 
@@ -88,44 +53,22 @@ class VizSim(Simulator):
             y_vec.append(np.linspace(start_y, end_y, steps).tolist())
         
         return x_vec, y_vec
-
-    def generate_fault_circle(self):
-        out_of_arena = [-1000, -1000]
-        x_data = []
-        y_data = []
-        for i in range(self.swarm.number_of_agents):
-            is_faulty = self.ad_model.pred[i]
-            if is_faulty:
-                x = self.warehouse.rob_c[i,0]
-                y = self.warehouse.rob_c[i,1]
-            else:
-                x = out_of_arena[0]
-                y = out_of_arena[1]
-            
-            x_data.append(x)
-            y_data.append(y)
         
-        return x_data, y_data
 
     # iterate method called once per timestep
     def iterate(self, frame, dot=None, boxes=None, h_line=None, cam_range=None, snapshot=False):
         self.warehouse.iterate(self.cfg.get('heading_bias'), self.cfg.get('box_attraction'))
-        delivered = self.warehouse.delivered
         counter = self.warehouse.counter
 
         dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, cam_range)
-        
-        if snapshot:
-            self.take_snapshot(counter)
-        # time.sleep(self.sim_delay)
-        
+
         if self.verbose:
             if self.warehouse.counter == 1:
                 print("Progress |", end="", flush=True)
             if self.warehouse.counter%100 == 0:
                 print("=", end="", flush=True)
 
-        self.exit_sim(delivered=delivered, counter=counter, global_task_log=self.task_log)
+        self.exit_sim(counter=counter)
 
         dot = list(dot.values())
         h_line = list(h_line.values())
@@ -150,52 +93,15 @@ class VizSim(Simulator):
             h_line[i].set_data(h_x_vec[i], h_y_vec[i])
 
         return dot, boxes, h_line, cam_range
+  
 
-    def take_snapshot(self, counter):
-        if counter not in self.snapshot_s:
-            return
-
-        dir_path = dirname(dirname(dirname(realpath(__file__))))
-        save_dir = os.path.join(dir_path, "animation")
-        form="svg"
-        save_path = os.path.join(save_dir, "%d.%s"%(counter,form))
-        fig = plt.gcf()
-        fig.savefig(save_path, format=form, dpi=1200, bbox_inches="tight")        
-
-    def exit_sim(self, delivered=None, counter=None, global_task_log=None):
-        if self.cfg.get('exit_criteria') == 'delivered' and delivered == self.cfg.get('warehouse', 'number_of_boxes') or counter > self.cfg.get('time_limit'):
+    def exit_sim(self,counter=None):
+        if  counter > self.cfg.get('time_limit'):
             if self.verbose:
                 print("in", counter, "seconds")
-            sr = float(delivered/self.cfg.get('warehouse', 'number_of_boxes'))
-            if self.verbose:
-                print(delivered, "of", self.cfg.get('warehouse', 'number_of_boxes'), "collected =", sr*100, "%")
-
-            self.exit_threads = True
-            try:
-                self.save_anim_t.join()
-            except:
-                pass
 
             if self.cfg.get('animate'):
                 exit()
-        
-        elif self.cfg.get('exit_criteria') == 'global_task_log':
-            for task in global_task_log:
-                if global_task_log[task]['status'] == 0:
-                    break
-            else:
-                print('All boxes placed - sim completed')    
-                self.exit_threads = True
-                self.exit_run = True
-                try:
-                    self.save_anim_t.join()
-                except:
-                    pass
-
-                if self.cfg.get('animate'):
-                    print('Pick place complete')
-                    self.anim.event_source.stop()
-                    exit()
 
     def run(self):
         if self.verbose:
@@ -203,9 +109,6 @@ class VizSim(Simulator):
 
         self.init_animate()
         plt.show()
-        
-        if self.delivered_in is None:
-            self.delivered_in = self.warehouse.counter
         
         if self.verbose:
             print("\n")

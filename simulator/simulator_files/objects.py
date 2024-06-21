@@ -23,7 +23,7 @@ class Robot:
         self.lifter_state = lifter_state
         self.pre_place_delta = pre_place_delta
     
-    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, use_hm,hm_mode,  carry_count = []):
+    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w):
         self.blackboard.register_key(key="rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="radius", access=py_trees.common.Access.WRITE)
@@ -34,14 +34,6 @@ class Robot:
         self.blackboard.register_key(key="arena_size", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="repulsion_w", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="repulsion_o", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="abandon_tol", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="pre_place_delta", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="global_task_log", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="use_hm", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="carry_count", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="hm_mode", access=py_trees.common.Access.WRITE)
 
         self.blackboard.rob_c = []
         self.blackboard.boxes = []
@@ -53,14 +45,6 @@ class Robot:
         self.blackboard.arena_size = [width, height]
         self.blackboard.repulsion_w = repulsion_w
         self.blackboard.repulsion_o = repulsion_o
-        self.blackboard.place_tol = self.place_tol
-        self.blackboard.abandon_tol = self.abandon_tol
-        self.blackboard.pre_place_delta = self.pre_place_delta
-        self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so each has a unique task_log object
-        self.blackboard.global_task_log = task_log # No deepcopy used here so the same global object will be used for all robots (this is used to track the status of progress of the task)
-        self.blackboard.use_hm = use_hm
-        self.blackboard.hm_mode = hm_mode
-        self.blackboard.carry_count = carry_count
         
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
@@ -81,11 +65,10 @@ class Swarm:
         self.repulsion_o = repulsion_o # repulsion distance between agents-objects
         self.repulsion_w = repulsion_w # repulsion distance between agents-walls
         self.heading_change_rate = heading_change_rate
-        self.counter = 0
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, task_log=None, use_hm=False, hm_mode='task', carry_count = None, print_bt = False):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, print_bt = False):
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
             self.agents.append(ag)
@@ -109,7 +92,7 @@ class Swarm:
             name    = f'Pick Place DOTS: {str_index}'
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
-            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, use_hm, hm_mode, carry_count)
+            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w)
             self.number_of_agents += 1   
 
     def add_map(self, map):

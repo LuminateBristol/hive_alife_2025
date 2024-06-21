@@ -234,7 +234,7 @@ def create_root(robot_index):
         memory  = False
     )
 
-    # Select actiontalk_to_hive_mind(name='Talk to HM', robot_index=robot_index)
+    # Select action
     action = select_action(name='Select action', robot_index=robot_index)
     action_behaviour = py_trees.decorators.Inverter(name='select_action', child=action)
 

@@ -177,7 +177,6 @@ class Map:
 		self.generate()
 		self.generate_wall_divisions(wall_divisions)
 	
-	# @TODO could wall generation be refactored?
 	def generate(self):		
 		# Updated map generation:
 		# For more complex map builds, the map can be described wall by wall (note it is possible to automate the wall generation from coordinates but this is not done here)
