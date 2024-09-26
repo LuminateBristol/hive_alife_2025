@@ -4,6 +4,7 @@ import time
 
 # We need to setup  parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+print(parent_dir)
 sys.path.insert(0, parent_dir)
 
 from simulator_files import *

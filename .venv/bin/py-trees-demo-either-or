@@ -1,0 +1,10 @@
+#!/bin/sh
+'''exec' "/Users/pi21102/Library/CloudStorage/OneDrive-UniversityofBristol/04 FARSCOPE PhD/06 Hive Mind v2/01_sim_devel/2d_dots_simulator_python/.venv/bin/python3" "$0" "$@"
+' '''
+# -*- coding: utf-8 -*-
+import re
+import sys
+from py_trees.demos.either_or import main
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())
