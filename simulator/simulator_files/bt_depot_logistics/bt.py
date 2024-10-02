@@ -12,7 +12,6 @@ import csv
 import time
 from scipy.spatial.distance import cdist
 
-
 def distance_to_wall(robot_c, wall):
     # Find distance to wall using the assumption that the closest point shall be perpendicular to the robot:
     # https://stackoverflow.com/questions/5204619/how-to-find-the-point-on-an-edge-which-is-the-closest-point-to-another-point
@@ -41,7 +40,17 @@ def distance_to_wall(robot_c, wall):
     dist_to_wall = [robot_c[0]-x_closest, robot_c[1]-y_closest]
     
     return dist_to_wall
-                                             
+
+def euclidean_agents(agent1, agent2):
+    x1, y1 = agent1[0], agent1[1]
+    x2, y2 = agent2[0], agent2[1]
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
+def euclidean_objects(agent, object):
+    x1, y1 = agent[0], agent[1]
+    x2, y2 = object.x, object.y
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+
 def _generate_wall_avoidance_force(w_rob_c, map, robot_index, repulsion_w): # input the warehouse map
     '''
     Function to compute the force vector for wall-based collisions.
@@ -71,17 +80,6 @@ def _generate_heading_force(heading):
     heading_y = 1*np.sin(heading) # move in y
     return np.array([heading_x, heading_y])   
 
-def euclidean_agents(agent1, agent2):
-    x1, y1 = agent1[0], agent1[1]   
-    x2, y2 = agent2[0], agent2[1]
-    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-
-def euclidean_boxes(agent, box):
-    x1, y1 = agent[0], agent[1]   
-    x2, y2 = box.x, box.y
-    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-
-# Computes repulsion forces: a negative force means comes out as attraction
 def _generate_interobject_force(w_boxes, w_rob_c, robot_index, task, repulsion_o, box_attraction=False):
     repulsion = repulsion_o
 
@@ -97,24 +95,85 @@ def _generate_interobject_force(w_boxes, w_rob_c, robot_index, task, repulsion_o
         box_dist = [euclidean_boxes(w_rob_c[robot_index], coord) for coord in w_boxes]
         too_close_boxes = np.array([dist > 0 and dist <= repulsion for dist in box_dist]) # TRUE if agent is too close to a box (enable collision avoidance). Does not avoid box if agent does not have a box but this is considered later in the code (not_free*F_box)
         proximity_to_boxes = np.array([w_rob_c[robot_index] - [box.x, box.y, 0] for box in w_boxes])
-        F_box = proximity_to_boxes[too_close_boxes, :2]                                      # Find which box vectors exhibit forces on the agents due to proximity
+        F_box = proximity_to_boxes[too_close_boxes, :2]                                      # Find which box vectors exhibit forces on the agents due to proximity 
         F_box = np.sum(F_box, axis=0)                                                    # Sum the vectors due to boxes on the agents 
    
     return F_box, F_agent
 
-class select_action(py_trees.behaviour.Behaviour):
+class Sense(py_trees.behaviour.Behaviour):
+    '''
+    A behaviour to process simulated camera sensor information within the prespecified sensing range.
+    Cameras are used to detect objects, in this case boxes and delivery locations.
+    Sensing uses items on blackboard that begin with 'w_', this denotes they are properties of the warehouse.
+    These warehouse properties are used only for artificial sensing purposes.
+    '''
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='camera_sensor_range', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='boxes_seen', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='dps_seen', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='local_task_log', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Sense::setup {self.name}")
+
+    def initalise(self):
+        self.logger.debug(f"Sense::initialise {self.name}")
+
+    def sense_boxes(self):
+        '''
+        Look for boxes, if any boxes are within the camera sensor range, add them to the boxes seen in this tick.
+        Output: Update blackboard.boxes_seen.
+        '''
+        for box in self.blackboard.w_boxes:
+            dis = euclidean_objects(self.robot_index, box)
+            if dis < self.blackboard.camera_sensor_range:
+                self.blackboard.boxes_seen.append(box)
+
+    def sense_delivery_points(self):
+        '''
+        Look for delivery points, if any delivery points are within the camera sensor range, add them to seen dps.
+        Output: Update the blackboard.dps_seen.
+        '''
+        for dp in self.blackboard.w_delivery_points:
+            dis = euclidean_objects(self.robot_index, dp)
+            if dis < self.blackboard.camera_sensor_range:
+                self.blackboard.dps_seen.append(dp)
+
+    def update(self):
+        '''
+        Make use of the sensed data.
+        For this implementation we only need to make use of the delivery points data.
+        Boxes are stored in the depot so we do not need to search for them.
+        :return: SUCCESS
+        '''
+
+        # Check for delivery points
+        self.sense_delivery_points()
+
+        # Update local task log based on delivery points seen
+        for dp in self.blackboard.w_delivery_points:
+
+            # If delivery point is not in task log, add it
+            if dp.id not in self.blackboard.local_task_log:
+                self.blackboard.local_task_log[dp.id] = {'x': dp.x, 'y': dp.y, 'colour': dp.colour, 'status': dp.status}
+
+            # If delivery point is in the task log, update it
+            else:
+                self.blackboard.local_task_log.append[dp.id]['status'] = dp.status
+
+class Select_Action(py_trees.behaviour.Behaviour):
 
     def __init__(self, name, robot_index):
         super().__init__(name)
         self.robot_index = robot_index
         str_index = 'robot_' + str(robot_index)
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='blocks', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_block', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_position', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_angle', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='internal_task_log', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='heading', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
         self.change_direction_counter = 10 # TODO: udpate this to align with config
@@ -128,12 +187,19 @@ class select_action(py_trees.behaviour.Behaviour):
     def initialise(self):
         self.logger.debug(f"select action::initialise {self.name}")
 
+    def handle_random_walk:
+        '''
+        Handle action selection during the random walk behaviour.
+        Here we continue walking until we identify a delivery point that needs serving.
+        '''
+
+
     def update(self):
         if self.blackboard.action == 'random_walk':
         
             return py_trees.common.Status.SUCCESS
 
-class check_action_random_walk(py_trees.behaviour.Behaviour):
+class Check_Action_Random_Walk(py_trees.behaviour.Behaviour):
 
     def __init__(self,name, robot_index):
         super().__init__(name)
@@ -153,7 +219,7 @@ class check_action_random_walk(py_trees.behaviour.Behaviour):
         else:
             return py_trees.common.Status.FAILURE
 
-class random_walk(py_trees.behaviour.Behaviour):
+class Random_Walk(py_trees.behaviour.Behaviour):
 
     def __init__(self,name,robot_index):
         super().__init__(name)
@@ -184,7 +250,7 @@ class random_walk(py_trees.behaviour.Behaviour):
 
         return py_trees.common.Status.SUCCESS
 
-class send_path(py_trees.behaviour.Behaviour):
+class Send_path(py_trees.behaviour.Behaviour):
 
     def __init__(self, name, robot_index):
         super().__init__(name)

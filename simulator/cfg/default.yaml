@@ -4,16 +4,15 @@
 robot:
   radius: 12.5
   max_v: 2
-  camera_sensor_range: 40
+  camera_sensor_range: 100
   print_bt: False
 
 warehouse:
   box_radius: 12.5
-  width: 500
-  height: 500
+  width: 1000
+  height: 1000
   repulsion_wall: 20
-  repulsion_object: 25
-  object_position: 2
+  repulsion_object: 20
   exit_width: 25
 
 faults: []

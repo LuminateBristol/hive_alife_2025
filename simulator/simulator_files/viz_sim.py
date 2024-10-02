@@ -118,12 +118,29 @@ class VizSim(Simulator):
         return dot, boxes, h_line, cam_range
 
     def exit_sim(self, counter=None):
-        if counter > self.cfg.get('time_limit'):
-            if self.verbose:
-                print("in", counter, "seconds")
+        if self.exit_criteria == 'counter':
+            if counter > self.cfg.get('time_limit'):
+                if self.verbose:
+                    print("in", counter, "seconds")
 
-            if self.cfg.get('animate'):
-                exit()
+                if self.cfg.get('animate'):
+                    exit()
+
+        elif self.exit_criteria == 'logistics':
+
+            if all(dp.delivered for dp in self.deliverypoints):
+                if self.verbose:
+                    print("All boxes delivered in", counter, "seconds")
+
+                if self.cfg.get('animate'):
+                    exit()
+
+            if counter > self.cfg.get('time_limit'):
+                if self.verbose:
+                    print("in", counter, "seconds")
+
+                if self.cfg.get('animate'):
+                    exit()
 
     def run(self):
         if self.verbose:
@@ -136,7 +153,7 @@ class VizSim(Simulator):
             print("\n")
 
     def init_animate(self):
-        self.fig = plt.figure()
+        self.fig = plt.figure(figsize=(8, 8))
         plt.rcParams['font.size'] = '16'
         ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
 
@@ -147,7 +164,7 @@ class VizSim(Simulator):
         box_size = self.cfg.get('warehouse', 'box_radius')
         camera_sensor_range = self.cfg.get('robot', 'camera_sensor_range')
 
-        # Scale markersizes to data units
+        # Scale marker sizes to data units
         cam_range_marker_size = self.get_marker_size_in_data_units(camera_sensor_range, ax)
         cam_range, = ax.plot(
             [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
@@ -158,13 +175,29 @@ class VizSim(Simulator):
             fillstyle='none'
         )
 
-        x_data, y_data, marker = self.generate_dot_positional_data()
+        # Plot delivery points as squares
+        for dp in self.deliverypoints:
+            box_marker_size = self.get_marker_size_in_data_units(box_size, ax)
 
+            # Plot each delivery point as a square
+            ax.plot(dp.x, dp.y, marker='s', markersize=box_marker_size * 1.8,
+                    markeredgecolor='black',
+                    markerfacecolor=dp.colour,  # Solid fill with the same color as edge
+                    linewidth=2,
+                    alpha=0.35)
+
+        # Plot dropzone
+        ax.fill_between(np.linspace(0, self.cfg.get('warehouse', 'width'), 100), 0, self.cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
+        ax.axhline(y=self.cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
+
+        # Plot DOTS robots
+        x_data, y_data, marker = self.generate_dot_positional_data()
         dot = {}
         for i in range(len(x_data)):
             robot_marker_size = self.get_marker_size_in_data_units(robot_size, ax)
             dot[i], = ax.plot(x_data[i], y_data[i], marker[i], markersize=robot_marker_size, fillstyle='none')
 
+        # Plot boxes
         boxes = []
         for boxi in self.warehouse.boxes:
             box_marker_size = self.get_marker_size_in_data_units(box_size, ax)
@@ -180,3 +213,4 @@ class VizSim(Simulator):
                                             fargs=(dot, boxes, h_line, cam_range))
 
         plt.show()
+

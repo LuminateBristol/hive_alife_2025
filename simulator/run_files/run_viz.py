@@ -26,7 +26,7 @@ ex_id = 'exp_1'                             # Experiment set from cfg file 'exp_
 ###### Config class ######
 
 default_cfg_file = CFG_FILES['default']     # Config for general parameters in cfg folder NOTE: change this file to update general parameters
-cfg_file = CFG_FILES['exp_setup']           # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
+cfg_file = CFG_FILES['aamas_exps']           # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
 map_file = CFG_FILES['map']                 # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
 
 ###### Functions ######

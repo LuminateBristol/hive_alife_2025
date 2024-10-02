@@ -1,0 +1,42 @@
+### Experimental setup
+# An additional setup file that can be used to setup experiment specific parameters
+
+exp_1:
+  # Random walk example experimental setup
+  exit_criteria: 'logistics'
+
+  number_of_agents: 20
+
+  behaviour_tree: 'logistics'
+
+  task_log: { 0: { 'colour': 'yellow',       'target_c': [ 50, 17 ],  'status': 0 },
+              1: { 'colour': 'blue',         'target_c': [ 150, 17 ],  'status': 0 },
+              2: { 'colour': 'red',          'target_c': [ 250, 17 ],  'status': 0 },
+              3: { 'colour': 'green',        'target_c': [ 350, 17 ],  'status': 0 },
+              4: { 'colour': 'tan',        'target_c': [ 450, 17 ], 'status': 0 },
+              5: { 'colour': 'purple',       'target_c': [ 550, 17 ],  'status': 0 },
+              6: { 'colour': 'orange',       'target_c': [ 650, 17 ], 'status': 0 },
+              7: { 'colour': 'peachpuff',    'target_c': [ 750, 17 ],  'status': 0 },
+              8: { 'colour': 'darkseagreen', 'target_c': [ 850, 17 ], 'status': 0 },
+              9: { 'colour': 'teal',         'target_c': [ 950, 17 ],  'status': 0 }}
+
+  warehouse:
+    depot: False
+    drop_zone_limit: 100
+    object_position: 1
+
+  boxes: {'green': 5,
+          'yellow': 5,
+          'blue': 5,
+          'red': 5,
+          'tan': 5,
+          'purple': 5,
+          'orange': 5,
+          'peachpuff': 5,
+          'darkseagreen': 5,
+          'teal': 5}
+
+  tolerances:
+    place_tol: 2
+    abandon_tol: 50
+    pre_place_delta: 10

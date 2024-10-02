@@ -1,52 +1,67 @@
 import numpy as np
 import copy
 from scipy.spatial.distance import cdist, pdist, euclidean
-from .objects import Box
+from .objects import Box, DeliveryPoint
 
 class Warehouse:
 
 	RANDOM_OBJ_POS = 0
-	OBJ_POS_1 = 1		# Boxes aligned along left wall, agents aligned along right 
-	OBJ_POS_2 = 2	    # Boxes and robots spread out only in the outer 2/3rds of the arena - central area is empty
-	OBJ_POS_TEST = 3
+	AVOID_DROP_ZONE = 1		# Boxes only dropped outside of (>) predefined drop zone limit
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
+	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, depot=False, drop_zone_limit = None, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
 
 		self.width = width
 		self.height = height
+		self.init_boxes = boxes
 		self.box_range = box_radius*2.0	#box_range # range at which a box can be picked up 
 		self.radius = box_radius # physical radius of the box (approximated to a circle even though square in animation)
+
 		if exit_width is None:
 			self.exit_width = int(0.05*self.width) # if it is too small then it will avoid the wall and be less likely to reach the exit zone 
 		else:
 			self.exit_width = exit_width
 
 		self.check_collisions = check_collisions
-		self.delivered = 0 # Number of boxes that have been delivered 
+		self.delivered = 0 # Number of boxes that have been delivered
 		self.counter = 0 # time starts at 0s or time step = 0 
 
-		# Initialise the positions of boxes and robots
+		# Initialise boxes
 		self.boxes = [] # centre coordinates of boxes starts as an empty list
 		for colour in boxes:
 			for i in range(boxes[colour]):
 				  self.boxes.append(Box(colour=colour))
-		
 		self.number_of_boxes = len(self.boxes)
+
+		# Intiate depot
+		print(type(depot))
+		if depot == True:
+			self.depot = True
+		else:
+			self.depot = False
+
+		# Initialise map and swarm objects
 		self.map = Map(width, height, wallsh, wallsv)
 		self.swarm = swarm
 		swarm.add_map(self.map)
 
-		self.rob_c = [] 
+		# Initiate robots
+		self.rob_c = []
+		self.drop_zone_limit = drop_zone_limit
 		self.generate_object_positions(int(init_object_positions))
 		
-		self.rob_c = np.array(self.rob_c) # convert list to array  
+		self.rob_c = np.array(self.rob_c) # convert list to array
 
 	def generate_object_positions(self, conf):
 		if conf == self.RANDOM_OBJ_POS:
+
+			# Calculate a list of possible x-y coordinates that objects can be placed into, this prevents objects being spawned over one another
 			possible_x = int((self.width)/(self.radius*2)) # number of positions possible on the x axis
 			possible_y = int((self.height)/(self.radius*2)) # number of positions possible on the y axis
 			list_n = [] # empty list of possible positions 
 			h = 0 # initiate all headings as 0 - random heading will be calculated in the behaviour tree
+
+			print(possible_x, possible_y)
+
 			for x in range(possible_x):
 				for y in range(possible_y):
 					list_n.append([x,y,h]) # list of possible positions in the warehouse
@@ -59,72 +74,61 @@ class Warehouse:
 			for j in range(N): #for the total number of units 
 				c_select.append([self.radius + ((self.radius*2))*XY[j][0], self.radius + ((self.radius*2))*XY[j][1], 0]) # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
 
-			for b in range(self.number_of_boxes):
-				self.boxes[b].x = c_select[b][0]
-				self.boxes[b].y = c_select[b][1]
 			for r in range(self.swarm.number_of_agents):
-				self.rob_c.append(c_select[r+self.number_of_boxes]) # assign initial robot positions
+				self.rob_c.append(c_select[r]) # assign initial robot positions
 
-		elif conf == self.OBJ_POS_1:
-			
-			possible_x_half = int((self.width/2)/(self.radius*2)) # number of positions possible on the x axis in one side of warehosue
-			possible_y = int((self.height)/(self.radius*2)) # number of positions possible on the y axis
-			list_n_box = [] # empty list of possible positions 
-			list_n_agent = [] # empty list of possible positions 
-			for x in range(possible_x_half):
-				for y in range(possible_y):
-					list_n_box.append([x,y,h])
-			for x in range(possible_x_half, 2*possible_x_half):
-				for y in range(possible_y):
-					list_n_agent.append([x,y])
+			if self.depot:
+				for b in range(self.number_of_boxes):
+					index = list(self.init_boxes.keys()).index(self.boxes[b].colour) + 1
+					if index % 2 == 0:
+						self.boxes[b].x = self.width / 2 + (index * self.radius)
+					else:
+						self.boxes[b].x = self.width / 2 - (index * self.radius)
+					self.boxes[b].y = self.height - 2* self.radius
+			else:
+				for b in range(self.number_of_boxes):
+					self.boxes[b].x = c_select[b + self.swarm.number_of_agents][0]
+					self.boxes[b].y = c_select[b + self.swarm.number_of_agents][1]
 
-			XY_idx_box = np.random.choice(len(list_n_box),self.number_of_boxes,replace=False) # select N unique coordinates at random from the list of possible positions
-			XY_box = np.array(list_n_box)[XY_idx_box]
-			XY_idx_agent = np.random.choice(len(list_n_agent),self.swarm.number_of_agents,replace=False) # select N unique coordinates at random from the list of possible positions
-			XY_agent = np.array(list_n_agent)[XY_idx_agent]
+		elif conf == self.AVOID_DROP_ZONE:
 
-			c_select = [] # central coordinates (empty list) 
-			for j in range(self.number_of_boxes): #for the total number of units: x, y
-				c_select.append([self.radius + ((self.radius*2))*XY_box[j][0], self.radius + ((self.radius*2))*XY_box[j][1], 0])
-			for j in range(self.swarm.number_of_agents): #for the total number of units: x, y, heading
-				c_select.append([self.radius + ((self.radius*2))*XY_agent[j][0], self.radius + ((self.radius*2))*XY_agent[j][1], 0])
+			# Calculate a list of possible x-y coordinates that objects can be placed into, this prevents objects being spawned over one another
+			possible_x = int((self.width) / (self.radius * 2))  # number of positions possible on the x axis
+			possible_y = int((self.height-self.drop_zone_limit) / (self.radius * 2))  # number of positions possible on the y axis
+			list_n = []  # empty list of possible positions
+			h = 0  # initiate all headings as 0 - random heading will be calculated in the behaviour tree
 
-			for b in range(self.number_of_boxes):
-				self.boxes[b].x = c_select[b][0]
-				self.boxes[b].y = c_select[b][1]
-			for r in range(self.swarm.number_of_agents):
-				self.rob_c.append(c_select[r+self.number_of_boxes]) # assign initial robot positions
-		
-		elif conf == self.OBJ_POS_2:
-			divider_obj = self.radius*3
-			divider_wh = 0.03 # TODO: paramaterise this and add to the default cfg file similar to the conf above
-			divider_div = 0   # TODO: paramaterise this and add to the default cfg file similar to the conf above
-			possible_x = int((self.width)/(divider_obj)) # number of positions possible on the x axis
-			possible_y = int((self.height)/(divider_obj)) # number of positions possible on the y axis
-			list_n = [] # empty list of possible positions 
-			h = 0 # initiate all headings as 0 - random heading will be calculated in the behaviour tree
-			
 			for x in range(possible_x):
 				for y in range(possible_y):
-					if divider_div:		
-						if x <= divider_wh * possible_x or x >= (1-divider_wh) * possible_x or y <= divider_wh * possible_y or y >= (1-divider_wh)* possible_y:
-							list_n.append([x, y, h])	# list of possible positions in the warehouse
-					else:
-						if x >= divider_wh * possible_x and x <= (1-divider_wh) * possible_x and y >= divider_wh * possible_y and y <= (1-divider_wh)* possible_y:
-							list_n.append([x, y, h])	# list of possible positions in the warehouse
-			
-			N = self.number_of_boxes + self.swarm.number_of_agents # total number of units to assign positions to
-			XY_idx = np.random.choice(len(list_n),N,replace=False) # select N unique coordinates at random from the list of possible positions
+					list_n.append([x, y, h])  # list of possible positions in the warehouse
+
+			N = self.number_of_boxes + self.swarm.number_of_agents  # total number of units to assign positions to
+			XY_idx = np.random.choice(len(list_n), N,
+									  replace=False)  # select N unique coordinates at random from the list of possible positions
 			XY = np.array(list_n)[XY_idx]
-			
-			c_select = [] # central coordinates (empty list) 
-			for j in range(N): #for the total number of units 
-				c_select.append([self.radius + ((divider_obj))*XY[j][0], self.radius + ((divider_obj))*XY[j][1], 0]) # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
-			for b in range(self.number_of_boxes):
-				self.boxes[b].x = c_select[b][0]
-				self.boxes[b].y = c_select[b][1]
+
+			c_select = []  # central coordinates (empty list)
+			for j in range(N):  # for the total number of units
+				c_select.append(
+					[self.radius + ((self.radius * 2)) * XY[j][0], self.drop_zone_limit + self.radius + ((self.radius * 2)) * XY[j][1],
+					 0])  # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
+
 			for r in range(self.swarm.number_of_agents):
-				self.rob_c.append(c_select[r+self.number_of_boxes]) # assign initial robot positions
+				self.rob_c.append(c_select[r])  # assign initial robot positions
+
+			if self.depot:
+				for b in range(self.number_of_boxes):
+					index = list(self.init_boxes.keys()).index(self.boxes[b].colour) + 1
+					if index % 2 == 0:
+						self.boxes[b].x = self.width / 2 + (index * self.radius)
+					else:
+						self.boxes[b].x = self.width / 2 - (index * self.radius)
+					self.boxes[b].y = self.height - 2 * self.radius
+			else:
+				for b in range(self.number_of_boxes):
+					self.boxes[b].x = c_select[b + self.swarm.number_of_agents][0]
+					self.boxes[b].y = c_select[b + self.swarm.number_of_agents][1]
+
 
 		else:
 			raise Exception("Object position not valid")

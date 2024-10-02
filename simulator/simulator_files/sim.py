@@ -4,7 +4,7 @@ dir_root = Path(__file__).resolve().parents[1]
 
 import numpy as np
 import random
-from . import Swarm, Warehouse, Robot
+from . import Swarm, Warehouse, Robot, DeliveryPoint
 
 class Simulator:
 
@@ -12,10 +12,24 @@ class Simulator:
         verbose=False,
         random_seed=None):
 
-        self.cfg = config
         self.verbose = verbose
         self.exit_run = False
-        
+        self.cfg = config
+        self.exit_criteria = self.cfg.get('exit_criteria')
+        self.drop_zone_limit = self.cfg.get('drop_zone_limit')
+
+        # Create delivery points if needed
+        self.deliverypoints = []
+        _task_log = self.cfg.get('task_log')
+
+        # Convert task_log to DeliveryPoint objects and append to the list
+        for dp_id, dp_info in _task_log.items():
+            x, y = dp_info['target_c']
+            colour = dp_info['colour']
+            delivered = dp_info['status']  # Assuming 'status' indicates if delivered or not
+            # Append the DeliveryPoint instance
+            self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
+
         if random_seed is None:
             self.random_seed = random.randint(0,100000000)
         else:
@@ -32,20 +46,21 @@ class Simulator:
             self.cfg.get('warehouse', 'width'),
             self.cfg.get('warehouse', 'height'), 
             self.cfg.get('boxes'), 
-            self.cfg.get('warehouse', 'box_radius'), 
+            self.cfg.get('warehouse', 'box_radius'),
             self.swarm, 
             self.cfg.get('warehouse', 'exit_width'),
             self.cfg.get('wallsh'),
             self.cfg.get('wallsv'),
-            self.cfg.get('warehouse', 'object_position'))            
+            self.cfg.get('warehouse', 'depot'),
+            self.cfg.get('warehouse', 'drop_zone_limit'),
+            self.cfg.get('warehouse', 'object_position'))
 
     def build_swarm(self, cfg):
         robot_obj = Robot(
             cfg.get('robot', 'radius'), 
             cfg.get('robot', 'max_v'),
             camera_sensor_range=cfg.get('robot', 'camera_sensor_range'),
-            place_tol = cfg.get('tolerances', 'place_tol'),
-            abandon_tol = cfg.get('tolerances', 'abandon_tol')
+            place_tol = cfg.get('tolerances', 'place_tol')
         )
         
         swarm = Swarm(
@@ -58,11 +73,12 @@ class Simulator:
                          width=self.cfg.get('warehouse', 'width'),
                          height=self.cfg.get('warehouse', 'height'),
                          bt_controller=self.cfg.get('behaviour_tree'),
-                         print_bt = cfg.get('print_bt'))
-        
+                         print_bt = cfg.get('robot', 'print_bt'),
+                         task_log = cfg.get('task_log'),
+                         delivery_points = self.deliverypoints
+                         )
         return swarm
 
-   
     # iterate method called once per timestep
     def iterate(self):
         self.warehouse.iterate(self.cfg.get('heading_bias'))
@@ -70,10 +86,24 @@ class Simulator:
         self.exit_sim(counter=self.warehouse.counter)
 
     def exit_sim(self, counter=None):
-        if counter > self.cfg.get('time_limit'):
-            print('{counter} counts reached - Time limit expired')
-            self.exit_threads = True
-            self.exit_run = True
+        if self.exit_criteria == 'counter':
+            if counter > self.cfg.get('time_limit'):
+                print('{counter} counts reached - Time limit expired')
+                self.exit_threads = True
+                self.exit_run = True
+
+        elif self.exit_criteria == 'logistics':
+            for dp in self.deliverypoints:
+                print(dp)
+            if all(dp.delivered for dp in self.deliverypoints):
+                print('All deliveries complete - Exit sim.')
+                self.exit_threads = True
+                self.exit_run = True
+
+            if counter > self.cfg.get('time_limit'):
+                print('{counter} counts reached - Time limit expired')
+                self.exit_threads = True
+                self.exit_run = True
 
     def run(self):
         if self.verbose:

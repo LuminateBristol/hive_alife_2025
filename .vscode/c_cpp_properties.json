@@ -1,0 +1,41 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/msc/dots_native_collective_transport/py_trees_ws/install/py_trees_ros_interfaces/include/**",
+        "/home/msc/dots_native_collective_transport/grid_map_ws/install/grid_map_ros/include/**",
+        "/home/msc/dots_native_collective_transport/grid_map_ws/install/grid_map_msgs/include/**",
+        "/home/msc/dots_native_collective_transport/grid_map_ws/install/grid_map_cv/include/**",
+        "/home/msc/dots_native_collective_transport/grid_map_ws/install/grid_map_core/include/**",
+        "/home/msc/dots_native_collective_transport/gazebo_ros_pkgs_ws/install/gazebo_ros/include/**",
+        "/home/msc/dots_native_collective_transport/gazebo_ros_pkgs_ws/install/gazebo_msgs/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/py_trees_ws/install/py_trees_ros_interfaces/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/grid_map_ws/install/grid_map_ros/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/grid_map_ws/install/grid_map_msgs/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/grid_map_ws/install/grid_map_cv/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/grid_map_ws/install/grid_map_core/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/gazebo_ros_pkgs_ws/install/gazebo_ros/include/**",
+        "/home/msc/Documents/DTS-Summer-2024/dots_native/gazebo_ros_pkgs_ws/install/gazebo_msgs/include/**",
+        "/home/msc/dots_native/grid_map_ws/install/grid_map_ros/include/**",
+        "/home/msc/dots_native/grid_map_ws/install/grid_map_msgs/include/**",
+        "/home/msc/dots_native/grid_map_ws/install/grid_map_cv/include/**",
+        "/home/msc/dots_native/grid_map_ws/install/grid_map_core/include/**",
+        "/home/msc/dots_native/gazebo_ros_pkgs_ws/install/gazebo_ros/include/**",
+        "/home/msc/dots_native/gazebo_ros_pkgs_ws/install/gazebo_msgs/include/**",
+        "/home/msc/dots_native/py_trees_ws/install/py_trees_ros_interfaces/include/**",
+        "/opt/ros/galactic/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
