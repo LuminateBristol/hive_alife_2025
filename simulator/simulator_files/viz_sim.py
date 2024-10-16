@@ -144,7 +144,7 @@ class VizSim(Simulator):
 
     def run(self):
         if self.verbose:
-            print("Running with seed: %d" % self.random_seed)
+            print("Running")
 
         self.init_animate()
         plt.show()

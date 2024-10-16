@@ -2,7 +2,7 @@ import numpy as np
 import py_trees
 import copy
 
-from . import bt_setup
+from . import bt_setup, GraphMind
 
 class Robot:
     # max_v: max speed, assume robot moves at max speed if healthy
@@ -18,6 +18,18 @@ class Robot:
         self.max_v = max_v
         self.camera_sensor_range = camera_sensor_range
         self.place_tol = place_tol
+
+        # Set observations ready for sending to the Hive Mind
+        self.observation_space = []
+
+    def add_observations(self):
+        # Add robot self-observable information to the observation space
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position_status', 'data':np.array([999, 999, 999]), 'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status', 'data':[],    'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status', 'data':False, 'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status', 'data':None,  'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status', 'data':None,  'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status', 'data':None,  'weight':0, 'time':0} ])
     
     def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points):
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
@@ -51,7 +63,25 @@ class Robot:
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
         self.blackboard.map = map
-        
+
+    def build_robo_mind(self, entities, tasks):
+        self.add_observations()
+
+        self.robo_mind = GraphMind()
+        for entity in entities:
+            self.robo_mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
+        for task in tasks:
+            self.robo_mind.add_information_node(task[0], task[1], task[2], **task[3])
+        for observation in self.observation_space:
+            self.robo_mind.add_information_node(observation[0], observation[1], observation[2], **observation[3])
+
+        self.blackboard.register_key(key="robo_mind", access=py_trees.common.Access.WRITE)
+        self.blackboard.robo_mind = self.robo_mind
+
+    def add_hive_mind(self, hive_mind):
+        self.blackboard.register_key(key="hive_mind", access=py_trees.common.Access.WRITE)
+        self.blackboard.hive_mind = hive_mind
+
 class Box:
     def __init__(self, colour=None, id=None):
         self.x = None
@@ -95,11 +125,15 @@ class Swarm:
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
             ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points)
-            self.number_of_agents += 1   
+            self.number_of_agents += 1
 
     def add_map(self, map):
         for ag in self.agents:
             ag.add_map(map)
+
+    def add_hive_mind(self, hive_mind):
+        for ag in self.agents:
+            ag.add_hive_mind(hive_mind)
 
     def iterate(self, rob_c, boxes):
         rob_c_new = rob_c

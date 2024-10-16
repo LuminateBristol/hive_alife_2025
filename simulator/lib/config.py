@@ -14,7 +14,7 @@ class Config(dict):
             cfg_base = {}
             print("No default cfg specified")
 
-        cfg_ex = yaml.safe_load(open(cfg_path))        
+        cfg_ex = yaml.safe_load(open(cfg_path))
         cfg_override = {}
 
         if 'config_override' in kwargs:

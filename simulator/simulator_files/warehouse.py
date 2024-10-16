@@ -8,20 +8,20 @@ class Warehouse:
 	RANDOM_OBJ_POS = 0
 	AVOID_DROP_ZONE = 1		# Boxes only dropped outside of (>) predefined drop zone limit
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, depot=False, drop_zone_limit = None, init_object_positions=RANDOM_OBJ_POS, check_collisions=False):
+	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, depot=False, drop_zone_limit = None, init_object_positions=RANDOM_OBJ_POS, hive_mind=None):
 
 		self.width = width
 		self.height = height
 		self.init_boxes = boxes
 		self.box_range = box_radius*2.0	#box_range # range at which a box can be picked up 
 		self.radius = box_radius # physical radius of the box (approximated to a circle even though square in animation)
+		self.hive_mind = hive_mind
 
 		if exit_width is None:
 			self.exit_width = int(0.05*self.width) # if it is too small then it will avoid the wall and be less likely to reach the exit zone 
 		else:
 			self.exit_width = exit_width
 
-		self.check_collisions = check_collisions
 		self.delivered = 0 # Number of boxes that have been delivered
 		self.counter = 0 # time starts at 0s or time step = 0 
 
@@ -32,19 +32,20 @@ class Warehouse:
 				  self.boxes.append(Box(colour=colour))
 		self.number_of_boxes = len(self.boxes)
 
-		# Intiate depot
-		print(type(depot))
+		# Initiate depot
 		if depot == True:
 			self.depot = True
 		else:
 			self.depot = False
 
-		# Initialise map and swarm objects
+		# Initialise map and hive_mind objects
 		self.map = Map(width, height, wallsh, wallsv)
 		self.swarm = swarm
 		swarm.add_map(self.map)
+		if self.hive_mind is not None:
+			swarm.add_hive_mind(self.hive_mind)
 
-		# Initiate robots
+		# Initiate robotsx
 		self.rob_c = []
 		self.drop_zone_limit = drop_zone_limit
 		self.generate_object_positions(int(init_object_positions))
@@ -93,8 +94,8 @@ class Warehouse:
 		elif conf == self.AVOID_DROP_ZONE:
 
 			# Calculate a list of possible x-y coordinates that objects can be placed into, this prevents objects being spawned over one another
-			possible_x = int((self.width) / (self.radius * 2))  # number of positions possible on the x axis
-			possible_y = int((self.height-self.drop_zone_limit) / (self.radius * 2))  # number of positions possible on the y axis
+			possible_x = int((self.width) / (self.radius * 4))  # number of positions possible on the x axis
+			possible_y = int((self.height-self.drop_zone_limit) / (self.radius * 4))  # number of positions possible on the y axis
 			list_n = []  # empty list of possible positions
 			h = 0  # initiate all headings as 0 - random heading will be calculated in the behaviour tree
 
@@ -110,7 +111,7 @@ class Warehouse:
 			c_select = []  # central coordinates (empty list)
 			for j in range(N):  # for the total number of units
 				c_select.append(
-					[self.radius + ((self.radius * 2)) * XY[j][0], self.drop_zone_limit + self.radius + ((self.radius * 2)) * XY[j][1],
+					[self.radius + ((self.radius * 4)) * XY[j][0], self.drop_zone_limit + self.radius + ((self.radius * 4)) * XY[j][1],
 					 0])  # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
 
 			for r in range(self.swarm.number_of_agents):

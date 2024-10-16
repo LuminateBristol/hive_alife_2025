@@ -1,16 +1,13 @@
 from pathlib import Path
-
 dir_root = Path(__file__).resolve().parents[1]
 
 import numpy as np
 import random
-from . import Swarm, Warehouse, Robot, DeliveryPoint
+from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class Simulator:
 
-    def __init__(self, config,
-        verbose=False,
-        random_seed=None):
+    def __init__(self, config, verbose=False):
 
         self.verbose = verbose
         self.exit_run = False
@@ -18,7 +15,7 @@ class Simulator:
         self.exit_criteria = self.cfg.get('exit_criteria')
         self.drop_zone_limit = self.cfg.get('drop_zone_limit')
 
-        # Create delivery points if needed
+        # Init delivery points
         self.deliverypoints = []
         _task_log = self.cfg.get('task_log')
 
@@ -30,22 +27,38 @@ class Simulator:
             # Append the DeliveryPoint instance
             self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
 
-        if random_seed is None:
-            self.random_seed = random.randint(0,100000000)
-        else:
-            self.random_seed = random_seed
-
-        np.random.seed(int(self.random_seed))
-
+        # Init swarm
         try:
             self.swarm = self.build_swarm(self.cfg)
         except Exception as e:
             raise e
 
+        # Init Hive Mind
+        self.Hive_Mind = GraphMind()
+
+        # Add entities and tasks from config
+        entities = self.cfg.get('entities')
+        tasks = self.cfg.get('tasks')
+        for entity in entities:
+            self.Hive_Mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
+        for task in tasks:
+            self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
+
+        # Build robo_mind and add observation space to Hive Mind for each agent
+        for agent in self.swarm.agents:
+            agent.build_robo_mind(entities, tasks)
+            self.Hive_Mind.add_robot_observation_space(agent.observation_space)
+
+        if self.cfg.get('print_kg') == True:
+            self.Hive_Mind.print_graph_mind()
+            # self.Hive_Mind.plot_node_tree('task_1')
+            # self.Hive_Mind.print_hive_mind(attribute_filter={'in_need': 0})
+
+        # Init warehouse
         self.warehouse = Warehouse(
             self.cfg.get('warehouse', 'width'),
             self.cfg.get('warehouse', 'height'), 
-            self.cfg.get('boxes'), 
+            self.cfg.get('warehouse', 'boxes'),
             self.cfg.get('warehouse', 'box_radius'),
             self.swarm, 
             self.cfg.get('warehouse', 'exit_width'),
@@ -53,7 +66,8 @@ class Simulator:
             self.cfg.get('wallsv'),
             self.cfg.get('warehouse', 'depot'),
             self.cfg.get('warehouse', 'drop_zone_limit'),
-            self.cfg.get('warehouse', 'object_position'))
+            self.cfg.get('warehouse', 'object_position'),
+            hive_mind=self.Hive_Mind)
 
     def build_swarm(self, cfg):
         robot_obj = Robot(

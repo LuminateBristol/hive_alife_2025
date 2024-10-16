@@ -12,6 +12,8 @@ Sense [label=Sense, shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fon
 "Initial Actions" -> "Select action";
 "Update local task log" [label="Update local task log", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
 "Initial Actions" -> "Update local task log";
+"Connect to HM" [label="Connect to HM", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+"Initial Actions" -> "Connect to HM";
 "Path Actions" [label="Path Actions", shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
 "Pick Place DOTS":" robot_0" -> "Path Actions";
 "Send Path" [label="Send Path", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
