@@ -17,15 +17,16 @@ class Simulator:
 
         # Init delivery points
         self.deliverypoints = []
-        _task_log = self.cfg.get('task_log')
+        delivery_points = self.cfg.get('delivery_points')
 
         # Convert task_log to DeliveryPoint objects and append to the list
-        for dp_id, dp_info in _task_log.items():
-            x, y = dp_info['target_c']
-            colour = dp_info['colour']
-            delivered = dp_info['status']  # Assuming 'status' indicates if delivered or not
-            # Append the DeliveryPoint instance
-            self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
+        if delivery_points is not None:
+            for dp_id, dp_info in delivery_points.items():
+                x, y = dp_info['target_c']
+                colour = dp_info['colour']
+                delivered = dp_info['status']  # Assuming 'status' indicates if delivered or not
+                # Append the DeliveryPoint instance
+                self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
 
         # Init swarm
         try:
@@ -51,8 +52,8 @@ class Simulator:
 
         if self.cfg.get('print_kg') == True:
             self.Hive_Mind.print_graph_mind()
-            # self.Hive_Mind.plot_node_tree('task_1')
-            # self.Hive_Mind.print_hive_mind(attribute_filter={'in_need': 0})
+            self.Hive_Mind.plot_node_tree('robot_1')
+            self.Hive_Mind.print_hive_mind(attribute_filter={'in_need': 0})
 
         # Init warehouse
         self.warehouse = Warehouse(
@@ -83,7 +84,7 @@ class Simulator:
             heading_change_rate=cfg.get('heading_change_rate')
         )
 
-        swarm.add_agents(robot_obj, cfg.get('warehouse', 'number_of_agents'),
+        swarm.add_agents(robot_obj, cfg.get('number_of_agents'),
                          width=self.cfg.get('warehouse', 'width'),
                          height=self.cfg.get('warehouse', 'height'),
                          bt_controller=self.cfg.get('behaviour_tree'),
@@ -107,27 +108,25 @@ class Simulator:
                 self.exit_run = True
 
         elif self.exit_criteria == 'logistics':
-            for dp in self.deliverypoints:
-                print(dp)
             if all(dp.delivered for dp in self.deliverypoints):
-                print('All deliveries complete - Exit sim.')
+                print(f'All deliveries complete in {counter} timesteps - Exit sim.')
                 self.exit_threads = True
                 self.exit_run = True
 
             if counter > self.cfg.get('time_limit'):
-                print('{counter} counts reached - Time limit expired')
+                print(f'{counter} counts reached - Time limit expired')
                 self.exit_threads = True
                 self.exit_run = True
 
-    def run(self):
+    def run(self, iteration=0):
         if self.verbose:
-            print("Running with seed: %d"%self.random_seed)
+            if iteration:
+                print(f"Running simulation iteration: {iteration}")
+            else:
+                print("Running simulation iteration: 0")
 
         while self.warehouse.counter <= self.cfg.get('time_limit') and self.exit_run is False:
             self.iterate()
-        
-        if self.verbose:
-            print("\n")
         
         return self.warehouse.counter
 

@@ -125,7 +125,6 @@ class GraphMind(LocalGraph):
         tasks = []
         for node, data in self.graph.nodes(data=True):
             if data.get('type') == 'task':
-                print(node)
                 successors = self.graph.successors(node) if self.graph.is_directed() else self.graph.neighbors(node)
 
                 # Iterate through successors and print their attributes

@@ -230,14 +230,25 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                 nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
 
         elif node_name.endswith('progress'):
-            # If robot progres status is robot name, update Hive Mind
-            if data['robot'] and data['hive'] == 0:
+            # 1) A robot is progressing the task
+            # If we are progressing the task, update Hive Mind
+            if data['robot'] == self.str_index and data['hive'] == 0:
                 nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
 
-            # If Hive progress status is a robot name, update the robot
-            elif data['robot'] == 0 and data['hive'] != 0:
+            # If Hive progress status is a different robot name, update the robot
+            elif data['robot'] == 0 and data['hive'] != self.str_index:
                 nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
 
+            # 2) A robot has completed the task and is no longer progressing
+            # If we have completed the task, update Hive Mind
+            elif data['robot'] == 0 and data['hive'] == self.str_index:
+                nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+
+            # If local data is another robot and Hive data is now 0, update the robot
+            elif data['robot'] != self.str_index and data['robot'] != 0 and data['hive'] == 0:
+                nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
+
+            # 3) Two different robots are progressing the task (take the most recent data)
             # If both data in the Hive and robot exist and are different from one another
             elif data['hive'] != 0 and data['robot'] != 0 and data['hive'] != data['robot']:
 
@@ -417,38 +428,37 @@ class Select_Action(py_trees.behaviour.Behaviour):
         # Check if the task is completed or is currently being progressed by another agent
         task = self.blackboard.target_task_id
         if self.check_task_status(task, 'completion'):
-            print('complete')
             self.blackboard.action = 'random_walk'
             self.blackboard.target_box = None
             self.blackboard.target_task_id = None
 
-        if self.check_task_status(task, 'progress'):
-            # Get task data for current task
-            graph = self.blackboard.robo_mind.graph
-            task_node = self.blackboard.target_task_id
-            delivery_point = next((n for n in graph.successors(task_node) if graph.nodes[n].get('type') == 'dp'), None)
-            desired_position = graph.nodes[delivery_point].get('coords')
+        if self.check_task_status(task, 'progress') and self.check_task_status(task, 'progress') != self.str_index:
+            cancel_pick = True
 
-            # Get existing progress robot position from hive_mind
+            # Check to see if robot delivering position is available on Hive Mind
             hive_progress_robot = self.check_task_status(task, 'progress')
-            progress_node_name = f'{task_node}_progress'
+            progress_node_name = f'{task}_progress'
             hive_robot_position = self.blackboard.hive_mind.graph.nodes[f'{hive_progress_robot}_position'].get('data')
 
             # Check if position data is available
-            if hive_robot_position.any() != 999:
+            if int(hive_robot_position[0]) != 999:
+                # Get target delivery position
+                graph = self.blackboard.robo_mind.graph
+                delivery_point = next((n for n in graph.successors(task) if graph.nodes[n].get('type') == 'dp'), None)
+                desired_position = graph.nodes[delivery_point].get('coords')
 
                 # Compare to see which robot is closer to the delivery point
                 if euclidean_agents(hive_robot_position, desired_position) > euclidean_agents(
                         self.blackboard.w_rob_c[self.robot_index], desired_position):
                     # If the Hive robot is further to the drop point, update local data
-                    # self.blackboard.robo_mind.update_attribute(progress_node_name, data=self.str_index, time=self.blackboard.tick_clock)
-                    pass
-                else:
-                    # If this robot is further to the drop point than the Hive robot, update local and abandon pick
-                    self.blackboard.robo_mind.update_attribute(progress_node_name, data=hive_progress_robot, time=self.blackboard.tick_clock)
-                    self.blackboard.action = 'random_walk'
-                    self.blackboard.target_box = None
-                    self.blackboard.target_task_id = None
+                    cancel_pick = False
+
+            if cancel_pick:
+                # If this robot is further to the drop point than the Hive robot, update local and abandon pick
+                self.blackboard.robo_mind.update_attribute(progress_node_name, data=hive_progress_robot, time=self.blackboard.tick_clock)
+                self.blackboard.action = 'random_walk'
+                self.blackboard.target_box = None
+                self.blackboard.target_task_id = None
 
         if self.blackboard.target_box is not None:
         # Check pick status
@@ -477,7 +487,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
 
         # Check place status
         else:
-            # Get task data # TODO: refactor the self.blackboard,task_id to be the same as node_name so for quicker task extraction
+            # Get task data
             graph = self.blackboard.robo_mind.graph
             task_node = next((n for n in graph.nodes if n == task), None)
             delivery_point = next((n for n in graph.successors(task_node) if graph.nodes[n].get('type') == 'dp'), None)
@@ -490,7 +500,9 @@ class Select_Action(py_trees.behaviour.Behaviour):
             if distance < self.blackboard.place_tol:
                 # Block placed
                 completion_status_node = next((n for n in graph.successors(task_node) if n == f'{task}_completion'), None)
+                progression_status_node = next((n for n in graph.successors(task_node) if n == f'{task}_progress'), None)
                 self.blackboard.robo_mind.update_attribute(completion_status_node, data=1, time=self.blackboard.tick_clock)
+                self.blackboard.robo_mind.update_attribute(progression_status_node, data=0, time=self.blackboard.tick_clock)
 
                 dp_id = int(task_node[-1])-1 # TODO: hacky
                 self.blackboard.delivery_points[dp_id].delivered = 1
@@ -756,7 +768,20 @@ class Abandon(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.RUNNING
 
 class Send_Path(py_trees.behaviour.Behaviour):
+    '''
+    Send path behaviour uses potential field algorithm and adds up all forces from:
+    - desired heading
+    - repulsion from walls
+    - repulsion from boxes
+    - repulsion from other robots
+    This gives a new heading force based on all of the above.
 
+    Sometimes PFA algorithms can result in a local minima, as such a basic check has been implemented to avoid this.
+    If over self.history_length timesteps, the difference between the first position and the last positition is less than'
+    self.stuck_threshold, the robot will self detect that it is in a local minima.
+    To escape, the robot will move in a random direction for self.escape_duration.
+    The cooldown period is in place to stop re-evalation of local minima too quickly after escape.
+    '''
     def __init__(self, name, robot_index):
         super().__init__(name)
         self.robot_index = robot_index
@@ -776,10 +801,65 @@ class Send_Path(py_trees.behaviour.Behaviour):
     def setup(self): 
         self.logger.debug(f"send path::setup {self.name}")
 
+        # Escape local minima parameters
+        self.position_history = []  # Store last 5 positions
+        self.history_length = 5  # Number of timesteps to track for detecting stuck state
+        self.stuck_threshold = 3.0  # Threshold for movement over the window of timesteps
+
+        self.escaping = False
+        self.escape_steps = 0
+        self.escape_duration = 10  # Duration of escape routine
+        self.cooldown = 0  # Cooldown period after escape
+        self.cooldown_duration = 20  # Cooldown to prevent immediate re-evaluation
+
     def initialise(self):
-        self.logger.debug(f"send path::initialise {self.name}")
+            self.logger.debug(f"send path::initialise {self.name}")
+
+    def _update_position_history(self, robot_x, robot_y):
+        """
+        Update the history of robot positions. Keep track of the last N positions (where N = self.history_length).
+        """
+        self.position_history.append((robot_x, robot_y))
+        if len(self.position_history) > self.history_length:
+            self.position_history.pop(0)  # Maintain fixed history length
+
+    def _is_stuck_in_local_minima(self):
+        """
+        Determine if the robot is stuck in a local minimum by checking its total movement over the last N timesteps.
+        If the total movement over N timesteps is below a threshold, the robot is considered stuck.
+        """
+        if len(self.position_history) < self.history_length:
+            return False  # Not enough data yet to determine if stuck
+
+        # Calculate displacement from start to end position in the history
+        start_pos = np.array(self.position_history[0])
+        end_pos = np.array(self.position_history[-1])
+        displacement = np.linalg.norm(end_pos - start_pos)
+
+        # If displacement is small and variance is low, the robot is stuck
+        if displacement < self.stuck_threshold:
+            return True
+        return False
+
+    def _escape_local_minima(self, robot_x, robot_y, max_v):
+        """
+        Escape local minima by introducing random perturbations in movement for a fixed duration.
+        """
+        if self.escape_steps < self.escape_duration:
+            random_angle = np.random.uniform(0, 2 * np.pi)
+            move_x = np.cos(random_angle) * max_v
+            move_y = np.sin(random_angle) * max_v
+            self.escape_steps += 1
+        else:
+            # Stop escape behavior after the duration and switch back to normal behavior
+            self.escaping = False
+            move_x = 0
+            move_y = 0  # Let potential field take over after escape
+
+        return move_x, move_y
 
     def update(self):
+        # Set speed based on task (if picking or placing then use half speed)
         # Set speed based on task (if picking or placing then use half speed)
         if self.blackboard.action == 'random_walk':
             max_v = self.blackboard.max_v
@@ -787,30 +867,56 @@ class Send_Path(py_trees.behaviour.Behaviour):
             max_v = self.blackboard.max_v / 2
 
         # Compute forces on robot based on desired heading and nearby objects
-        # This is a basic implementation of the potential-field-algorithm
         heading = self.blackboard.w_rob_c[self.robot_index][2]
         f_h = _generate_heading_force(heading)
         f_w = _generate_wall_avoidance_force(self.blackboard.w_rob_c, self.blackboard.map, self.robot_index, self.blackboard.repulsion_w)
         f_b, f_a = _generate_interobject_force(self.blackboard.w_boxes, self.blackboard.w_rob_c, self.robot_index, self.blackboard.action, self.blackboard.repulsion_o)
-        
-        #print(f'fh {f_h}, fw {f_w}, fb {f_b}, fa {f_a}')
-        F = f_h + f_w + f_b + f_a
-        F_x = F[0] # total force in x
-        F_y = F[1] # total force in y
 
+        # Total force from potential field
+        F = f_h + f_w + f_b + f_a
+        F_x = F[0]  # Total force in x
+        F_y = F[1]  # Total force in y
+
+        # Compute heading from potential field
         computed_heading = np.arctan2(F_y, F_x)
         move_x = np.cos(computed_heading) * max_v
         move_y = np.sin(computed_heading) * max_v
 
+        # Get robot's current position
+        robot_x = self.blackboard.w_rob_c[self.robot_index][0]
+        robot_y = self.blackboard.w_rob_c[self.robot_index][1]
+
+        # Update position history
+        self._update_position_history(robot_x, robot_y)
+
+        # Check if robot is stuck in a local minimum every 5 timesteps
+        if self.cooldown == 0 and self._is_stuck_in_local_minima():
+            if not self.escaping:
+                self.escaping = True
+                self.escape_steps = 0  # Start escape routine
+                self.cooldown = self.cooldown_duration  # Begin cooldown period
+
+            move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
+        else:
+            if self.escaping:
+                move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
+            else:
+                self.escaping = False  # Normal behavior if not stuck
+
+        # Decrease cooldown timer if active
+        if self.cooldown > 0:
+            self.cooldown -= 1
+
+        # Update robot's position
         self.blackboard.w_rob_c[self.robot_index][0] += move_x
         self.blackboard.w_rob_c[self.robot_index][1] += move_y
 
-        # Also update box position if carrying
+        # Update box position if carrying
         if self.blackboard.carrying_box:
             self.blackboard.target_box.x = self.blackboard.w_rob_c[self.robot_index][0]
             self.blackboard.target_box.y = self.blackboard.w_rob_c[self.robot_index][1]
 
-        return py_trees.common.Status.SUCCESS        
+        return py_trees.common.Status.SUCCESS
 
 def create_root(robot_index):
     str_index = 'robot_' + str(robot_index)

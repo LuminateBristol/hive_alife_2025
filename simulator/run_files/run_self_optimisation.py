@@ -1,8 +1,9 @@
 import sys
 import os
+import random
 import time
 
-# We need to setup  parent directories to properly import other modules
+# We need to setup parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
@@ -15,95 +16,139 @@ sys.path.insert(0, parent_dir)
 
 from simulator import CFG_FILES
 
-
 ###### Experiment parameters ######
 
 export_data = False
-verbose = True    
-batch_id = 'test'
-ex_id = 'exp_1'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+verbose = True
+ex_id = 'exp_1_logistics'
 
 ###### Config class ######
 
-default_cfg_file = CFG_FILES['default']     # Config for general parameters in cfg folder NOTE: change this file to update general parameters
-cfg_file = CFG_FILES['exp_setup']          
-map_file = CFG_FILES['map']                 # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
+default_cfg_file = CFG_FILES['default']
+cfg_file = CFG_FILES['aamas_exps']
+map_file = CFG_FILES['map']
+
 
 ###### Functions ######
-def run_ex(hive_mind):
-    # Setup config for this experiment
-    cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
 
-    agentnum = cfg_obj.get('number_of_agents')
-    boxes = cfg_obj.get('boxes')
+class RunOptimisation():
+    def __init__(self):
+        self.info_types = []
+        self.cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
+        self.num_iterations = 30  # Number of iterations for each batch
 
-    # Set up config file with parameters for this run
-    cfg_obj.set('warehouse.number_of_agents', agentnum)
-    cfg_obj.set('boxes', boxes)
+        # Variables to track dynamic averages
+        self.total_w = 0
+        self.total_t = 0
+        self.num_batches = 0
 
-    # Create simulator object, passing in the HiveMind
-    sim = Simulator(cfg_obj, hive_mind=hive_mind, verbose=verbose)
+    def run_simulation(self, selected_info_types, iterations):
+        """Run the simulation multiple times and return the average completion time along with individual times."""
+        total_time = 0
+        run_times = []
+        print(f"\nStarting batch run for the following information types: {selected_info_types}")
 
-    # TODO: UPDATE WEIGHTS OF SIM.HIVE_MIND
+        for i in range(iterations):
+            # Init simulator
+            sim = Simulator(self.cfg_obj, verbose=verbose)
 
-    # Run simulation
-    counter, messages = sim.run()  # Counter is the number of timesteps (simulation time)
+            # Update weights for information types
+            for node in sim.Hive_Mind.graph.nodes(data=True):
+                node_id, attributes = node
+                if 'type' in attributes and attributes['type'] in selected_info_types:
+                    sim.Hive_Mind.graph.nodes[node_id]['weight'] = 1
 
-    return counter, messages
+            # Run the simulation and record the time for this run
+            start_time = time.time()
+            run_time = sim.run(iteration=i)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
 
-if __name__ == "__main__":
-    # Initialize robot observation space, tasks, and entities (define them as per your setup)
-    # TODO: this is hardcoded currently but should be updated to use the config file
-    entities = [['tasks', None],
-                ['robots', None],
-                ['boxes', None],
-                ['delivery_point', {'id':1, 'coords': [50, 17]}],
-                ['delivery_point', {'id':2, 'coords':[150, 17]}],
-                ['delivery_point', {'id':3, 'coords':[250, 17]}],
-                ['delivery_point', {'id':4, 'coords':[350, 17]}],
-                ['delivery_point', {'id':5, 'coords':[450, 17]}],
-                ['delivery_point', {'id':6, 'coords':[550, 17]}],
-                ['delivery_point', {'id':7, 'coords':[650, 17]}],
-                ['delivery_point', {'id':8, 'coords':[750, 17]}],
-                ['delivery_point', {'id':9, 'coords':[850, 17]}],
-                ['delivery_point', {'id':10, 'coords':[950, 17]}],
-                ['box', {'colour':'yellow'}],
-                ['box', {'colour':'blue'}],
-                ['box', {'colour':'red'}],
-                ['box', {'colour':'green'}],
-                ['box', {'colour':'tan'}],
-                ['box', {'colour':'purple'}],
-                ['box', {'colour':'orange'}],
-                ['box', {'colour':'peachpuff'}],
-                ['box', {'colour':'darkseagreen'}],
-                ['box', {'colour':'teal'}]]
+            total_time += run_time
+            run_times.append(elapsed_time)
 
-    tasks = [[1, 1, 'yellow'],
-             [2, 2, 'blue'],
-             [3, 3, 'red'],
-             [4, 4, 'green'],
-             [5, 5, 'tan'],
-             [6, 6, 'purple'],
-             [7, 7, 'orange'],
-             [8, 8, 'peachpuff'],
-             [9, 9, 'darkseagreen'],
-             [10, 10, 'teal']]
+        average_time = total_time / iterations  # Return average time for this batch
+        return average_time, run_times  # Also return individual times for each run
 
-    # TODO: this should be uploaded by the robots at the start of the optimisation run
-    # TODO: BUILD HIVE MIND IN SIM.PY
-    # TODO: ACCESS HIVE MIND OBJECT AND UPDATE WEIGHTS IN OPTIMISATION ROUTINE IN RUN FILE
-    # TODO: RUN USING SIM.RUN()
+    def get_hive_mind_info_types(self):
+        """Retrieve all nodes with 'weight' attribute and group them by their 'type' attribute."""
+        sim = Simulator(self.cfg_obj, verbose=verbose)
+        hive_mind = sim.Hive_Mind.graph
 
-    # Create the optimizer
-    optimiser = OptimiseHiveMind(robot_observation_space, tasks, entities, num_runs=10)
+        nodes_with_weight = [n for n, d in hive_mind.nodes(data=True) if 'weight' in d]
+        groups = {}
+        for node in nodes_with_weight:
+            node_type = hive_mind.nodes[node]['type']
+            if node_type not in groups:
+                groups[node_type] = []
+            groups[node_type].append(node)
 
-    # Run the greedy optimization
-    best_information_sharing, best_cost = optimiser.greedy_optimization(run_ex)
+        return groups
 
-    print(f'Best Information Sharing: {best_information_sharing}')
-    print(f'Best Cost: {best_cost}')
+    def calculate_fitness(self, w, w_ave, t, t_ave):
+        """Calculate fitness using the given formula."""
+        return 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
+
+    def update_averages(self, w, t):
+        """Update the dynamic averages for w and t after each batch."""
+        self.total_w += w
+        self.total_t += t
+        self.num_batches += 1
+
+        # Calculate running averages
+        w_ave = self.total_w / self.num_batches
+        t_ave = self.total_t / self.num_batches
+
+        return w_ave, t_ave
+
+    def main(self):
+        """Main method for greedy optimization."""
+        # Step 1: Retrieve groups of nodes with the same 'type' attribute
+        groups = self.get_hive_mind_info_types()
+        selected_info_types = []
+        results = []
+        info_type = None
+
+        previous_fitness = float('inf')  # Track previous fitness
+        for _ in range(len(groups) + 1):
+
+            # Run the simulation 30 times, record the average completion time and individual times
+            avg_time, run_times = self.run_simulation(selected_info_types, iterations=self.num_iterations)
+
+            # Calculate w (number of types in selected_info_types)
+            w = len(selected_info_types)
+
+            # Update dynamic averages for w_ave and t_ave
+            w_ave, t_ave = self.update_averages(w, avg_time)
+
+            # Calculate fitness based on the current batch
+            fitness = self.calculate_fitness(w, w_ave, avg_time, t_ave)
+
+            # Record results based on fitness
+            if fitness <= 1.2 * previous_fitness:  # Update condition based on fitness
+                previous_fitness = fitness
+                results.append( (selected_info_types.copy(), w_ave, avg_time, fitness, run_times))  # Record successful group
+            else:
+                results.append((selected_info_types.copy(), w_ave, avg_time, fitness, run_times))  # Record failed group
+                selected_info_types.remove(info_type)  # Remove from selected info types
+
+            # Add a randomly selected info type ready for tbe next run
+            info_type, nodes = random.choice(list(groups.items()))
+            selected_info_types.append(info_type)
+            del groups[info_type]
+
+        # Output results to a .txt file
+        result_file_path = os.path.join(current_dir, 'greedy_optimization_results.txt')
+        with open(result_file_path, 'w') as file:
+            file.write('Type\tRun Times\tWeight\tAverage Time\tFitness\n')
+            for selected_info_types, run_times, w_ave, avg_time, fitness in results:
+                file.write(f'{selected_info_types}\t{run_times}\t{w_ave}\t{avg_time}\t{fitness}\n')
+
+        print('Optimization complete. Results saved to "greedy_optimization_results.txt".')
+
 
 ###### Run experiment ######
 
 if __name__ == "__main__":
-    main()
+    run_optimisation = RunOptimisation()
+    run_optimisation.main()

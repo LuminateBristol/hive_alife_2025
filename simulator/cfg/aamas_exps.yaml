@@ -1,7 +1,7 @@
 ### Experimental setup
 # An additional setup file that can be used to setup experiment specific parameters
 
-exp_1:
+exp_1_logistics:
   # Logistics example experimental setup
   exit_criteria: 'logistics'
   behaviour_tree: 'logistics'
@@ -55,62 +55,117 @@ exp_1:
     - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
     - ['task_1', 'delivery_point_1', 'delivers_to', {}]
     - ['task_1', 'box_yel', 'box_colour', {}]
-    - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 2
     - ['tasks', 'task_2', 'child_of', {'type':'task', 'id':2, 'time':0}]
     - ['task_2', 'delivery_point_2', 'delivers_to', {}]
     - ['task_2', 'box_blu', 'box_colour', {}]
-    - ['task_2', 'task_2_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_2', 'task_2_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_2', 'task_2_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 3
     - ['tasks', 'task_3', 'child_of', {'type':'task', 'id':3, 'time':0}]
     - ['task_3', 'delivery_point_3', 'delivers_to', {}]
     - ['task_3', 'box_red', 'box_colour', {}]
-    - ['task_3', 'task_3_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_3', 'task_3_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_3', 'task_3_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 4
     - ['tasks', 'task_4', 'child_of', {'type':'task', 'id':4, 'time':0}]
     - ['task_4', 'delivery_point_4', 'delivers_to', {}]
     - ['task_4', 'box_gre', 'box_colour', {}]
-    - ['task_4', 'task_4_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_4', 'task_4_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_4', 'task_4_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 5
     - ['tasks', 'task_5', 'child_of', {'type':'task', 'id':5, 'time':0}]
     - ['task_5', 'delivery_point_5', 'delivers_to', {}]
     - ['task_5', 'box_tan', 'box_colour', {}]
-    - ['task_5', 'task_5_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_5', 'task_5_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_5', 'task_5_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 6
     - ['tasks', 'task_6', 'child_of', {'type':'task', 'id':6, 'time':0}]
     - ['task_6', 'delivery_point_6', 'delivers_to', {}]
     - ['task_6', 'box_pur', 'box_colour', {}]
-    - ['task_6', 'task_6_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_6', 'task_6_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_6', 'task_6_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 7
     - ['tasks', 'task_7', 'child_of', {'type':'task', 'id':7, 'time':0}]
     - ['task_7', 'delivery_point_7', 'delivers_to', {}]
     - ['task_7', 'box_ora', 'box_colour', {}]
-    - ['task_7', 'task_7_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_7', 'task_7_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_7', 'task_7_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 8
     - ['tasks', 'task_8', 'child_of', {'type':'task', 'id':8, 'time':0}]
     - ['task_8', 'delivery_point_8', 'delivers_to', {}]
     - ['task_8', 'box_pea', 'box_colour', {}]
-    - ['task_8', 'task_8_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_8', 'task_8_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_8', 'task_8_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 9
     - ['tasks', 'task_9', 'child_of', {'type':'task', 'id':9, 'time':0}]
     - ['task_9', 'delivery_point_9', 'delivers_to', {}]
     - ['task_9', 'box_dsg', 'box_colour', {}]
-    - ['task_9', 'task_9_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_9', 'task_9_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_9', 'task_9_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 10
     - ['tasks', 'task_10', 'child_of', {'type':'task', 'id':10, 'time':0}]
     - ['task_10', 'delivery_point_10', 'delivers_to', {}]
     - ['task_10', 'box_tea', 'box_colour', {}]
-    - ['task_10', 'task_10_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_10', 'task_10_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
     - ['task_10', 'task_10_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
+
+  # Delivery points (set to none if this is not a delivery task)
+  delivery_points: {  1: { 'colour': 'yellow',       'target_c': [ 50, 17 ],  'status': 0 },
+                      2: { 'colour': 'blue',         'target_c': [ 150, 17 ],  'status': 0 },
+                      3: { 'colour': 'red',          'target_c': [ 250, 17 ],  'status': 0 },
+                      4: { 'colour': 'green',        'target_c': [ 350, 17 ],  'status': 0 },
+                      5: { 'colour': 'tan',          'target_c': [ 450, 17 ], 'status': 0 },
+                      6: { 'colour': 'purple',       'target_c': [ 550, 17 ],  'status': 0 },
+                      7: { 'colour': 'orange',       'target_c': [ 650, 17 ], 'status': 0 },
+                      8: { 'colour': 'peachpuff',    'target_c': [ 750, 17 ],  'status': 0 },
+                      9: { 'colour': 'darkseagreen', 'target_c': [ 850, 17 ], 'status': 0 },
+                      10: { 'colour': 'teal',         'target_c': [ 950, 17 ],  'status': 0 }}
+
+  tolerances:
+    place_tol: 2
+    abandon_tol: 50
+    pre_place_delta: 10
+
+  print_kg: False
+
+exp_2_area_coverage:
+  # Area coverage example experimental setup
+  exit_criteria: 'logistics' # TODO: this
+  behaviour_tree: 'area_coverage'
+  number_of_agents: 10
+
+  # Setup warehouse parameters
+  warehouse:
+    depot: False
+    drop_zone_limit: 100
+    object_position: 1
+    boxes: { 'green': 5,
+             'yellow': 5,
+             'blue': 5,
+             'red': 5,
+             'tan': 5,
+             'purple': 5,
+             'orange': 5,
+             'peachpuff': 5,
+             'darkseagreen': 5,
+             'teal': 5 }
+
+  # Populate behaviour tree with initial entities and tasks
+  entities:
+    - [ None, 'tasks', None, { 'type': 'entity' } ]
+    - [ None, 'robots', None, { 'type': 'entity' } ]
+
+  tasks:
+    # Task 1
+    - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
+    - ['task_1', 'delivery_point_1', 'delivers_to', {}]
+    - ['task_1', 'box_yel', 'box_colour', {}]
+    - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
+
 
   # TODO: this is only used for delivery points now I think?
   task_log: { 'task_1': { 'colour': 'yellow',       'target_c': [ 50, 17 ],  'status': 0 },
@@ -130,4 +185,3 @@ exp_1:
     pre_place_delta: 10
 
   print_kg: False
-

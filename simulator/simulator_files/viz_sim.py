@@ -26,7 +26,7 @@ class VizSim(Simulator):
             ax.plot([x0, x1], [y0, y1], 'k-')
 
     def generate_dot_positional_data(self, faulty=False):
-        agent_range = range(self.cfg.get('warehouse', 'number_of_agents'))
+        agent_range = range(self.cfg.get('number_of_agents'))
         x_data = [
             [self.warehouse.rob_c[i, 0] for i in agent_range]
         ]
@@ -100,8 +100,8 @@ class VizSim(Simulator):
 
     def animate(self, i, counter, dot=None, boxes=None, h_line=None, cam_range=None):
         cam_range.set_data(
-            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
-            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('warehouse', 'number_of_agents'))]
+            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
+            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))]
         )
 
         x_data, y_data, _ = self.generate_dot_positional_data()
@@ -142,7 +142,7 @@ class VizSim(Simulator):
                 if self.cfg.get('animate'):
                     exit()
 
-    def run(self):
+    def run(self, iteration=0):
         if self.verbose:
             print("Running")
 
@@ -167,8 +167,8 @@ class VizSim(Simulator):
         # Scale marker sizes to data units
         cam_range_marker_size = self.get_marker_size_in_data_units(camera_sensor_range, ax)
         cam_range, = ax.plot(
-            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
-            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('warehouse', 'number_of_agents'))],
+            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
+            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))],
             'ko',
             markersize=cam_range_marker_size,
             color="#f2f2f2",
