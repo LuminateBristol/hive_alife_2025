@@ -1,5 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+import copy
 from networkx.drawing.nx_pydot import graphviz_layout
 
 class LocalGraph:
@@ -76,7 +77,8 @@ class GraphMind(LocalGraph):
             Inner list format: [observation, edge_type, **attributes]
         '''
         for observation in robot_observation_space:
-            self.add_information_node(observation[0], observation[1], observation[2], **observation[3])
+            attributes = copy.deepcopy(observation[3])
+            self.add_information_node(observation[0], observation[1], observation[2], **attributes)
 
     def add_information_node(self, parent_node, info_node, edge_type=None, **attributes):
         """

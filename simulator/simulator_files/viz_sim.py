@@ -51,7 +51,7 @@ class VizSim(Simulator):
             y_vec.append(np.linspace(start_y, end_y, steps).tolist())
         return x_vec, y_vec
 
-    def get_marker_size_in_data_units(self, marker_size_in_data_units, ax):
+    def get_marker_size_in_data_units(self, cell_size, ax, scale_factor=0.75):
         # Get the limits of the axes
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
@@ -69,18 +69,17 @@ class VizSim(Simulator):
         ax_width_inch = fig_width_inch * ax.get_position().width
         ax_height_inch = fig_height_inch * ax.get_position().height
 
-        # Convert marker size from data units to points
-        marker_size_in_points_x = (marker_size_in_data_units / x_range) * (ax_width_inch * dpi)
-        marker_size_in_points_y = (marker_size_in_data_units / y_range) * (ax_height_inch * dpi)
+        # Convert cell size from data units to points, with a slight scaling to avoid overlap
+        marker_size_in_points_x = (cell_size / x_range) * (ax_width_inch * dpi)
+        marker_size_in_points_y = (cell_size / y_range) * (ax_height_inch * dpi)
 
-        # To keep the marker circular, take the minimum of x and y calculated sizes
-        # Divide by 2 for radius
-        marker_size_in_points = min(marker_size_in_points_x, marker_size_in_points_y) / 2
+        # Take the minimum of x and y sizes for a uniform circular marker, apply scale factor
+        marker_size_in_points = min(marker_size_in_points_x, marker_size_in_points_y) * scale_factor
 
         return marker_size_in_points
 
     def iterate(self, frame, dot=None, boxes=None, h_line=None, cam_range=None, snapshot=False):
-        self.warehouse.iterate(self.cfg.get('heading_bias'), self.cfg.get('box_attraction'))
+        self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
         counter = self.warehouse.counter
 
         dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, cam_range)
@@ -104,13 +103,31 @@ class VizSim(Simulator):
             [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))]
         )
 
+        # Re-plot pheromone cells based on updated pheromone_map
+        # Clear existing pheromone markers before re-plotting
+        for p in self.pheromone_markers:
+            p.remove()
+        self.pheromone_markers.clear()
+
+        # Plot each pheromone cell with varying opacity based on visit count
+        for cell_id, visit_count in self.warehouse.pheromone_map.items():
+            x, y = cell_id  # Cell centroid coordinates
+            # Scale alpha from 0.1 (light) to 1.0 (dark) based on visit count
+            alpha = min(0.01 + (visit_count * 0.01), 1.0)  # Limits alpha to a max of 1.0
+            marker, = self.ax.plot(x, y, 's', color='blue', markersize=self.pheromone_marker_size, alpha=alpha)
+            self.pheromone_markers.append(marker)  # Store the marker for clearing in the next iteration
+
+        # Update robot data
         x_data, y_data, _ = self.generate_dot_positional_data()
         for i in range(len(dot)):
             dot[i].set_data(x_data[i], y_data[i])
 
-        for box, wbox in zip(boxes, self.warehouse.boxes):
-            box.set_data([wbox.x], [wbox.y])
+        if boxes is not None:
+            # Update box data
+            for box, wbox in zip(boxes, self.warehouse.boxes):
+                box.set_data([wbox.x], [wbox.y])
 
+        # Update heading arrow data
         h_x_vec, h_y_vec = self.generate_dot_heading_arrow()
         for i in range(self.swarm.number_of_agents):
             h_line[i].set_data(h_x_vec[i], h_y_vec[i])
@@ -142,6 +159,13 @@ class VizSim(Simulator):
                 if self.cfg.get('animate'):
                     exit()
 
+        elif self.exit_criteria == 'area_coverage':
+            if counter > self.cfg.get('time_limit'):
+                total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+                percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
+                print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
+                exit()
+
     def run(self, iteration=0):
         if self.verbose:
             print("Running")
@@ -155,18 +179,25 @@ class VizSim(Simulator):
     def init_animate(self):
         self.fig = plt.figure(figsize=(8, 8))
         plt.rcParams['font.size'] = '16'
-        ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
+        self.ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
+        self.cell_size = 1  # Set cell size based on configuration
 
-        self.plot_walls(ax)
 
         # Get marker sizes
         robot_size = self.cfg.get('robot', 'radius')  # Size in data units
         box_size = self.cfg.get('warehouse', 'box_radius')
         camera_sensor_range = self.cfg.get('robot', 'camera_sensor_range')
 
+        # Initialize all potential pheromone markers (set low opacity)
+        self.pheromone_marker_size = self.get_marker_size_in_data_units(robot_size, self.ax) # TODO: cell_size in config / 2
+        self.pheromone_markers = []
+
+        # Plot walls
+        self.plot_walls(self.ax)
+
         # Scale marker sizes to data units
-        cam_range_marker_size = self.get_marker_size_in_data_units(camera_sensor_range, ax)
-        cam_range, = ax.plot(
+        cam_range_marker_size = self.get_marker_size_in_data_units(camera_sensor_range, self.ax)
+        cam_range, = self.ax.plot(
             [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
             [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))],
             'ko',
@@ -177,39 +208,39 @@ class VizSim(Simulator):
 
         # Plot delivery points as squares
         for dp in self.deliverypoints:
-            box_marker_size = self.get_marker_size_in_data_units(box_size, ax)
+            box_marker_size = self.get_marker_size_in_data_units(box_size, self.ax)
 
             # Plot each delivery point as a square
-            ax.plot(dp.x, dp.y, marker='s', markersize=box_marker_size * 1.8,
+            self.ax.plot(dp.x, dp.y, marker='s', markersize=box_marker_size * 1.8,
                     markeredgecolor='black',
                     markerfacecolor=dp.colour,  # Solid fill with the same color as edge
                     linewidth=2,
                     alpha=0.35)
 
         # Plot dropzone
-        ax.fill_between(np.linspace(0, self.cfg.get('warehouse', 'width'), 100), 0, self.cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
-        ax.axhline(y=self.cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
+        self.ax.fill_between(np.linspace(0, self.cfg.get('warehouse', 'width'), 100), 0, self.cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
+        self.ax.axhline(y=self.cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
 
         # Plot DOTS robots
         x_data, y_data, marker = self.generate_dot_positional_data()
         dot = {}
         for i in range(len(x_data)):
-            robot_marker_size = self.get_marker_size_in_data_units(robot_size, ax)
-            dot[i], = ax.plot(x_data[i], y_data[i], marker[i], markersize=robot_marker_size, fillstyle='none')
+            robot_marker_size = self.get_marker_size_in_data_units(robot_size, self.ax)
+            dot[i], = self.ax.plot(x_data[i], y_data[i], marker[i], markersize=robot_marker_size, fillstyle='none')
 
         # Plot boxes
         boxes = []
         for boxi in self.warehouse.boxes:
-            box_marker_size = self.get_marker_size_in_data_units(box_size, ax)
-            box, = ax.plot(boxi.x, boxi.y, marker='s', color=boxi.colour, markersize=box_marker_size)
+            box_marker_size = self.get_marker_size_in_data_units(box_size, self.ax)
+            box, = self.ax.plot(boxi.x, boxi.y, marker='s', color=boxi.colour, markersize=box_marker_size)
             boxes.append(box)
 
         h_x_vec, h_y_vec = self.generate_dot_heading_arrow()
         h_line = {}
         for i in range(self.swarm.number_of_agents):
-            h_line[i], = ax.plot(h_x_vec[i], h_y_vec[i], linestyle="dashed", color="#4CB580")
+            h_line[i], = self.ax.plot(h_x_vec[i], h_y_vec[i], linestyle="dashed", color="#4CB580")
 
-        self.anim = animation.FuncAnimation(self.fig, self.iterate, frames=10000, interval=0.1, blit=True,
+        self.anim = animation.FuncAnimation(self.fig, self.iterate, frames=10000, interval=0.1, blit=False,
                                             fargs=(dot, boxes, h_line, cam_range))
 
         plt.show()

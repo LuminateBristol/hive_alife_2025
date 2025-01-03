@@ -30,6 +30,7 @@ class Robot:
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status', 'data':0,  'weight':0, 'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status', 'data':0,  'weight':0, 'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status', 'data':0,  'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map', 'data':{},  'weight':0, 'time':0} ])
     
     def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points):
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
@@ -59,6 +60,8 @@ class Robot:
         self.blackboard.repulsion_o = repulsion_o
         self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so that each robot has a unique copy
         self.blackboard.delivery_points = delivery_points
+
+        print(self.blackboard.arena_size)
         
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
@@ -66,8 +69,8 @@ class Robot:
 
     def build_robo_mind(self, entities, tasks):
         self.add_observations()
-
         self.robo_mind = GraphMind()
+
         for entity in entities:
             self.robo_mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
         for task in tasks:
@@ -125,6 +128,7 @@ class Swarm:
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
             ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points)
+
             self.number_of_agents += 1
 
     def add_map(self, map):
@@ -135,11 +139,15 @@ class Swarm:
         for ag in self.agents:
             ag.add_hive_mind(hive_mind)
 
-    def iterate(self, rob_c, boxes):
+    def iterate(self, rob_c, boxes, init=0):
         rob_c_new = rob_c
         boxes_new = boxes
 
         for ag in self.agents:
+            # Run setup() method for all behaviours on first run of the behaviour tree
+            if init:
+                ag.robot_tree.setup()
+
             # Update behaviour tree robot positions and boxes after last tick of all robots
             ag.blackboard.w_rob_c = rob_c_new
             ag.blackboard.w_boxes = boxes_new

@@ -21,7 +21,7 @@ from simulator import CFG_FILES
 export_data = False
 verbose = True    
 batch_id = 'test'
-ex_id = 'exp_1_logistics'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+ex_id = 'exp_3_traffic'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 

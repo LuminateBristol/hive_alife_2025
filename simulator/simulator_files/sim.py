@@ -5,7 +5,7 @@ import numpy as np
 import random
 from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
 
-class Simulator:
+class  Simulator:
 
     def __init__(self, config, verbose=False):
 
@@ -34,9 +34,8 @@ class Simulator:
         except Exception as e:
             raise e
 
-        # Init Hive Mind
+        # Build Hive Mind
         self.Hive_Mind = GraphMind()
-
         # Add entities and tasks from config
         entities = self.cfg.get('entities')
         tasks = self.cfg.get('tasks')
@@ -57,17 +56,8 @@ class Simulator:
 
         # Init warehouse
         self.warehouse = Warehouse(
-            self.cfg.get('warehouse', 'width'),
-            self.cfg.get('warehouse', 'height'), 
-            self.cfg.get('warehouse', 'boxes'),
-            self.cfg.get('warehouse', 'box_radius'),
-            self.swarm, 
-            self.cfg.get('warehouse', 'exit_width'),
-            self.cfg.get('wallsh'),
-            self.cfg.get('wallsv'),
-            self.cfg.get('warehouse', 'depot'),
-            self.cfg.get('warehouse', 'drop_zone_limit'),
-            self.cfg.get('warehouse', 'object_position'),
+            self.cfg,
+            self.swarm,
             hive_mind=self.Hive_Mind)
 
     def build_swarm(self, cfg):
@@ -89,14 +79,14 @@ class Simulator:
                          height=self.cfg.get('warehouse', 'height'),
                          bt_controller=self.cfg.get('behaviour_tree'),
                          print_bt = cfg.get('robot', 'print_bt'),
-                         task_log = cfg.get('task_log'),
+                         task_log = cfg.get('task_log'),  # TODO: remove - tasks come straight from the Hive Mind
                          delivery_points = self.deliverypoints
                          )
         return swarm
 
     # iterate method called once per timestep
     def iterate(self):
-        self.warehouse.iterate(self.cfg.get('heading_bias'))
+        self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
         
         self.exit_sim(counter=self.warehouse.counter)
 
@@ -118,6 +108,14 @@ class Simulator:
                 self.exit_threads = True
                 self.exit_run = True
 
+        elif self.exit_criteria == 'area_coverage':
+            if counter > self.cfg.get('time_limit'):
+                total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+                percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
+                print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
+                self.exit_threads = True
+                self.exit_run = True
+
     def run(self, iteration=0):
         if self.verbose:
             if iteration:
@@ -127,7 +125,7 @@ class Simulator:
 
         while self.warehouse.counter <= self.cfg.get('time_limit') and self.exit_run is False:
             self.iterate()
-        
+
         return self.warehouse.counter
 
 class SimTest(Simulator):

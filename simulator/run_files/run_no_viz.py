@@ -21,12 +21,12 @@ from simulator import CFG_FILES
 export_data = False
 verbose = True    
 batch_id = 'test'
-ex_id = 'exp_1'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+ex_id = 'exp_2_area_coverage'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 
 default_cfg_file = CFG_FILES['default']     # Config for general parameters in cfg folder NOTE: change this file to update general parameters
-cfg_file = CFG_FILES['exp_setup']          
+cfg_file = CFG_FILES['aamas_exps']
 map_file = CFG_FILES['map']                 # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
 
 ###### Functions ######
@@ -43,10 +43,11 @@ def run_ex():
     cfg_obj.set('warehouse.number_of_agents', agentnum)
     cfg_obj.set('boxes', boxes)
 
+
     # Create simulator object
     sim = Simulator(cfg_obj, verbose=verbose)
 
-    counter = sim.run() # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps
+    counter = sim.run(iteration=0) # Counter is equivalent to the number of times the entire robot_tree is ticked == simulation timesteps
 
     print(f'TOTAL COUNTS: {counter}')
 

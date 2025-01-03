@@ -59,13 +59,10 @@ class RunOptimisation():
                     sim.Hive_Mind.graph.nodes[node_id]['weight'] = 1
 
             # Run the simulation and record the time for this run
-            start_time = time.time()
             run_time = sim.run(iteration=i)
-            end_time = time.time()
-            elapsed_time = end_time - start_time
 
             total_time += run_time
-            run_times.append(elapsed_time)
+            run_times.append(run_time)
 
         average_time = total_time / iterations  # Return average time for this batch
         return average_time, run_times  # Also return individual times for each run
@@ -87,7 +84,13 @@ class RunOptimisation():
 
     def calculate_fitness(self, w, w_ave, t, t_ave):
         """Calculate fitness using the given formula."""
-        return 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
+        if w_ave and t_ave:
+            fitness = 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
+        elif w_ave:
+            fitness = 0.2 * (w / w_ave)
+        elif t_ave:
+            fitness = 1.0 * (t / t_ave)
+        return fitness
 
     def update_averages(self, w, t):
         """Update the dynamic averages for w and t after each batch."""
@@ -125,7 +128,7 @@ class RunOptimisation():
             fitness = self.calculate_fitness(w, w_ave, avg_time, t_ave)
 
             # Record results based on fitness
-            if fitness <= 1.2 * previous_fitness:  # Update condition based on fitness
+            if 1.2 * fitness <= previous_fitness:  # Update condition based on fitness - aim for 20% improvement or better
                 previous_fitness = fitness
                 results.append( (selected_info_types.copy(), w_ave, avg_time, fitness, run_times))  # Record successful group
             else:
@@ -133,9 +136,10 @@ class RunOptimisation():
                 selected_info_types.remove(info_type)  # Remove from selected info types
 
             # Add a randomly selected info type ready for tbe next run
-            info_type, nodes = random.choice(list(groups.items()))
-            selected_info_types.append(info_type)
-            del groups[info_type]
+            if groups:
+                info_type, nodes = random.choice(list(groups.items()))
+                selected_info_types.append(info_type)
+                del groups[info_type]
 
         # Output results to a .txt file
         result_file_path = os.path.join(current_dir, 'greedy_optimization_results.txt')

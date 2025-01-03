@@ -1,6 +1,6 @@
 import numpy as np
-import copy
-from scipy.spatial.distance import cdist, pdist, euclidean
+import math
+import random
 from .objects import Box, DeliveryPoint
 
 class Warehouse:
@@ -8,38 +8,36 @@ class Warehouse:
 	RANDOM_OBJ_POS = 0
 	AVOID_DROP_ZONE = 1		# Boxes only dropped outside of (>) predefined drop zone limit
 
-	def __init__(self, width, height, boxes, box_radius, swarm, exit_width, wallsh, wallsv, depot=False, drop_zone_limit = None, init_object_positions=RANDOM_OBJ_POS, hive_mind=None):
+	def __init__(self, config, swarm, hive_mind = None):
 
-		self.width = width
-		self.height = height
-		self.init_boxes = boxes
-		self.box_range = box_radius*2.0	#box_range # range at which a box can be picked up 
-		self.radius = box_radius # physical radius of the box (approximated to a circle even though square in animation)
+		self.width = config.get('warehouse', 'width')
+		self.height = config.get('warehouse' , 'height')
+		self.wallsh = config.get('wallsh')
+		self.wallsv = config.get('wallsv')
+		self.init_boxes = config.get('warehouse', 'boxes')
+		self.box_range = config.get('warehouse', 'box_radius')*2.0	#box_range # range at which a box can be picked up
+		self.radius = config.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)
+		self.pheromone_map = {}
 		self.hive_mind = hive_mind
-
-		if exit_width is None:
-			self.exit_width = int(0.05*self.width) # if it is too small then it will avoid the wall and be less likely to reach the exit zone 
-		else:
-			self.exit_width = exit_width
 
 		self.delivered = 0 # Number of boxes that have been delivered
 		self.counter = 0 # time starts at 0s or time step = 0 
 
 		# Initialise boxes
 		self.boxes = [] # centre coordinates of boxes starts as an empty list
-		for colour in boxes:
-			for i in range(boxes[colour]):
+		for colour in config.get('warehouse', 'boxes'):
+			for i in range(config.get('warehouse', 'boxes')[colour]):
 				  self.boxes.append(Box(colour=colour))
 		self.number_of_boxes = len(self.boxes)
 
 		# Initiate depot
-		if depot == True:
+		if config.get('warehouse', 'depot') == True:
 			self.depot = True
 		else:
 			self.depot = False
 
 		# Initialise map and hive_mind objects
-		self.map = Map(width, height, wallsh, wallsv)
+		self.map = Map(self.width, self.height, self.wallsh, self.wallsv)
 		self.swarm = swarm
 		swarm.add_map(self.map)
 		if self.hive_mind is not None:
@@ -47,8 +45,8 @@ class Warehouse:
 
 		# Initiate robotsx
 		self.rob_c = []
-		self.drop_zone_limit = drop_zone_limit
-		self.generate_object_positions(int(init_object_positions))
+		self.drop_zone_limit = config.get('warehouse', 'drop_zone_limit')
+		self.generate_object_positions(int(config.get('warehouse', 'object_position')))
 		
 		self.rob_c = np.array(self.rob_c) # convert list to array
 
@@ -97,22 +95,21 @@ class Warehouse:
 			possible_x = int((self.width) / (self.radius * 4))  # number of positions possible on the x axis
 			possible_y = int((self.height-self.drop_zone_limit) / (self.radius * 4))  # number of positions possible on the y axis
 			list_n = []  # empty list of possible positions
-			h = 0  # initiate all headings as 0 - random heading will be calculated in the behaviour tree
 
 			for x in range(possible_x):
 				for y in range(possible_y):
+					h = 0
 					list_n.append([x, y, h])  # list of possible positions in the warehouse
 
 			N = self.number_of_boxes + self.swarm.number_of_agents  # total number of units to assign positions to
-			XY_idx = np.random.choice(len(list_n), N,
-									  replace=False)  # select N unique coordinates at random from the list of possible positions
+			XY_idx = np.random.choice(len(list_n), N, replace=False)  # select N unique coordinates at random from the list of possible positions
 			XY = np.array(list_n)[XY_idx]
 
 			c_select = []  # central coordinates (empty list)
 			for j in range(N):  # for the total number of units
 				c_select.append(
 					[self.radius + ((self.radius * 4)) * XY[j][0], self.drop_zone_limit + self.radius + ((self.radius * 4)) * XY[j][1],
-					 0])  # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
+					 random.random() * 2 * np.pi])  # assign a central coordinate to unit j (can be a box or an agent) based on the unique randomly selected list, XY
 
 			for r in range(self.swarm.number_of_agents):
 				self.rob_c.append(c_select[r])  # assign initial robot positions
@@ -130,15 +127,43 @@ class Warehouse:
 					self.boxes[b].x = c_select[b + self.swarm.number_of_agents][0]
 					self.boxes[b].y = c_select[b + self.swarm.number_of_agents][1]
 
-
 		else:
 			raise Exception("Object position not valid")
 
-	def iterate(self, heading_bias=False, box_attraction=False): # moves the robot and box positions forward in one time step
-		self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes) # the robots move using the random walk function which generates a new deviation (rob_d)
+	def update_pheromone_map(self):
+		'''
+		Update the hash grid pheromone map based on the latest positions of the robots at each iteration
+		'''
+		cell_size = 25 # TODO: add to config - robot size
+		for robot in self.rob_c:
+			# Robot's current coordinates
+			x = robot[0]
+			y = robot[1]
 
-		self.counter += 1
-		self.swarm.counter = self.counter
+			# Calculate the cell's centroid (now used as the ID)
+			cell_id_x = (math.floor(x / cell_size) * cell_size) + cell_size / 2
+			cell_id_y = (math.floor(y / cell_size) * cell_size) + cell_size / 2
+			cell_id = (cell_id_x, cell_id_y)
+
+			# Increment the visit count for the cell_id
+			if cell_id in self.pheromone_map:
+				self.pheromone_map[cell_id] += 1
+			else:
+				self.pheromone_map[cell_id] = 1
+
+	def iterate(self, pheromones=False): # moves the robot and box positions forward in one time step
+
+			# Run setup command if this is the first iteration of the BT
+			if self.counter == 0:
+				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=1)
+			else:
+				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes)
+
+			if pheromones:
+				self.update_pheromone_map()
+
+			self.counter += 1
+			self.swarm.counter = self.counter
 
 class WallBounds:
 

@@ -1,9 +1,9 @@
-Type	Weight	Average Time	Fitness
-['robot_task_id_status', 'task_progress_status', 'robot_speed_status']	1.0	2816.0333333333333	1.2
-['robot_task_id_status', 'task_progress_status', 'robot_speed_status']	1.5	2379.366666666667	1.1826179569106006
-['robot_task_id_status', 'task_progress_status', 'robot_speed_status']	2.0	2028.1333333333334	1.1423024743200467
-task_completion_status	2.5	1998.2	1.1867351040296112
-robot_position_status	2.8	2048.8333333333335	1.1946452179063967
-robot_led_status	3.0	2062.5	1.194810229537924
-robot_heading_status	3.142857142857143	1967.8	1.1547951136061614
-robot_lifter_status	3.25	2450.5333333333333	1.3505324679339121
+Type	Run Times	Weight	Average Time	Fitness
+[]	0.0	0.541875	1.0	[0.541875]
+['robot_position_status']	0.5	0.57625	1.030173535791757	[0.57625]
+['robot_pheromone_map']	0.6666666666666666	0.83375	0.8253598200899551	[0.83375]
+['robot_pheromone_map', 'robot_task_id_status']	1.0	0.861875	0.8761711385061639	[0.861875]
+['robot_pheromone_map', 'robot_lifter_status']	1.2	0.715625	1.0363755458515285	[0.715625]
+['robot_pheromone_map', 'robot_speed_status']	1.3333333333333333	0.839375	0.9124609084139985	[0.839375]
+['robot_pheromone_map', 'robot_heading_status']	1.4285714285714286	0.8425	0.9256371343789742	[0.8425]
+['robot_pheromone_map', 'robot_led_status']	1.5	0.820625	0.9587928408225439	[0.820625]

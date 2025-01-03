@@ -1,12 +1,28 @@
 ### Map definition
 # Yaml array format split into horizontal and vertical walls eacah of which is an array of coordinates
 
+
+# Classic map
+#wallsh: [
+#         [[0,0], [1000,0]],
+#         [[0,1000], [1000,1000]]
+#        ]
+#
+#wallsv: [
+#         [[0,0], [0,1000]],
+#         [[1000,0], [1000,1000]]
+#        ]
+
+# Traffic consensus map
 wallsh: [
          [[0,0], [1000,0]],
          [[0,1000], [1000,1000]]
         ]
 
 wallsv: [
-         [[0,0], [0,1000]],
-         [[1000,0], [1000,1000]]
+         [[0,0],      [0,1000]],
+         [[1000,0],   [1000,1000]],
+         [[500,0],    [500,230]],
+         [[500,270],  [500,730]],
+         [[500,770],   [500,1000]]
         ]

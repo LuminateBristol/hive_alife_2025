@@ -1,3 +1,4 @@
+import copy
 import random
 import math
 from lib2to3.fixes.fix_metaclass import remove_trailing_newline
@@ -12,7 +13,7 @@ import json_tricks as json
 import argparse
 import csv
 import time
-from scipy.spatial.distance import cdist
+
 import networkx as nx
 
 def distance_to_wall(robot_c, wall):
@@ -79,7 +80,7 @@ def _generate_wall_avoidance_force(w_rob_c, map, robot_index, repulsion_w): # in
 
 def _generate_heading_force(heading):
     # Force for movement according to new chosen heading 
-    heading_x = 1*np.cos(heading) # move in x 
+    heading_x = 1*np.cos(heading) # move in x
     heading_y = 1*np.sin(heading) # move in y
     return np.array([heading_x, heading_y])   
 
@@ -103,6 +104,58 @@ def _generate_interobject_force(w_boxes, w_rob_c, robot_index, task, repulsion_o
         F_box = np.sum(F_box, axis=0)                                                    # Sum the vectors due to boxes on the agents 
    
     return F_box, F_agent
+
+def _generate_pheromone_force(w_rob_c, robot_index, pheromone_map, search_radius):
+    '''
+    Checks the pheromone levels in the three cells directly in front of the robot and returns a float direction indicator.
+    The direction value is calculated as a continuous value between -1 and 1, representing the relative pheromone strength on the left vs. right.
+    A value close to:
+    - 1 indicates stronger pheromone on the left
+    - -1 indicates stronger pheromone on the right
+    - 0 indicates equal pheromone levels
+    :param w_rob_c: Robot coordinates for all robots in sim - list
+    :param robot_index: Robot index - integer
+    :param pheromone_map: Hash grid map of pheromones - dictionary - {cell_id: pheromone level, ...}
+    :param cell_size: Size of each cell in the pheromone map grid - int
+    :return: Direction indicator - float between -1 and 1
+    '''
+    # Robot's current position and heading
+    x = w_rob_c[robot_index][0]
+    y = w_rob_c[robot_index][1]
+    heading = w_rob_c[robot_index][2]  # Robot's heading in radians
+    cell_size = 25
+
+    # Offsets to check the three cells in front of the robot
+    half_cell = cell_size / 2
+    offsets = [
+        (math.cos(heading) * cell_size, math.sin(heading) * cell_size),  # Center cell directly ahead
+        (math.cos(heading + np.pi / 6) * cell_size, math.sin(heading + np.pi / 6) * cell_size),  # Left cell
+        (math.cos(heading - np.pi / 6) * cell_size, math.sin(heading - np.pi / 6) * cell_size)   # Right cell
+    ]
+
+    # Get pheromone levels in each of the three cells
+    pheromone_levels = []
+    for dx, dy in offsets:
+        cell_x = (math.floor((x + dx) / cell_size) * cell_size) + half_cell
+        cell_y = (math.floor((y + dy) / cell_size) * cell_size) + half_cell
+        cell_id = (cell_x, cell_y)
+        pheromone_levels.append(pheromone_map.get(cell_id, 0))  # Get pheromone level, default to 0 if none
+
+    # Assign pheromone levels to left, center, and right
+    left_level, center_level, right_level = pheromone_levels
+
+    # Calculate a weighted bias based on pheromone levels
+    # If left has higher pheromones, output will lean toward 1; if right has higher, it will lean toward -1
+    # Center cell acts as a baseline for comparison
+    if left_level + right_level > 0:  # Avoid division by zero if both are zero
+        direction_bias = (left_level - right_level) / (left_level + right_level)
+    else:
+        direction_bias = 0
+
+    # Clamp the output to be between -1 and 1, ensuring it remains within this range
+    direction_bias = max(-1, min(direction_bias, 1))
+
+    return direction_bias
 
 class Sense(py_trees.behaviour.Behaviour):
     '''
@@ -181,41 +234,57 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                 # Compare attributes of the two nodes
                 data = {}
                 for key in hive_mind_attributes:
-                    if key != 'time':
-                        hive_value = hive_mind_attributes[key]
-                        robot_value = robot_attributes[key]
+                    if key == 'data':                    # We only update data attributes as part of the Hive Mind standard architecture
+                        hive_data = hive_mind_attributes[key]
+                        robot_data = robot_attributes[key]
 
                         # Handle comparison for different types
-                        if isinstance(hive_value, np.ndarray) or isinstance(hive_value, list):
+                        if isinstance(hive_data, np.ndarray) or isinstance(hive_data, list):
                             # Compare arrays or lists (ensure same shape/length for arrays)
-                            if len(hive_value) == len(robot_value):  # Length check for lists or arrays
-                                if not np.array_equal(hive_value, robot_value):
+                            if len(hive_data) == len(robot_data):  # Length check for lists or arrays
+                                if not np.array_equal(hive_data, robot_data):
                                     data['hive'] = hive_mind_attributes[key]
                                     data['robot'] = robot_attributes.get(key)
                                     data['attribute'] = key
 
-                        elif isinstance(hive_value, str):
+                        elif isinstance(hive_data, str):
                             # Compare strings
-                            if hive_value != robot_value:
+                            if hive_data != robot_data:
                                 data['hive'] = hive_mind_attributes[key]
                                 data['robot'] = robot_attributes.get(key)
                                 data['attribute'] = key
 
-                        elif isinstance(hive_value, (int, float, bool)):
+                        elif isinstance(hive_data, (int, float, bool)):
                             # Compare integers or floats
-                            if hive_value != robot_value:
+                            if hive_data != robot_data:
                                 data['hive'] = hive_mind_attributes[key]
                                 data['robot'] = robot_attributes.get(key)
                                 data['attribute'] = key
+
+                        elif isinstance(hive_data, dict):
+                            if hive_data.keys() != robot_data.keys():
+                                data['hive'] = hive_mind_attributes[key]
+                                data['robot'] = robot_attributes.get(key)
+                                data['attribute'] = key
+
                         else:
                             # Handle any other types as needed
-                            print(f"Unsupported type for {key}: {type(hive_value)}")
+                            print(f"Unsupported type for {key}: {type(hive_data)}")
 
                 # If there are differences, perform actions based on node type
                 if data:
                     self.handle_update(node_name, data)
 
     def handle_update(self, node_name, data):
+        '''
+        Handles the update of information based on the node name.
+        Each node name has a different pre=programmed update protocol.
+        We either update the Hive or the Robo Mind based on the data.
+        We use deepcopy because we do not want to intrinsically link the two data objects in Hive and Robo minds
+        :param node_name: name of node containing information
+        :param data: data held by attributes in the hive and robot (see compare_robot_hive_graphs)
+        :return:
+        '''
         robo_mind = self.blackboard.robo_mind.graph
         hive_mind = self.blackboard.hive_mind.graph
         robo_mind_attr = self.blackboard.robo_mind.graph.nodes[node_name]
@@ -224,29 +293,29 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         if node_name.endswith('completion'):
             # If robot completion status is 1, update Hive Mind
             if data['robot'] == 1:
-                nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
             # If Hive completion status is 1, update the robot
             elif data['hive'] == 1:
-                nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
+                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
 
         elif node_name.endswith('progress'):
             # 1) A robot is progressing the task
             # If we are progressing the task, update Hive Mind
             if data['robot'] == self.str_index and data['hive'] == 0:
-                nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
             # If Hive progress status is a different robot name, update the robot
             elif data['robot'] == 0 and data['hive'] != self.str_index:
-                nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
+                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
 
             # 2) A robot has completed the task and is no longer progressing
             # If we have completed the task, update Hive Mind
             elif data['robot'] == 0 and data['hive'] == self.str_index:
-                nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
             # If local data is another robot and Hive data is now 0, update the robot
             elif data['robot'] != self.str_index and data['robot'] != 0 and data['hive'] == 0:
-                nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
+                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
 
             # 3) Two different robots are progressing the task (take the most recent data)
             # If both data in the Hive and robot exist and are different from one another
@@ -257,13 +326,17 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
 
                 # Check timings - take  most recent data as correct
                 if hive_node.get('time') > robot_node.get('time'):
-                    nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
+                    robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
                 else:
-                    nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+                    hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
         elif node_name.endswith('position'):
             # Update Hive Mind with robo_mind position attributes
-            nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('pheromone_map'):
+            # Update Hive Mind with latest robo_mind pheromone attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
         # elif node_type == 'robot':
         #     print(f'Robot differences - not implemented yet')
@@ -285,6 +358,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
         self.blackboard.register_key(key='boxes_seen', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.WRITE)
@@ -298,34 +372,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         self.logger.debug(f"Update_Robo_Mind::init {self.name}")
 
     def update_task_status(self):
-        '''
-        This is used to check ONLY if the boxes that are relevant to the task we are working on.
-        If it sees a box of the colour we are interested in, it check to see if that box has been placed.
-        '''
-
-        # Check we are working on a delivery
-        if self.blackboard.target_task_id is not None:
-            graph = self.blackboard.robo_mind.graph
-            task_id = self.blackboard.target_task_id
-            task_node = self.blackboard.robo_mind.find_node(task_id)
-
-            # Get task attributes from the robo_mind knowledge graph
-            for n in graph.successors(task_node):
-                if graph.nodes[n].get('type') == 'box':
-                    box_node = n
-                if n == f'{task_id}_completion':
-                    completion_status_node = n
-                if graph.nodes[n].get('type') == 'dp':
-                    dp_node = n
-
-            for box in self.blackboard.boxes_seen:
-                # Check if box has been placed
-                if box != self.blackboard.target_box:
-                    if box.colour == graph.nodes[box_node].get('colour'):
-                        if euclidean_objects(graph.nodes[dp_node].get('coords'), box) < self.blackboard.place_tol:
-                            graph.nodes[completion_status_node]['data'] = 1
-                            graph.nodes[completion_status_node]['time'] = self.blackboard.tick_clock
-                            break
+        pass
 
     def update_position(self):
         self.blackboard.robo_mind.update_attribute(f'{self.str_index}_position', data = self.blackboard.w_rob_c[self.robot_index],
@@ -338,7 +385,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         pass
 
     def update_heading(self):
-        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_heading', status = self.blackboard.rob_c[self.robot_index][2],
+        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_heading', status = self.blackboard.w_rob_c[self.robot_index][2],
                                                    time=self.blackboard.tick_clock)
 
     def update_lifter_status(self):
@@ -347,11 +394,11 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
     def update_pheromone_map(self):
         cell_size = 25  # Define hash cell size (e.g., 100 = 100 cm)
         # Access or initialize the pheromone map dictionary
-        robo_pheromone_map = self.blackboard.robo_mind.nodes.setdefault(f'{self.str_index}_pheromone_map', {})
+        robo_pheromone_map = self.blackboard.robo_mind.graph.nodes[f'{self.str_index}_pheromone_map'].get('data')
 
         # Robot's current coordinates
-        x = self.blackboard.rob_c[self.robot_index][0]
-        y = self.blackboard.rob_c[self.robot_index][1]
+        x = self.blackboard.w_rob_c[self.robot_index][0]
+        y = self.blackboard.w_rob_c[self.robot_index][1]
 
         # Calculate the cell's centroid (used as the cell_id)
         cell_id_x = (math.floor(x / cell_size) * cell_size) + cell_size / 2
@@ -365,8 +412,16 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
             robo_pheromone_map[cell_id] = 1
 
     def update(self):
+
+        hive_mind_graph = self.blackboard.hive_mind.graph
+        robot_graph = self.blackboard.robo_mind.graph
+
         self.update_task_status()
         self.update_position()
+        self.update_led_status()
+        self.update_speed()
+        self.update_heading()
+        self.update_pheromone_map()
         return py_trees.common.Status.SUCCESS
 
 class Select_Action(py_trees.behaviour.Behaviour):
@@ -377,188 +432,220 @@ class Select_Action(py_trees.behaviour.Behaviour):
         self.str_index = 'robot_' + str(robot_index)
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
         self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='heading', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='boxes_seen', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='delivery_points', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='carrying_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='abandon_complete', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='tick_clock', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='heading', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='minima_timer', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='chosen_target', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.READ)
         self.setup()
 
     def setup(self): 
         self.logger.debug(f"Select action::setup {self.name}")
-        self.blackboard.target_box = None
-        self.blackboard.target_task_id = None
-        self.blackboard.action = 'random_walk'
-        self.blackboard.boxes_seen = []
-        self.blackboard.abandon_complete = False
+        self.blackboard.action = 'init'
+        self.blackboard.chosen_door = None
 
     def initialise(self):
         self.logger.debug(f"select action::initialise {self.name}")
 
-    def check_task_status(self, task_id, type):
-        '''
-        Checks a task status for a given task from the internal task log.
-        :param task_id: id for the task in question
-        :param type: type of status either 'completion' or 'progress' as these are currently the only two task statuses implemented
-        :return: True if task needs servicing. False if not.
-        '''
-        graph = self.blackboard.robo_mind.graph
-        task_node = self.blackboard.robo_mind.find_node(task_id)
-        if type == 'completion':
-            completion_status_node = next((n for n in graph.successors(task_node) if n == f'{task_id}_completion'), None)
-            return graph.nodes[completion_status_node].get('data')
-        if type == 'progress':
-            progress_status_node = next((n for n in graph.successors(task_node) if n == f'{task_id}_progress'), None)
-            return graph.nodes[progress_status_node].get('data')
-        else:
-            print('Error: status type not recognised, cannot check task status')
-            return None
-
-    def handle_random_walk(self):
-        if self.blackboard.boxes_seen:
-            for box in self.blackboard.boxes_seen:
-                if not box.action_status:
-                    # Check if box colour needs picking using knowledge graph logic
-                    graph = self.blackboard.robo_mind.graph
-                    # self.blackboard.robo_mind.print_graph_mind()
-                    box_node = next((n for n, attrs in graph.nodes(data=True) if attrs.get('type') == 'box' and attrs.get('colour') == box.colour), None)
-                    task_node = next((n for n in graph.predecessors(box_node) if graph.nodes[n].get('type') == 'task'), None)
-                    completion_status_node = next((n for n in graph.successors(task_node) if n == f'{task_node}_completion'), None)
-                    completion_status = graph.nodes[completion_status_node].get('data')
-
-                    # If it needs picking - set in blackboard
-                    if not completion_status:
-                        self.blackboard.target_box = box
-                        self.blackboard.target_task_id = task_node
-                        box.action_status = 1
-                        break
-
-        if self.blackboard.target_task_id is not None:
-            self.blackboard.action = 'pick'
-
-    def handle_pick(self):
-        # Check if the task is completed or is currently being progressed by another agent
-        task = self.blackboard.target_task_id
-        if self.check_task_status(task, 'completion'):
-            self.blackboard.action = 'random_walk'
-            self.blackboard.target_box = None
-            self.blackboard.target_task_id = None
-
-        if self.check_task_status(task, 'progress') and self.check_task_status(task, 'progress') != self.str_index:
-            cancel_pick = True
-
-            # Check to see if robot delivering position is available on Hive Mind
-            hive_progress_robot = self.check_task_status(task, 'progress')
-            progress_node_name = f'{task}_progress'
-            hive_robot_position = self.blackboard.hive_mind.graph.nodes[f'{hive_progress_robot}_position'].get('data')
-
-            # Check if position data is available
-            if int(hive_robot_position[0]) != 999:
-                # Get target delivery position
-                graph = self.blackboard.robo_mind.graph
-                delivery_point = next((n for n in graph.successors(task) if graph.nodes[n].get('type') == 'dp'), None)
-                desired_position = graph.nodes[delivery_point].get('coords')
-
-                # Compare to see which robot is closer to the delivery point
-                if euclidean_agents(hive_robot_position, desired_position) > euclidean_agents(
-                        self.blackboard.w_rob_c[self.robot_index], desired_position):
-                    # If the Hive robot is further to the drop point, update local data
-                    cancel_pick = False
-
-            if cancel_pick:
-                # If this robot is further to the drop point than the Hive robot, update local and abandon pick
-                self.blackboard.robo_mind.update_attribute(progress_node_name, data=hive_progress_robot, time=self.blackboard.tick_clock)
-                self.blackboard.action = 'random_walk'
-                self.blackboard.target_box = None
-                self.blackboard.target_task_id = None
-
-        if self.blackboard.target_box is not None:
-        # Check pick status
-            box = self.blackboard.target_box
-            box_distance = euclidean_objects(self.blackboard.w_rob_c[self.robot_index], box)
-            if box_distance < self.blackboard.place_tol:
-                # Set the target box
-                self.blackboard.action = 'place'
-                self.blackboard.carrying_box = True
-
-                # Set progression status to robot string
-                graph = self.blackboard.robo_mind.graph
-                task_node = self.blackboard.target_task_id
-                progress_status_node = next((n for n in graph.successors(task_node) if n == f'{self.blackboard.target_task_id}_progress'), None )
-                self.blackboard.robo_mind.update_attribute(progress_status_node, data=self.str_index, time=self.blackboard.tick_clock)
-
-    def handle_place(self):
-        # Check if the task has been completed
-        task = self.blackboard.target_task_id
-        if self.check_task_status(task, 'completion'):
-            self.blackboard.action = 'abandon'
-
-        # Check if task is being completed by a different robot
-        elif self.check_task_status(task, 'progress') != self.str_index:
-            self.blackboard.action = 'abandon'
-
-        # Check place status
-        else:
-            # Get task data
-            graph = self.blackboard.robo_mind.graph
-            task_node = next((n for n in graph.nodes if n == task), None)
-            delivery_point = next((n for n in graph.successors(task_node) if graph.nodes[n].get('type') == 'dp'), None)
-            desired_position = graph.nodes[delivery_point].get('coords')
-
-            dx = desired_position[0] - self.blackboard.w_rob_c[self.robot_index][0]
-            dy = desired_position[1] - self.blackboard.w_rob_c[self.robot_index][1]
-            distance = math.sqrt(dx ** 2 + dy ** 2)
-
-            if distance < self.blackboard.place_tol:
-                # Block placed
-                completion_status_node = next((n for n in graph.successors(task_node) if n == f'{task}_completion'), None)
-                progression_status_node = next((n for n in graph.successors(task_node) if n == f'{task}_progress'), None)
-                self.blackboard.robo_mind.update_attribute(completion_status_node, data=1, time=self.blackboard.tick_clock)
-                self.blackboard.robo_mind.update_attribute(progression_status_node, data=0, time=self.blackboard.tick_clock)
-
-                dp_id = int(task_node[-1])-1 # TODO: hacky
-                self.blackboard.delivery_points[dp_id].delivered = 1
-
-                # Rest robot status
-                self.blackboard.target_box = None
-                self.blackboard.target_task_id = None
-                self.blackboard.carrying_box = False
-                self.blackboard.action = 'random_walk'
-
-    def handle_abandon(self):
-        # Return to randon walk if abandon complete
-        if self.blackboard.abandon_complete:
-            self.blackboard.target_box.action_status = 0
-            self.blackboard.target_box = None
-            self.blackboard.target_task_id = None
-            self.blackboard.carrying_box = False
-            self.blackboard.action = 'random_walk'
-
     def update(self):
-        if self.blackboard.action == 'random_walk':
-            self.handle_random_walk()
 
-        elif self.blackboard.action == 'pick':
-            self.handle_pick()
+        if self.blackboard.action == 'init':
 
-        elif self.blackboard.action == 'place':
-            self.handle_place()
+            # Select target based on side of the map
+            x = self.blackboard.w_rob_c[self.robot_index][0]
+            graph = self.blackboard.robo_mind.graph
+            door_coords_1 = graph.nodes['target_1'].get('coords')
+            door_coords_2 = graph.nodes['target_2'].get('coords')
+            if abs(door_coords_1[0] - x) < abs(door_coords_2[0] - x):
+                self.blackboard.chosen_target = 'target_1'
+            else:
+                self.blackboard.chosen_target = 'target_2'
 
-        elif self.blackboard.action == 'abandon':
-            self.handle_abandon()
+            self.blackboard.action = 'choose_door'
+
+        if self.blackboard.action == 'choose_door':
+            # Check if door has been chosen
+            if self.blackboard.chosen_door:
+                self.blackboard.action = 'go_through_door'
+
+        if self.blackboard.action == 'go_through_door':
+            # Check to see if we are through door
+            graph = self.blackboard.robo_mind.graph
+            door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+            target_coords = graph.nodes[self.blackboard.chosen_target].get('coords')
+            robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+            if abs(target_coords[0] - robot_coords[0]) < abs(target_coords[0] - door_coords[0]):
+                self.blackboard.action = 'go_to_target'
+
+        if self.blackboard.action == 'go_to_target':
+            # Check if we are within tol of target
+            graph = self.blackboard.robo_mind.graph
+            target_coords = graph.nodes[self.blackboard.chosen_target].get('coords')
+            robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+            dis = math.sqrt((target_coords[1] - robot_coords[1]) ** 2 + (target_coords[0] - robot_coords[0]) ** 2)
+            if dis < self.blackboard.place_tol:
+                # Set new target
+                if self.blackboard.chosen_target == 'target_1':
+                    self.blackboard.chosen_target = 'target_2'
+                else:
+                    self.blackboard.chosen_target = 'target_1'
+                self.blackboard.action = 'choose_door'
 
         # print(self.blackboard.action)
 
-        # if self.robot_index == 1:
-        #     self.blackboard.hive_mind.extract_tasks()
+        return py_trees.common.Status.SUCCESS
+
+class Check_Action_Choose_Door(py_trees.behaviour.Behaviour):
+
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'choose_door':
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+
+class Choose_Door(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # TODO: add in the robo_mind data here to help inform the decision
+
+        # If no robo_mind data is available, choose a door randomly
+        self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
+
+        return py_trees.common.Status.SUCCESS
+
+class Check_Action_Go_Through_Door(py_trees.behaviour.Behaviour):
+
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'go_through_door':
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+
+class Go_Through_Door(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='doors', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # Calculate heading to go through door based on door coordinates
+        graph = self.blackboard.robo_mind.graph
+        door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+        dx = door_coords[0] - robot_coords[0]
+        dy = door_coords[1] - robot_coords[1]
+
+        # Check which side of the door we are on
+        if dx < 0:
+            dx -= 50
+        else:
+            dx += 50
+
+        heading = math.atan2(dy, dx)
+        self.blackboard.w_rob_c[self.robot_index][2] = heading
+
+        return py_trees.common.Status.SUCCESS
+
+class Check_Action_Go_To_Target(py_trees.behaviour.Behaviour):
+
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'go_to_target':
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+
+class Go_To_Target(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='targets', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='chosen_target', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        graph = self.blackboard.robo_mind.graph
+        target_coords = graph.nodes[self.blackboard.chosen_target].get('coords')
+        robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+        dx = target_coords[0] - robot_coords[0]
+        dy = target_coords[1] - robot_coords[1]
+
+        heading = math.atan2(dy, dx)
+        self.blackboard.w_rob_c[self.robot_index][2] = heading
 
         return py_trees.common.Status.SUCCESS
 
@@ -619,174 +706,6 @@ class Random_Walk(py_trees.behaviour.Behaviour):
 
         return py_trees.common.Status.SUCCESS
 
-class Check_Action_Pick(py_trees.behaviour.Behaviour):
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='action', access=py_trees.common.Access.READ)
-
-    def setup(self):
-        self.logger.debug(f"Select action::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
-
-    def update(self):
-        if self.blackboard.action == 'pick':
-            return py_trees.common.Status.SUCCESS
-        else:
-            return py_trees.common.Status.FAILURE
-
-class Pick(py_trees.behaviour.Behaviour):
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
-        self.setup()
-
-    def setup(self):
-        self.logger.debug(f"Pick::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"Random walk::initialise {self.name}")
-
-    def update(self):
-        box = self.blackboard.target_box
-
-        # Set heading to block location for send_path
-        dx = box.x - self.blackboard.w_rob_c[self.robot_index][0]
-        dy = box.y - self.blackboard.w_rob_c[self.robot_index][1]
-        heading = math.atan2(dy, dx)
-        self.blackboard.w_rob_c[self.robot_index][2] = heading
-
-        return py_trees.common.Status.SUCCESS
-
-class Check_Action_Place(py_trees.behaviour.Behaviour):
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='action', access=py_trees.common.Access.READ)
-
-    def setup(self):
-        self.logger.debug(f"Select action::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
-
-    def update(self):
-        if self.blackboard.action == 'place':
-            return py_trees.common.Status.SUCCESS
-        else:
-            return py_trees.common.Status.FAILURE
-
-class Place(py_trees.behaviour.Behaviour):
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="target_box", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="target_task_id", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="robo_mind", access=py_trees.common.Access.WRITE)
-        self.setup()
-
-    def setup(self):
-        self.logger.debug(f"Carry::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"Carry::initialise {self.name}")
-
-    def update(self):
-
-        # Calculate placement target position
-        graph = self.blackboard.robo_mind.graph
-        task_node = self.blackboard.target_task_id
-        delivery_point = next((n for n in graph.successors(task_node) if graph.nodes[n].get('type') == 'dp'), None)
-        desired_position = graph.nodes[delivery_point].get('coords')
-
-        # Calculate heading and send to blackboard to send_path
-        dx = desired_position[0] - self.blackboard.w_rob_c[self.robot_index][0]
-        dy = desired_position[1] - self.blackboard.w_rob_c[self.robot_index][1]
-        heading = math.atan2(dy, dx)
-        self.blackboard.w_rob_c[self.robot_index][2] = heading
-
-        return py_trees.common.Status.SUCCESS
-
-class Check_Action_Abandon(py_trees.behaviour.Behaviour):
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='action', access=py_trees.common.Access.READ)
-
-    def setup(self):
-        self.logger.debug(f"Select action::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
-
-    def update(self):
-        if self.blackboard.action == 'abandon':
-            return py_trees.common.Status.SUCCESS
-        else:
-            return py_trees.common.Status.FAILURE
-
-class Abandon(py_trees.behaviour.Behaviour):
-    '''
-    If the delivery needs abandoning for any reason - e.g. delivery has already been completed.
-    Carry the block away from teh delivery zone and abandon in a random location.
-    Carrying away from the delivery zone prevents congestion of blocks in one area.
-    '''
-
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="target_box", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="target_task_id", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="abandon_complete", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="arena_size", access=py_trees.common.Access.WRITE)
-        self.setup()
-
-    def setup(self):
-        self.logger.debug(f"Carry::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"Carry::initialise {self.name}")
-        self.blackboard.abandon_complete = False
-
-        # Move in random direction north, away from delivery zone
-        heading = random.uniform(math.radians(170), math.radians(10))
-        self.blackboard.w_rob_c[self.robot_index][2] = heading
-        self.counts = 0
-        self.abandon_counts = random.randint(200,500)
-
-    def update(self):
-        # Complete when number of counts is exceeded or when the robot is in the top half of the arena sufficiently far from drop zone
-        if self.counts > self.abandon_counts or self.blackboard.w_rob_c[self.robot_index][1] > (self.blackboard.arena_size[1]/2):
-            self.blackboard.abandon_complete = True
-            return py_trees.common.Status.SUCCESS
-        else:
-            self.counts += 1
-            return py_trees.common.Status.RUNNING
-
 class Send_Path(py_trees.behaviour.Behaviour):
     '''
     Send path behaviour uses potential field algorithm and adds up all forces from:
@@ -816,6 +735,8 @@ class Send_Path(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="repulsion_o", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="carrying_box", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="target_box", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="camera_sensor_range", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="hive_mind", access=py_trees.common.Access.READ)
         self.setup()
 
     def setup(self): 
@@ -881,16 +802,16 @@ class Send_Path(py_trees.behaviour.Behaviour):
     def update(self):
         # Set speed based on task (if picking or placing then use half speed)
         # Set speed based on task (if picking or placing then use half speed)
-        if self.blackboard.action == 'random_walk':
-            max_v = self.blackboard.max_v
-        else:
-            max_v = self.blackboard.max_v / 2
+
+        max_v = self.blackboard.max_v
 
         # Compute forces on robot based on desired heading and nearby objects
         heading = self.blackboard.w_rob_c[self.robot_index][2]
         f_h = _generate_heading_force(heading)
         f_w = _generate_wall_avoidance_force(self.blackboard.w_rob_c, self.blackboard.map, self.robot_index, self.blackboard.repulsion_w)
         f_b, f_a = _generate_interobject_force(self.blackboard.w_boxes, self.blackboard.w_rob_c, self.robot_index, self.blackboard.action, self.blackboard.repulsion_o)
+
+        # print(f'f_h {f_h}, f_w {f_w}, f_b {f_b}, f_a {f_a}, f_p {f_p}')
 
         # Total force from potential field
         F = f_h + f_w + f_b + f_a
@@ -953,47 +874,46 @@ def create_root(robot_index):
     action = Select_Action(name='Select action', robot_index=robot_index)
 
     # Update local task log
-    update_robo_mind = Update_Robo_Mind(name='Update local task log', robot_index=robot_index)
+    #  TODO: update_robo_mind = Update_Robo_Mind(name='Update robo mind', robot_index=robot_index)
 
     # Connect to HM local task log
-    connect_to_hm = Connect_To_Hive_Mind(name='Connect to HM', robot_index=robot_index)
+    # TODO: connect_to_hm = Connect_To_Hive_Mind(name='Connect to HM', robot_index=robot_index)
 
-    # Random path behaviour
-    random_path = py_trees.composites.Sequence(name='Random walk', memory=False)
-    random_path.add_child(Check_Action_Random_Walk(name='Check if random walk', robot_index=robot_index))
-    random_path.add_child(Random_Walk(name='Random Walk', robot_index=robot_index))
+    # Choose door behaviour
+    choose_door = py_trees.composites.Sequence(name='Choose Door', memory=False)
+    choose_door.add_child(Check_Action_Choose_Door(name='Check if choose door', robot_index=robot_index))
+    choose_door.add_child(Choose_Door(name='Choose Door', robot_index=robot_index))
 
-    # Pick box behaviour
-    pick_box = py_trees.composites.Sequence(name='Pick Box Seq', memory=False)
-    pick_box.add_child(Check_Action_Pick(name='Check if pick', robot_index=robot_index))
-    pick_box.add_child(Pick(name='Pick Box', robot_index=robot_index))
+    # Go through door behaviour
+    go_through_door = py_trees.composites.Sequence(name='Go Through Door', memory=False)
+    go_through_door.add_child(Check_Action_Go_Through_Door(name='Check if go through door', robot_index=robot_index))
+    go_through_door.add_child(Go_Through_Door(name='Go Through Door', robot_index=robot_index))
 
-    # Place block behaviour
-    place_box = py_trees.composites.Sequence(name='Place Box', memory=False)
-    place_box.add_child(Check_Action_Place(name='Check if place', robot_index=robot_index))
-    place_box.add_child(Place(name='Place Box', robot_index=robot_index))
+    # Go to target
+    go_to_target = py_trees.composites.Sequence(name='Go To Target', memory=False)
+    go_to_target.add_child(Check_Action_Go_To_Target(name='Check if go to target', robot_index=robot_index))
+    go_to_target.add_child(Go_To_Target(name='Go to target', robot_index=robot_index))
 
-    # Abandon block behaviour
-    abandon_box = py_trees.composites.Sequence(name='Abandon Box', memory=True)
-    abandon_box.add_child(Check_Action_Abandon(name='Check if abandon', robot_index=robot_index))
-    abandon_box.add_child(Abandon(name='Abandon Box', robot_index=robot_index))
+    # Go through door behaviour
+    random_path = py_trees.composites.Sequence(name='Choose Door', memory=False)
+    random_path.add_child(Check_Action_Choose_Door(name='Check if choose door', robot_index=robot_index))
+    random_path.add_child(Choose_Door(name='Choose Door', robot_index=robot_index))
 
     # Step 1: Sequence to execute initial actions first
     initial_actions = py_trees.composites.Sequence(name='Initial Actions', memory=False)
     initial_actions.add_child(sense)
     initial_actions.add_child(action)
-    initial_actions.add_child(update_robo_mind)
-    initial_actions.add_child(connect_to_hm)
+    # initial_actions.add_child(update_robo_mind)
+    # initial_actions.add_child(connect_to_hm)
 
     # Step 2: Robot actions after the initial actions
     DOTS_actions = py_trees.composites.Selector(name=f'DOTS Actions {str_index}', memory=True)
     Path_actions = py_trees.composites.Sequence(name='Path Actions', memory=False)
 
-    # Step 3: Task actions (includes abandon_box)
-    DOTS_actions.add_child(pick_box)
-    DOTS_actions.add_child(random_path)
-    DOTS_actions.add_child(place_box)
-    DOTS_actions.add_child(abandon_box)
+    # Step 3: Task actions
+    DOTS_actions.add_child(choose_door)
+    DOTS_actions.add_child(go_through_door)
+    DOTS_actions.add_child(go_to_target)
 
     # Step 4: Path actions
     Path_actions.add_child(Send_Path(name='Send Path', robot_index=robot_index))

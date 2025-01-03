@@ -11,17 +11,15 @@ warehouse:
   box_radius: 12.5
   width: 1000
   height: 1000
-  repulsion_wall: 20
-  repulsion_object: 20
+  repulsion_wall: 25
+  repulsion_object: 25
   exit_width: 25
 
 faults: []
 
-time_limit: 10000
+time_limit: 5000
 animate: True
 save_animation: False
-heading_bias: False
-box_attraction: False
 heading_change_rate: 100 # ticks per change in heading
 capture_data: False
 
