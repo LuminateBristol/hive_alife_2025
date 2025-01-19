@@ -24,15 +24,17 @@ class Robot:
 
     def add_observations(self):
         # Add robot self-observable information to the observation space
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position_status', 'data':np.array([999, 999, 999]), 'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status', 'data':[],    'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status', 'data':False, 'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status', 'data':0,  'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status', 'data':0,  'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status', 'data':0,  'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map', 'data':{},  'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position_status', 'data':np.array([999, 999, 999]),   'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status',      'data':[],                          'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status',   'data':False,                       'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status',  'data':0,                           'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status',    'data':0,                           'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status',  'data':0,                           'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map',   'data':{},                          'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_chosen_door',   'has_status',   {'type':'chosen_door',           'data':0,                           'weight':0, 'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_waypoint',      'in_progress',  {'type':'waypoint',              'data':{},                          'weight':0, 'time':0} ])
     
-    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points):
+    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points, traffic_score):
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="carrying_box", access=py_trees.common.Access.WRITE)
@@ -46,6 +48,7 @@ class Robot:
         self.blackboard.register_key(key="repulsion_o", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="delivery_points", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="traffic_score", access=py_trees.common.Access.WRITE)
 
         self.blackboard.w_rob_c = []
         self.blackboard.w_boxes = []
@@ -60,21 +63,26 @@ class Robot:
         self.blackboard.repulsion_o = repulsion_o
         self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so that each robot has a unique copy
         self.blackboard.delivery_points = delivery_points
-
-        print(self.blackboard.arena_size)
+        self.blackboard.traffic_score = traffic_score
         
     def add_map(self, map):
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
         self.blackboard.map = map
 
-    def build_robo_mind(self, entities, tasks):
+    def build_robo_mind(self, entities, tasks, map):
         self.add_observations()
         self.robo_mind = GraphMind()
 
-        for entity in entities:
-            self.robo_mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
-        for task in tasks:
-            self.robo_mind.add_information_node(task[0], task[1], task[2], **task[3])
+        if entities:
+            for entity in entities:
+                self.robo_mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
+        if tasks:
+            for task in tasks:
+                self.robo_mind.add_information_node(task[0], task[1], task[2], **task[3])
+        if map:
+            for wp in map:
+                self.robo_mind.add_information_node(wp[0], wp[1], wp[2], **wp[3])
+
         for observation in self.observation_space:
             self.robo_mind.add_information_node(observation[0], observation[1], observation[2], **observation[3])
 
@@ -103,7 +111,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, print_bt = False, task_log=None, delivery_points=None):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, print_bt = False, task_log=None, delivery_points=None, traffic_score=None):
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
             self.agents.append(ag)
@@ -127,7 +135,7 @@ class Swarm:
             name    = f'Pick Place DOTS: {str_index}'
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
-            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points)
+            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points, traffic_score)
 
             self.number_of_agents += 1
 

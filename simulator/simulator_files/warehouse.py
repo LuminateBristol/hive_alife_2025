@@ -23,14 +23,14 @@ class Warehouse:
 		self.delivered = 0 # Number of boxes that have been delivered
 		self.counter = 0 # time starts at 0s or time step = 0 
 
-		# Initialise boxes
+		# LOGISTICS: Initialise boxes
 		self.boxes = [] # centre coordinates of boxes starts as an empty list
 		for colour in config.get('warehouse', 'boxes'):
 			for i in range(config.get('warehouse', 'boxes')[colour]):
 				  self.boxes.append(Box(colour=colour))
 		self.number_of_boxes = len(self.boxes)
 
-		# Initiate depot
+		# LOGISTICS: Initiate depot
 		if config.get('warehouse', 'depot') == True:
 			self.depot = True
 		else:
@@ -43,7 +43,7 @@ class Warehouse:
 		if self.hive_mind is not None:
 			swarm.add_hive_mind(self.hive_mind)
 
-		# Initiate robotsx
+		# Initiate robots
 		self.rob_c = []
 		self.drop_zone_limit = config.get('warehouse', 'drop_zone_limit')
 		self.generate_object_positions(int(config.get('warehouse', 'object_position')))
@@ -157,10 +157,16 @@ class Warehouse:
 			if self.counter == 0:
 				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=1)
 			else:
-				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes)
+				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=0)
 
-			if pheromones:
-				self.update_pheromone_map()
+				# Update pheromones
+				if pheromones:
+					self.update_pheromone_map()
+
+				# Run Hive Mind cleanup
+				# (note in reality this would be handled by the Hive server but since this is hosted in the warehouse, we run here)
+				if self.hive_mind is not None:
+					self.hive_mind.cleanup_hive_mind()
 
 			self.counter += 1
 			self.swarm.counter = self.counter

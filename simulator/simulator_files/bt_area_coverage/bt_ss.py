@@ -2,7 +2,6 @@ import copy
 import random
 import math
 from lib2to3.fixes.fix_metaclass import remove_trailing_newline
-from turtledemo.nim import computerzug
 
 import py_trees
 import numpy as np
@@ -622,110 +621,89 @@ class Ballistic_Walk(py_trees.behaviour.Behaviour):
         else:
             return False
 
-    def detect_pheromone_in_path(self, x, y, heading, pheromone_map):
-        x = self.blackboard.w_rob_c[self.robot_index][0]
-        y = self.blackboard.w_rob_c[self.robot_index][1]
-        heading = self.blackboard.w_rob_c[self.robot_index][2]  # Robot's heading in radians
-        cell_size = 25
-
-        # Calculate the coordinates of the next cell in the robot's path
-        next_x = x + cell_size * math.cos(heading)
-        next_y = y + cell_size * math.sin(heading)
-
-        # Determine the center of the next cell
-        next_cell = (math.floor(next_x / cell_size) * cell_size + cell_size / 2,
-                     math.floor(next_y / cell_size) * cell_size + cell_size / 2)
-
-        # Check if there is a pheromone in the next cell
-        pheromone_map = self.generate_pheromone_map()
-        return pheromone_map.get(next_cell, 0) > 0
-
-    def search_for_next_pheromone_free_cell(self, x, y, heading, pheromone_map, cell_size):
-        search_radius = 200
-        potential_cells = []
-
-        for dx in range(-search_radius, search_radius + cell_size,cell_size):  # TODO: this is not super efficient as we are searching so many cells but then  generally only using the close ones - possibly stop search if pheromone = 0 ie cant improve on taht
-            for dy in range(-search_radius, search_radius + cell_size, cell_size):
-
-                # Skip cells outside boundaries
-                if x + dx > 2500 or x + dx < 0 or y + dy > 2500 or y + dy < 0: # TODO: clearly not ideal...
-                    continue
-
-                # Calculate the cell center coordinates
-                cell_x = (math.floor((x + dx) / cell_size) * cell_size) + cell_size / 2
-                cell_y = (math.floor((y + dy) / cell_size) * cell_size) + cell_size / 2
-                cell_id = (cell_x, cell_y)
-
-                # Calculate distance and angle to the cell
-                dist = math.sqrt(dx ** 2 + dy ** 2)
-                angle = math.atan2(dy, dx) - heading
-
-                # Normalize angle to range [-pi, pi]
-                angle = (angle + np.pi) % (2 * np.pi) - np.pi
-
-                # Add cell with its angle offset and distance
-                potential_cells.append((cell_id, angle, dist))
-
-        # We look for the cell with the minimum pheromone
-        # Sort cells: prioritize first searching for cells with:
-        # 1. small angle (forward from robot) and 2. short distance (close to robot)
-        if random.random() > 0.5:
-            potential_cells.sort(key=lambda cell: (abs(cell[2]), cell[1]))
-        else:
-            potential_cells.sort(key=lambda cell: (abs(cell[2]), -(cell[1])))
-
-        # Search cells in the sorted order to find the minimum pheromone cell
-        for cell_id, angle, dist in potential_cells:
-            pheromone_level = pheromone_map.get(cell_id, 0)
-
-            # Check pheromone level
-            if pheromone_level < self.minimum_pheromone:
-                self.minimum_pheromone = pheromone_level
-                self.min_cell_id = cell_id
-            # Update the minimum based on new information from pheromone map
-            self.minimum_pheromone = pheromone_map.get(self.min_cell_id, 0)
-
-        # Calculate angle to minimum pheromone cell
-        angle_to_cell = math.atan2(self.min_cell_id[1] - y, self.min_cell_id[0] - x)
-
-        return angle_to_cell
-
     def update(self):
 
-        # Get wall repulsion force
-        f_w = _generate_wall_avoidance_force(self.blackboard.w_rob_c, self.blackboard.map, self.robot_index,
-                                             self.blackboard.repulsion_w)
-
-        # If leaving a wall, continue moving until away from wall (unless we find another wall...)
-        if self.wall_counter and abs(f_w)[0] < self.wall_threshold and abs(f_w)[1] < self.wall_threshold:
+        # If leaving a wall, continue moving until away from wall
+        if self.wall_counter:
             self.wall_counter -= 1
             return py_trees.common.Status.SUCCESS
 
+        # Get wall repulsion force
+        f_w = _generate_wall_avoidance_force(self.blackboard.w_rob_c, self.blackboard.map, self.robot_index, self.blackboard.repulsion_w)
+
         # If pheromone data is available - get pheromone force
-        min_pheromone = 0
+        angle_to_cell = 0
         try:
             self.blackboard.hive_mind.graph.nodes[f'robot_{self.robot_index}_pheromone_map'].get('data')
         except KeyError:
             pass
         else:
-            # Check if there is a pheromone in the next cell on robot's path
+            # Robot's current position and heading
             x = self.blackboard.w_rob_c[self.robot_index][0]
             y = self.blackboard.w_rob_c[self.robot_index][1]
             heading = self.blackboard.w_rob_c[self.robot_index][2]  # Robot's heading in radians
-            pheromone_map = self.generate_pheromone_map()
             cell_size = 25
+            # search_radius = self.blackboard.camera_sensor_range
+            search_radius = 200
+            pheromone_map = self.generate_pheromone_map()
 
-            if self.detect_pheromone_in_path(x, y, heading, pheromone_map):
-                min_pheromone = self.search_for_next_pheromone_free_cell(x, y, heading, pheromone_map, cell_size)
 
-        # Set heading based on wall force or phereomone if available
+            # Store potential cells in a list with angle and distance
+            potential_cells = []
+
+            # Define the range and angle offset for cells within the search radius
+            for dx in range(-search_radius, search_radius + cell_size, cell_size): # TODO: this is not super efficient as we are searching so many cells but then  generally only using the close ones - possibly stop search if pheromone = 0 ie cant improve on taht
+                for dy in range(-search_radius, search_radius + cell_size, cell_size):
+
+                    # Skip cells outside boundaries
+                    if x + dx > 1000 or x + dx < 0 or y + dy > 1000 or y + dy < 0:
+                        continue
+
+                    # Calculate the cell center coordinates
+                    cell_x = (math.floor((x + dx) / cell_size) * cell_size) + cell_size / 2
+                    cell_y = (math.floor((y + dy) / cell_size) * cell_size) + cell_size / 2
+                    cell_id = (cell_x, cell_y)
+
+                    # Calculate distance and angle to the cell
+                    dist = math.sqrt(dx ** 2 + dy ** 2)
+                    angle = math.atan2(dy, dx) - heading
+
+                    # Normalize angle to range [-pi, pi]
+                    angle = (angle + np.pi) % (2 * np.pi) - np.pi
+
+                    # Add cell with its angle offset and distance
+                    potential_cells.append((cell_id, angle, dist))
+
+            # We look for the cell with the minimum pheromone
+            # Sort cells: prioritize first searching for cells with:
+            # 1. small angle (forward from robot) and 2. short distance (close to robot)
+            if random.random() > 0.5:
+                potential_cells.sort(key=lambda cell: (abs(cell[2]), cell[1]))
+            else:
+                potential_cells.sort(key=lambda cell: (abs(cell[2]), -(cell[1])))
+
+            # Search cells in the sorted order to find the minimum pheromone cell
+            for cell_id, angle, dist in potential_cells:
+                pheromone_level = pheromone_map.get(cell_id, 0)
+
+                # Check pheromone level
+                if pheromone_level < self.minimum_pheromone:
+                    self.minimum_pheromone = pheromone_level
+                    self.min_cell_id = cell_id
+                # Update the minimum based on new information from pheromone map
+                self.minimum_pheromone = pheromone_map.get(self.min_cell_id, 0)
+
+            # Calculate angle to minimum pheromone cell
+            angle_to_cell = math.atan2(self.min_cell_id[1] - y, self.min_cell_id[0] - x)
+
+        # Set heading
+        # Check wall force - move to random direction 90-270 degrees from current heading
         if abs(f_w)[0] > self.wall_threshold or abs(f_w)[1] > self.wall_threshold:
             heading = self.blackboard.w_rob_c[self.robot_index][2]
-            self.blackboard.w_rob_c[self.robot_index][2] = heading + random.uniform(-np.pi / 2, np.pi / 2) + np.pi # random direction 90-270 degrees from current heading
+            self.blackboard.w_rob_c[self.robot_index][2] = heading + random.uniform(-np.pi / 2, np.pi / 2) + np.pi
             self.wall_counter = 20
-
-        elif min_pheromone:
-            self.blackboard.w_rob_c[self.robot_index][2] = min_pheromone
+        elif angle_to_cell:
+            self.blackboard.w_rob_c[self.robot_index][2] = angle_to_cell
 
         return py_trees.common.Status.SUCCESS
 
@@ -846,35 +824,30 @@ class Send_Path(py_trees.behaviour.Behaviour):
         move_x = np.cos(computed_heading) * max_v
         move_y = np.sin(computed_heading) * max_v
 
-        x = self.blackboard.w_rob_c[self.robot_index][0]
-        y = self.blackboard.w_rob_c[self.robot_index][1]
-        next_x, next_y = x + math.cos(computed_heading)*max_v, y + math.sin(computed_heading)*max_v
-
         # Get robot's current position
         robot_x = self.blackboard.w_rob_c[self.robot_index][0]
         robot_y = self.blackboard.w_rob_c[self.robot_index][1]
 
-        # No local minima used for this map
-        # # Update position history
-        # self._update_position_history(robot_x, robot_y)
-        #
-        # # Check if robot is stuck in a local minimum every 5 timesteps
-        # if self.cooldown == 0 and self._is_stuck_in_local_minima():
-        #     if not self.escaping:
-        #         self.escaping = True
-        #         self.escape_steps = 0  # Start escape routine
-        #         self.cooldown = self.cooldown_duration  # Begin cooldown period
-        #
-        #     move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
-        # else:
-        #     if self.escaping:
-        #         move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
-        #     else:
-        #         self.escaping = False  # Normal behavior if not stuck
-        #
-        # # Decrease cooldown timer if active
-        # if self.cooldown > 0:
-        #     self.cooldown -= 1
+        # Update position history
+        self._update_position_history(robot_x, robot_y)
+
+        # Check if robot is stuck in a local minimum every 5 timesteps
+        if self.cooldown == 0 and self._is_stuck_in_local_minima():
+            if not self.escaping:
+                self.escaping = True
+                self.escape_steps = 0  # Start escape routine
+                self.cooldown = self.cooldown_duration  # Begin cooldown period
+
+            move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
+        else:
+            if self.escaping:
+                move_x, move_y = self._escape_local_minima(robot_x, robot_y, max_v)
+            else:
+                self.escaping = False  # Normal behavior if not stuck
+
+        # Decrease cooldown timer if active
+        if self.cooldown > 0:
+            self.cooldown -= 1
 
         # Update robot's position
         self.blackboard.w_rob_c[self.robot_index][0] += move_x

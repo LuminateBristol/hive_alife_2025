@@ -8,7 +8,7 @@ class LocalGraph:
     A generalised knowledge graph format to be inherited for formalisation of the Hive Mind KG
     '''
     def __init__(self):
-        self.graph = nx.DiGraph()
+        self.graph = nx.MultiDiGraph()
 
     def add_node(self, node_name):
         '''
@@ -17,11 +17,11 @@ class LocalGraph:
         '''
         self.graph.add_node(node_name)
 
-    def add_edge(self, node1, node2, edge_type=None):
+    def add_edge(self, node1, node2, edge_type=None, direction=True):
         '''
         Adds an edge between two nodes in the graph.
         '''
-        self.graph.add_edge(node1, node2, edge_type=edge_type)
+        self.graph.add_edge(node1, node2, edge_type=edge_type, direction=direction)
 
     def add_edges(self, edges):
         '''
@@ -78,9 +78,9 @@ class GraphMind(LocalGraph):
         '''
         for observation in robot_observation_space:
             attributes = copy.deepcopy(observation[3])
-            self.add_information_node(observation[0], observation[1], observation[2], **attributes)
+            self.add_information_node(parent_node=observation[0], info_node=observation[1], edge_type=observation[2], direction=True, **attributes)
 
-    def add_information_node(self, parent_node, info_node, edge_type=None, **attributes):
+    def add_information_node(self, parent_node, info_node, edge_type=None, direction=True, **attributes):
         """
         Add new information to the Graph Mind.
         :param parent_node: Name of the parent node
@@ -99,7 +99,7 @@ class GraphMind(LocalGraph):
         else:
             # Add the node with the attributes directly
             self.graph.add_node(info_node, **attributes)
-            self.add_edge(parent_node, info_node, edge_type)
+            self.add_edge(parent_node, info_node, edge_type, direction)
 
         return info_node
 
@@ -119,39 +119,6 @@ class GraphMind(LocalGraph):
         for node, data in self.graph.nodes(data=True):
             if node == node_name:
                 self.update_attribute(node, needs_weight=weight)
-
-    def extract_tasks(self):
-        """
-        Extract and print all nodes with the attribute 'type' equal to 'task'.
-        """
-        tasks = []
-        for node, data in self.graph.nodes(data=True):
-            if data.get('type') == 'task':
-                successors = self.graph.successors(node) if self.graph.is_directed() else self.graph.neighbors(node)
-
-                # Iterate through successors and print their attributes
-                for successor in successors:
-                    successor_attributes = self.graph.nodes[successor]
-                    print(f"  Successor: {successor}, Attributes: {successor_attributes}")
-
-    def extract_task_id(self, id):
-        """
-        Extract and print all nodes with the attribute 'type' equal to 'task'.
-        """
-        for node, data in self.graph.nodes(data=True):
-            if data.get('type') == 'task' and data.get('id') == id:
-                return node, data
-
-    def extract_informational_needs(self):
-        """
-        Extract and print all nodes with an attribute 'in_weight' equal to 1.
-        """
-        weighted_nodes = []
-        for node, data in self.graph.nodes(data=True):
-            if data.get('in_need') == 0:
-                weighted_nodes.append((node, data))
-
-        return weighted_nodes
 
     def print_graph_mind(self, attribute_filter=None):
         """
@@ -231,6 +198,13 @@ class GraphMind(LocalGraph):
         plt.title(f"Node '{node}' and all its successors", fontsize=16)
         plt.show()
 
+    def cleanup_hive_mind(self):
+        '''
+        Cleanup Hive Mind by removing all robot data items that have a weight==0
+        These items are not updated by the robots in the current iteration and therefore are not being used
+        '''
+        nodes_to_remove = [n for n, attr in self.graph.nodes(data=True) if attr.get('weight') == 0]
+        self.graph.remove_nodes_from(nodes_to_remove)
 # class OptimiseHiveMind(): # TODO: update this so it takes in the Hive Mind as an input somewhere and returns new weights - the hive mind this time will be a sim.hive_mind object (move to run file maybe?)
 #     def __init__(self, robot_observation_space, tasks):
 #         self.robot_observation_space = robot_observation_space

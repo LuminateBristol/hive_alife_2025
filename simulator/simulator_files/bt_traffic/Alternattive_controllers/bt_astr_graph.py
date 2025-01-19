@@ -219,13 +219,23 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
 
     def compare_robot_hive_graphs(self):
+        '''
+        Here we compare the attributes between the Hive Mind and the Robo Mind for all nodes that have a weight == 1
+        I.e. for all nodes that the Hive has deemed important information for sharing in this iteration of the task.
+        We only compare what is in our own graphs to what is in the Hive graph.
+
+        Because of the nature of different types of information shared, we have different comparisons for each datatype.
+
+        Nothing is directly returned. Instead, for each weighted node, we run an the update function with the node name, the Hive data
+         and the Robot data as an input. This allows us to update the Hive or robot accordingly.
+        '''
         hive_mind_graph = self.blackboard.hive_mind.graph
         robot_graph = self.blackboard.robo_mind.graph
 
         # Extract nodes where weight > 0 from the Hive Mind graph
         weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
 
-        # Loop through nodes in the weight_nodes dictionary
+        # Loop through nodes in the weight_nodes dictionary - these are all nodes that have weight = 1, i.e. requested information from Hive
         for node_name, hive_mind_attributes in weight_nodes.items():
             # Check if the node exists in the robot's knowledge graph
             if node_name in robot_graph.nodes:
@@ -290,52 +300,20 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         robo_mind_attr = self.blackboard.robo_mind.graph.nodes[node_name]
         hive_mind_attr = self.blackboard.hive_mind.graph.nodes[node_name]
 
-        if node_name.endswith('completion'):
-            # If robot completion status is 1, update Hive Mind
-            if data['robot'] == 1:
-                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-            # If Hive completion status is 1, update the robot
-            elif data['hive'] == 1:
-                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
-
-        elif node_name.endswith('progress'):
-            # 1) A robot is progressing the task
-            # If we are progressing the task, update Hive Mind
-            if data['robot'] == self.str_index and data['hive'] == 0:
-                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-            # If Hive progress status is a different robot name, update the robot
-            elif data['robot'] == 0 and data['hive'] != self.str_index:
-                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
-
-            # 2) A robot has completed the task and is no longer progressing
-            # If we have completed the task, update Hive Mind
-            elif data['robot'] == 0 and data['hive'] == self.str_index:
-                hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-            # If local data is another robot and Hive data is now 0, update the robot
-            elif data['robot'] != self.str_index and data['robot'] != 0 and data['hive'] == 0:
-                robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
-
-            # 3) Two different robots are progressing the task (take the most recent data)
-            # If both data in the Hive and robot exist and are different from one another
-            elif data['hive'] != 0 and data['robot'] != 0 and data['hive'] != data['robot']:
-
-                hive_node = self.blackboard.hive_mind.graph.nodes[node_name]
-                robot_node = self.blackboard.robo_mind.graph.nodes[node_name]
-
-                # Check timings - take  most recent data as correct
-                if hive_node.get('time') > robot_node.get('time'):
-                    robo_mind.nodes[node_name]['data'] = copy.deepcopy(hive_mind_attr['data'])
-                else:
-                    hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('position'):
+        if node_name.endswith('position'):
             # Update Hive Mind with robo_mind position attributes
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
-        elif node_name.endswith('pheromone_map'):
-            # Update Hive Mind with latest robo_mind pheromone attributes
+        elif node_name.endswith('chosen_door'):
+            # Update Hive Mind with latest robo_mind chosen door attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('waypoint'):
+            # Update Hive Mind with latest robo_mind waypoint attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('heading'):
+            # Update Hive Mind with latest robo_mind heading attributes
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
         # elif node_type == 'robot':
@@ -496,74 +474,46 @@ class A_Star_Path_Plan(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.WRITE)
 
     def setup(self):
-        # Setup grid version of map
-        self.resolution = 50
-
-        width = self.blackboard.arena_size[0]
-        height = self.blackboard.arena_size[1]
-        self.grid = np.zeros((height // self.resolution, width // self.resolution))
-        # Mark obstacles on the map
-        for wall in self.blackboard.map.walls:
-            start_cell = self.coord_to_cell(wall.start)
-            end_cell = self.coord_to_cell(wall.end)
-            r1, c1 = start_cell
-            r2, c2 = end_cell
-            print(len(self.grid), len(self.grid[0]))
-            print(r1, c1, r2, c2)
-
-            # Add walls to grid (currently only horizontal or vertical)
-            # Ensure that grid coords are within range
-            r1, r2 = max(0, min(r1, self.grid.shape[0] - 1)), max(0, min(r2, self.grid.shape[0] - 1))
-            c1, c2 = max(0, min(c1, self.grid.shape[1] - 1)), max(0, min(c2, self.grid.shape[1] - 1))
-
-            if r1 == r2:  # Horizontal line
-                self.grid[r1, min(c1, c2):max(c1, c2) + 1] = 1
-            elif c1 == c2:  # Vertical line
-                self.grid[min(r1, r2):max(r1, r2) + 1, c1] = 1
-            else:
-                raise ValueError("Only vertical or horizontal walls are supported.")
-
-        print('grid...')
-        print(self.grid)
-
         self.waypoint = None
         self.path = None
 
-    def coord_to_cell(self, coord):
-        x, y = coord[0], coord[1]
-        return int(y // self.resolution), int(x // self.resolution)
+        graph = self.blackboard.robo_mind.graph
+        self.graph_waypoints = [n for n, attr in graph.nodes(data=True) if attr.get('type') == 'waypoint']
 
-    def cell_to_coord(self, cell):
-        row, col = cell
-        return (col * self.resolution + self.resolution / 2,
-                row * self.resolution + self.resolution / 2)
+    def neighbors(self, wp):
+        graph = self.blackboard.robo_mind.graph
+        neighbors = []
+        for neighbor in graph.neighbors(wp):
+            if graph.nodes[neighbor]['type'] == 'waypoint':
+                neighbors.append(neighbor)
 
-    def neighbors(self, cell):
-        row, col = cell
-        neighbor_offsets = [(-1, 0), (1, 0), (0, -1), (0, 1),  # 4-connected
-                            (-1, -1), (-1, 1), (1, -1), (1, 1)]  # diagonals
-        for dr, dc in neighbor_offsets:
-            nr, nc = row + dr, col + dc
-            if 0 <= nr < self.grid.shape[0] and 0 <= nc < self.grid.shape[1]: # Check that cell is in grid
-                if self.grid[nr, nc] == 0:  # Free cell
-                    yield nr, nc
+        return neighbors
 
-    def heuristic(self, cell1, cell2):
+    def heuristic(self, wp1, wp2):
         ''' Heuristic using Euclidean distance'''
-        r1, c1 = cell1
-        r2, c2 = cell2
-        return ((r1 - r2) ** 2 + (c1 - c2) ** 2) ** 0.5
+        graph = self.blackboard.robo_mind.graph
+        coords1 = graph.nodes[wp1].get('coords')
+        coords2 = graph.nodes[wp2].get('coords')
+        return ((coords1[1] - coords2[1]) ** 2 + (coords1[0] - coords2[0]) ** 2) ** 0.5
+
+    def get_closest_node(self, coord):
+        graph = self.blackboard.robo_mind.graph
+        dis = np.inf
+        closest_wp = None
+        for waypoint in self.graph_waypoints:
+            if euclidean_agents(coord, graph.nodes[waypoint].get('coords')) < dis:
+                dis = euclidean_agents(coord, graph.nodes[waypoint].get('coords'))
+                closest_wp = waypoint
+        return closest_wp
 
     def a_star(self, start_coord, goal_coord):
-        start_cell = self.coord_to_cell(start_coord)
-        goal_cell = self.coord_to_cell(goal_coord)
 
         open_set = []
-        heapq.heappush(open_set, (0, start_cell))
+        heapq.heappush(open_set, (0, start_coord))
 
         came_from = {}
-        g_score = {start_cell: 0} # Score from start cell to current cell
-        f_score = {start_cell: self.heuristic(start_cell, goal_cell)} # Score from g_score + heuristic to end (start to estimated end)
+        g_score = {start_coord: 0} # Score from start cell to current cell
+        f_score = {start_coord: self.heuristic(start_coord, goal_coord)} # Score from g_score + heuristic to end (start to estimated end)
 
         while open_set:
             # Take the cell with the lowest f_score (best choice) as the current cell
@@ -571,10 +521,10 @@ class A_Star_Path_Plan(py_trees.behaviour.Behaviour):
             _, current = heapq.heappop(open_set)
 
             # If path to goal found then convert back to coordinates and return
-            if current == goal_cell:
+            if current == goal_coord:
                 path = []
                 while current in came_from:
-                    path.append(self.cell_to_coord(current))
+                    path.append(current)
                     current = came_from[current]
                 path.append(start_coord)
                 return path[::-1] # Return entire list in reverse order
@@ -599,12 +549,19 @@ class A_Star_Path_Plan(py_trees.behaviour.Behaviour):
 
         if self.path is None:
             if self.blackboard.chosen_target is not None:
+
                 # Get path to target
                 graph = self.blackboard.robo_mind.graph
                 target_coords = graph.nodes[self.blackboard.chosen_target].get('coords')
                 rob_coords = [self.blackboard.w_rob_c[self.robot_index][0], self.blackboard.w_rob_c[self.robot_index][1]]
-                self.path = self.a_star(rob_coords, target_coords)
-                print('Path to target found using A_Star algorithm')
+
+                # Get map graph nodes closest to target / robot coords and use these for a_star algorithm
+                target_wp = self.get_closest_node(target_coords)
+                start_wp = self.get_closest_node(rob_coords)
+
+                self.path = self.a_star(start_wp, target_wp)
+                # print('Path to target found using A_Star algorithm')
+
             else:
                 print('No target to create path')
                 return py_trees.common.Status.FAILURE
@@ -612,26 +569,25 @@ class A_Star_Path_Plan(py_trees.behaviour.Behaviour):
         if self.path is not None:
             # Get next waypoint
             if self.waypoint is None:
-                print('Following path')
                 self.waypoint = self.path.pop(0)
 
             # Check if we have reached waypoint
-            dis = euclidean_agents(self.blackboard.w_rob_c[self.robot_index], self.waypoint)
+            wp_coord = self.blackboard.robo_mind.graph.nodes[self.waypoint].get('coords')
+            dis = euclidean_agents(self.blackboard.w_rob_c[self.robot_index], wp_coord)
             if dis < self.blackboard.place_tol:
                 if self.path:
                     self.waypoint = self.path.pop(0)
-                    print('new waypoint')
                     return py_trees.common.Status.RUNNING
                 else:
                     # Path completed
-                    print('Path complete')
                     return py_trees.common.Status.SUCCESS
 
             # Otherwise keep moving to waypoint
             else:
-                print(f'going to waypoint {self.waypoint}')
                 rob_coords = self.blackboard.w_rob_c[self.robot_index]
-                heading = math.atan2(self.waypoint[1]-rob_coords[1], self.waypoint[0]-rob_coords[0])
+                graph = self.blackboard.robo_mind.graph
+                waypoint_coords = graph.nodes[self.waypoint].get('coords')
+                heading = math.atan2(waypoint_coords[1]-rob_coords[1], waypoint_coords[0]-rob_coords[0])
                 self.blackboard.w_rob_c[self.robot_index][2] = heading
                 return py_trees.common.Status.RUNNING
 

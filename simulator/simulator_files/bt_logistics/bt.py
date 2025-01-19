@@ -458,10 +458,13 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # Check to see if robot delivering position is available on Hive Mind
             hive_progress_robot = self.check_task_status(task, 'progress')
             progress_node_name = f'{task}_progress'
-            hive_robot_position = self.blackboard.hive_mind.graph.nodes[f'{hive_progress_robot}_position'].get('data')
 
             # Check if position data is available
-            if int(hive_robot_position[0]) != 999:
+            try:
+                hive_robot_position = self.blackboard.hive_mind.graph.nodes[f'{hive_progress_robot}_position'].get('data')
+            except KeyError:
+                pass
+            else:
                 # Get target delivery position
                 graph = self.blackboard.robo_mind.graph
                 delivery_point = next((n for n in graph.successors(task) if graph.nodes[n].get('type') == 'dp'), None)
@@ -557,8 +560,6 @@ class Select_Action(py_trees.behaviour.Behaviour):
 
         # print(self.blackboard.action)
 
-        # if self.robot_index == 1:
-        #     self.blackboard.hive_mind.extract_tasks()
 
         return py_trees.common.Status.SUCCESS
 
@@ -776,7 +777,7 @@ class Abandon(py_trees.behaviour.Behaviour):
         heading = random.uniform(math.radians(170), math.radians(10))
         self.blackboard.w_rob_c[self.robot_index][2] = heading
         self.counts = 0
-        self.abandon_counts = random.randint(200,500)
+        self.abandon_counts = random.randint(500,1000)
 
     def update(self):
         # Complete when number of counts is exceeded or when the robot is in the top half of the arena sufficiently far from drop zone

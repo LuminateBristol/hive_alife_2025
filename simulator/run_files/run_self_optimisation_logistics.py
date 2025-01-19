@@ -111,7 +111,6 @@ class RunOptimisation():
         selected_info_types = []
         results = []
         info_type = None
-
         previous_fitness = float('inf')  # Track previous fitness
         for _ in range(len(groups) + 1):
 

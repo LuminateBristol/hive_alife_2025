@@ -162,8 +162,17 @@ class VizSim(Simulator):
         elif self.exit_criteria == 'area_coverage':
             if counter > self.cfg.get('time_limit'):
                 total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+                print(self.warehouse.pheromone_map)
                 percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
                 print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
+                exit()
+
+        elif self.exit_criteria == 'traffic':
+            # if counter > self.cfg.get('time_limit'):
+            if self.traffic_score['score'] >= 100:
+                print(f"{counter} counts reached - Time limit expired. Traffic score: {self.traffic_score['score']}")
+                self.exit_threads = True
+                self.exit_run = True
                 exit()
 
     def run(self, iteration=0):
@@ -206,6 +215,7 @@ class VizSim(Simulator):
             fillstyle='none'
         )
 
+        # LOGISTICS GRAPHICS
         # Plot delivery points as squares
         for dp in self.deliverypoints:
             box_marker_size = self.get_marker_size_in_data_units(box_size, self.ax)
@@ -220,6 +230,10 @@ class VizSim(Simulator):
         # Plot dropzone
         self.ax.fill_between(np.linspace(0, self.cfg.get('warehouse', 'width'), 100), 0, self.cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
         self.ax.axhline(y=self.cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
+
+        # TRAFFIC GRAPHICS
+        # Plot the target points as squares
+
 
         # Plot DOTS robots
         x_data, y_data, marker = self.generate_dot_positional_data()

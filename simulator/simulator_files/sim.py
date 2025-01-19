@@ -3,6 +3,7 @@ dir_root = Path(__file__).resolve().parents[1]
 
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class  Simulator:
@@ -15,10 +16,9 @@ class  Simulator:
         self.exit_criteria = self.cfg.get('exit_criteria')
         self.drop_zone_limit = self.cfg.get('drop_zone_limit')
 
-        # Init delivery points
+        # LOGISTICS SETUP
         self.deliverypoints = []
         delivery_points = self.cfg.get('delivery_points')
-
         # Convert task_log to DeliveryPoint objects and append to the list
         if delivery_points is not None:
             for dp_id, dp_info in delivery_points.items():
@@ -28,6 +28,12 @@ class  Simulator:
                 # Append the DeliveryPoint instance
                 self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
 
+        # AREA_COVERAGE SETUP
+        # na
+
+        # TRAFFIC SETUP
+        self.traffic_score = {'score': 0}
+
         # Init swarm
         try:
             self.swarm = self.build_swarm(self.cfg)
@@ -36,19 +42,45 @@ class  Simulator:
 
         # Build Hive Mind
         self.Hive_Mind = GraphMind()
-        # Add entities and tasks from config
-        entities = self.cfg.get('entities')
-        tasks = self.cfg.get('tasks')
-        for entity in entities:
-            self.Hive_Mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
-        for task in tasks:
-            self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
+
+        # Add entities from config
+        try:
+            entities = self.cfg.get('entities')
+        except:
+            print('No entities defined in config')
+            entities = None
+        else:
+            for entity in entities:
+                self.Hive_Mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
+
+        # Add tasks from config
+        try:
+            tasks = self.cfg.get('tasks')
+        except:
+            print('No tasks defined in config')
+            tasks = None
+        else:
+            for task in tasks:
+                self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
+
+        # Add map from config
+        try:
+            map = self.cfg.get('map')
+        except:
+            print('No map defined in config')
+            map = None
+        else:
+            if map is not None:
+                for wp in map:
+                    self.Hive_Mind.add_information_node(wp[0], wp[1], wp[2], direction=False, **wp[3])
 
         # Build robo_mind and add observation space to Hive Mind for each agent
         for agent in self.swarm.agents:
-            agent.build_robo_mind(entities, tasks)
+            agent.build_robo_mind(entities, tasks, map)
             self.Hive_Mind.add_robot_observation_space(agent.observation_space)
+            self.Hive_Mind.cleanup_hive_mind()
 
+        # Handle graph printing
         if self.cfg.get('print_kg') == True:
             self.Hive_Mind.print_graph_mind()
             self.Hive_Mind.plot_node_tree('robot_1')
@@ -80,11 +112,11 @@ class  Simulator:
                          bt_controller=self.cfg.get('behaviour_tree'),
                          print_bt = cfg.get('robot', 'print_bt'),
                          task_log = cfg.get('task_log'),  # TODO: remove - tasks come straight from the Hive Mind
-                         delivery_points = self.deliverypoints
+                         delivery_points = self.deliverypoints,
+                         traffic_score = self.traffic_score
                          )
         return swarm
 
-    # iterate method called once per timestep
     def iterate(self):
         self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
         
@@ -109,12 +141,43 @@ class  Simulator:
                 self.exit_run = True
 
         elif self.exit_criteria == 'area_coverage':
-            if counter > self.cfg.get('time_limit'):
-                total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
-                percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
-                print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
+            total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+            percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
+            if counter > self.cfg.get('time_limit') or percent_explored >= 80:
+                print(f'{counter} counts reached - percentage explored: {percent_explored}%')
+                # self.print_pheromone_map(self.warehouse.pheromone_map, self.cfg.get('warehouse', 'width'), self.cfg.get('warehouse', 'height'), 'test')
                 self.exit_threads = True
                 self.exit_run = True
+
+        elif self.exit_criteria == 'traffic':
+            # if counter > self.cfg.get('time_limit'):
+            #     print(f"{counter} counts reached - Time limit expired. Traffic score: {self.traffic_score['score']}")
+            if self.traffic_score['score'] >= 100 or counter > self.cfg.get('time_limit'):
+                print(f"{counter} counts reached - Time reached {counter}. Traffic score: {self.traffic_score['score']}")
+                self.exit_threads = True
+                self.exit_run = True
+
+    def print_pheromone_map(self, data_map, width, height, name):
+        """ Print pheromone map for post-analysis"""
+        # Extract x, y coordinates and strength values
+        x_coords = [key[0] for key in data_map.keys()]
+        y_coords = [key[1] for key in data_map.keys()]
+        strengths = [data_map[key] for key in data_map.keys()]
+
+        # Normalize strength values to set transparency (between 0 and 1)
+        max_strength = max(max(strengths), 60) # To get some consitency in the plots we use 80 as the maximum visits per hash grid cell unless the odd one goes over
+        alphas = [(strength / max_strength) for strength in strengths]
+
+        plt.figure(figsize=(width / 100, height / 100))  # Set plot size in inches
+        plt.scatter(x_coords, y_coords, s=130, c='blue', alpha=alphas, marker='s')  # Plot with squares
+
+        plt.xlim(0, width)
+        plt.ylim(0, height)
+        plt.gca().set_aspect('equal', adjustable='box')  # Equal scaling for x and y
+
+        # Save the figure to a file
+        plt.savefig(f'{name}.png', format='png', dpi=300)
+        plt.close()  # Close the figure to free memory
 
     def run(self, iteration=0):
         if self.verbose:

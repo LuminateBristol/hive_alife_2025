@@ -5,7 +5,7 @@ exp_1_logistics:
   # Logistics example experimental setup
   exit_criteria: 'logistics'
   behaviour_tree: 'logistics'
-  number_of_agents: 10
+  number_of_agents: 5
 
   # Setup warehouse parameters
   warehouse:
@@ -13,16 +13,16 @@ exp_1_logistics:
     drop_zone_limit: 100
     pheromones: False
     object_position: 1
-    boxes: { 'green': 5,
-             'yellow': 5,
-             'blue': 5,
-             'red': 5,
-             'tan': 5,
-             'purple': 5,
-             'orange': 5,
-             'peachpuff': 5,
-             'darkseagreen': 5,
-             'teal': 5 }
+    boxes: { 'green': 10,
+             'yellow': 10,
+             'blue': 10,
+             'red': 10,
+             'tan': 10,
+             'purple': 10,
+             'orange': 10,
+             'peachpuff': 10,
+             'darkseagreen': 10,
+             'teal': 10 }
 
   # Populate behaviour tree with initial entities and tasks
   entities:
@@ -30,16 +30,26 @@ exp_1_logistics:
     - [ None, 'robots', None, { 'type': 'entity' } ]
     - [ None, 'boxes', None, { 'type': 'entity' } ]
     - [ None, 'delivery_points', None, { 'type': 'entity' } ]
-    - [ 'delivery_points', 'delivery_point_1', 'child_of', { 'type': 'dp', 'coords': [ 50, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_2', 'child_of', { 'type': 'dp', 'coords': [ 150, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_3', 'child_of', { 'type': 'dp', 'coords': [ 250, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_4', 'child_of', { 'type': 'dp', 'coords': [ 350, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_5', 'child_of', { 'type': 'dp', 'coords': [ 450, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_6', 'child_of', { 'type': 'dp', 'coords': [ 550, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_7', 'child_of', { 'type': 'dp', 'coords': [ 650, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_8', 'child_of', { 'type': 'dp', 'coords': [ 750, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_9', 'child_of', { 'type': 'dp', 'coords': [ 850, 17 ] } ]
-    - [ 'delivery_points', 'delivery_point_10', 'child_of', { 'type': 'dp', 'coords': [ 950, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_1', 'child_of', { 'type': 'dp', 'coords': [ 125, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_2', 'child_of', { 'type': 'dp', 'coords': [ 375, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_3', 'child_of', { 'type': 'dp', 'coords': [ 625, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_4', 'child_of', { 'type': 'dp', 'coords': [ 875, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_5', 'child_of', { 'type': 'dp', 'coords': [ 1125, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_6', 'child_of', { 'type': 'dp', 'coords': [ 1375, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_7', 'child_of', { 'type': 'dp', 'coords': [ 1625, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_8', 'child_of', { 'type': 'dp', 'coords': [ 1875, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_9', 'child_of', { 'type': 'dp', 'coords': [ 2125, 17 ] } ]
+    - [ 'delivery_points', 'delivery_point_10', 'child_of', { 'type': 'dp', 'coords': [ 2375, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_1', 'child_of', { 'type': 'dp', 'coords': [ 50, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_2', 'child_of', { 'type': 'dp', 'coords': [ 150, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_3', 'child_of', { 'type': 'dp', 'coords': [ 250, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_4', 'child_of', { 'type': 'dp', 'coords': [ 350, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_5', 'child_of', { 'type': 'dp', 'coords': [ 450, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_6', 'child_of', { 'type': 'dp', 'coords': [ 550, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_7', 'child_of', { 'type': 'dp', 'coords': [ 650, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_8', 'child_of', { 'type': 'dp', 'coords': [ 750, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_9', 'child_of', { 'type': 'dp', 'coords': [ 850, 17 ] } ]
+#    - [ 'delivery_points', 'delivery_point_10', 'child_of', { 'type': 'dp', 'coords': [ 950, 17 ] } ]
     - [ 'boxes', 'box_yel', 'child_of', { 'type': 'box', 'colour': 'yellow' } ]
     - [ 'boxes', 'box_blu', 'child_of', { 'type': 'box', 'colour': 'blue' } ]
     - [ 'boxes', 'box_red', 'child_of', { 'type': 'box', 'colour': 'red' } ]
@@ -56,74 +66,74 @@ exp_1_logistics:
     - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
     - ['task_1', 'delivery_point_1', 'delivers_to', {}]
     - ['task_1', 'box_yel', 'box_colour', {}]
-    - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 2
     - ['tasks', 'task_2', 'child_of', {'type':'task', 'id':2, 'time':0}]
     - ['task_2', 'delivery_point_2', 'delivers_to', {}]
     - ['task_2', 'box_blu', 'box_colour', {}]
-    - ['task_2', 'task_2_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_2', 'task_2_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_2', 'task_2_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_2', 'task_2_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 3
     - ['tasks', 'task_3', 'child_of', {'type':'task', 'id':3, 'time':0}]
     - ['task_3', 'delivery_point_3', 'delivers_to', {}]
     - ['task_3', 'box_red', 'box_colour', {}]
-    - ['task_3', 'task_3_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_3', 'task_3_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_3', 'task_3_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_3', 'task_3_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 4
     - ['tasks', 'task_4', 'child_of', {'type':'task', 'id':4, 'time':0}]
     - ['task_4', 'delivery_point_4', 'delivers_to', {}]
     - ['task_4', 'box_gre', 'box_colour', {}]
-    - ['task_4', 'task_4_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_4', 'task_4_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_4', 'task_4_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_4', 'task_4_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 5
     - ['tasks', 'task_5', 'child_of', {'type':'task', 'id':5, 'time':0}]
     - ['task_5', 'delivery_point_5', 'delivers_to', {}]
     - ['task_5', 'box_tan', 'box_colour', {}]
-    - ['task_5', 'task_5_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_5', 'task_5_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_5', 'task_5_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_5', 'task_5_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 6
     - ['tasks', 'task_6', 'child_of', {'type':'task', 'id':6, 'time':0}]
     - ['task_6', 'delivery_point_6', 'delivers_to', {}]
     - ['task_6', 'box_pur', 'box_colour', {}]
-    - ['task_6', 'task_6_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_6', 'task_6_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_6', 'task_6_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_6', 'task_6_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 7
     - ['tasks', 'task_7', 'child_of', {'type':'task', 'id':7, 'time':0}]
     - ['task_7', 'delivery_point_7', 'delivers_to', {}]
     - ['task_7', 'box_ora', 'box_colour', {}]
-    - ['task_7', 'task_7_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_7', 'task_7_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_7', 'task_7_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_7', 'task_7_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 8
     - ['tasks', 'task_8', 'child_of', {'type':'task', 'id':8, 'time':0}]
     - ['task_8', 'delivery_point_8', 'delivers_to', {}]
     - ['task_8', 'box_pea', 'box_colour', {}]
-    - ['task_8', 'task_8_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_8', 'task_8_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_8', 'task_8_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_8', 'task_8_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 9
     - ['tasks', 'task_9', 'child_of', {'type':'task', 'id':9, 'time':0}]
     - ['task_9', 'delivery_point_9', 'delivers_to', {}]
     - ['task_9', 'box_dsg', 'box_colour', {}]
-    - ['task_9', 'task_9_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_9', 'task_9_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_9', 'task_9_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_9', 'task_9_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
     # Task 10
     - ['tasks', 'task_10', 'child_of', {'type':'task', 'id':10, 'time':0}]
     - ['task_10', 'delivery_point_10', 'delivers_to', {}]
     - ['task_10', 'box_tea', 'box_colour', {}]
-    - ['task_10', 'task_10_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':1, 'time':0}]
-    - ['task_10', 'task_10_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':1, 'time':0}]
+    - ['task_10', 'task_10_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_10', 'task_10_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
 
   # Delivery points (set to none if this is not a delivery task)
-  delivery_points: {  1: { 'colour': 'yellow',       'target_c': [ 50, 17 ],  'status': 0 },
-                      2: { 'colour': 'blue',         'target_c': [ 150, 17 ],  'status': 0 },
-                      3: { 'colour': 'red',          'target_c': [ 250, 17 ],  'status': 0 },
-                      4: { 'colour': 'green',        'target_c': [ 350, 17 ],  'status': 0 },
-                      5: { 'colour': 'tan',          'target_c': [ 450, 17 ], 'status': 0 },
-                      6: { 'colour': 'purple',       'target_c': [ 550, 17 ],  'status': 0 },
-                      7: { 'colour': 'orange',       'target_c': [ 650, 17 ], 'status': 0 },
-                      8: { 'colour': 'peachpuff',    'target_c': [ 750, 17 ],  'status': 0 },
-                      9: { 'colour': 'darkseagreen', 'target_c': [ 850, 17 ], 'status': 0 },
-                      10: { 'colour': 'teal',         'target_c': [ 950, 17 ],  'status': 0 }}
+  delivery_points: {  1: { 'colour': 'yellow',       'target_c': [ 125, 17 ],  'status': 0 },
+                      2: { 'colour': 'blue',         'target_c': [ 375, 17 ],  'status': 0 },
+                      3: { 'colour': 'red',          'target_c': [ 625, 17 ],  'status': 0 },
+                      4: { 'colour': 'green',        'target_c': [ 875, 17 ],  'status': 0 },
+                      5: { 'colour': 'tan',          'target_c': [ 1125, 17 ], 'status': 0 },
+                      6: { 'colour': 'purple',       'target_c': [ 1375, 17 ],  'status': 0 },
+                      7: { 'colour': 'orange',       'target_c': [ 1625, 17 ], 'status': 0 },
+                      8: { 'colour': 'peachpuff',    'target_c': [ 1875, 17 ],  'status': 0 },
+                      9: { 'colour': 'darkseagreen', 'target_c': [ 2125, 17 ], 'status': 0 },
+                      10: { 'colour': 'teal',         'target_c': [ 2375, 17 ],  'status': 0 }}
 
   tolerances:
     place_tol: 2
@@ -136,7 +146,7 @@ exp_2_area_coverage:
   # Area coverage example experimental setup
   exit_criteria: 'area_coverage'
   behaviour_tree: 'area_coverage'
-  number_of_agents: 10
+  number_of_agents: 5
 
   # Setup warehouse parameters
   warehouse:
@@ -152,7 +162,6 @@ exp_2_area_coverage:
     - [ None, 'tasks', None, { 'type': 'entity' } ]
     - [ None, 'robots', None, { 'type': 'entity' } ]
 
-  # TODO: check influence on the code if this is changes away from a typical logistics task - e.g. to a area coverage task
   tasks:
     # Task 1
     - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
@@ -169,9 +178,9 @@ exp_2_area_coverage:
 
 exp_3_traffic:
   # Area coverage example experimental setup
-  exit_criteria: 'counter'
+  exit_criteria: 'traffic'
   behaviour_tree: 'traffic'
-  number_of_agents: 1
+  number_of_agents: 20
 
   # Setup warehouse parameters
   warehouse:
@@ -184,22 +193,30 @@ exp_3_traffic:
     cell_size: 0
     object_position: 0
     # Doors / targets - for traffic consensus experiment
-    doors: [[500, 250], [500, 750]]
-    targets: [[50, 500], [950, 500]]
+    doors: [[1250, 840], [1250, 1670]]
+    targets: [[50, 1250], [2450, 1250]]
 
   # Populate behaviour tree with initial entities and tasks
   entities:
-    - [ None, 'tasks', None, { 'type': 'entity' } ]
+    - [ None, 'tasks', None, { 'type': 'entity' } ] # TODO: Moved to non-directional graph so I'm not convinced on this format - perhaps node_name - relation - other_node_names would be more generalisable?
     - [ None, 'robots', None, { 'type': 'entity' } ]
     - [ None, 'doors', None, { 'type': 'entity' } ]
-    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [500, 250]} ]
-    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [500, 750] } ]
+    - [ None, 'map', None, {'type': 'entity'} ]
+    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 840]} ]
+    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1670] } ]
     - [ None, 'targets', None, { 'type': 'entity' } ]
-    - [ 'targets', 'target_1', 'child_of', { 'type': 'target', 'coords': [50, 500]} ]
-    - [ 'targets', 'target_2', 'child_of', { 'type': 'target', 'coords': [950, 500]} ]
+    - [ 'tasks', 'task_1', 'child_of', { 'type': 'task', 'coords': [50, 1250]} ] # TODO update these to 'task' type to be consistent with previous work
+    - [ 'tasks', 'task_2', 'child_of', { 'type': 'task', 'coords': [2450, 1250]} ]
 
   # Populate graph map
-
+#  map:
+#    - ['map', 'wp_1', 'child_of', {'type': 'waypoint', 'coords': [50, 500]} ]
+#    - ['wp_1', 'wp_2', 'edge', { 'type': 'waypoint', 'coords': [450, 250]} ]
+#    - ['wp_2', 'wp_3', 'edge', { 'type': 'waypoint', 'coords': [ 550, 250 ]} ]
+#    - ['wp_3', 'wp_4', 'edge', { 'type': 'waypoint', 'coords': [950, 500]} ]
+#    - ['wp_4', 'wp_5', 'edge', { 'type': 'waypoint', 'coords': [550, 750]} ]
+#    - ['wp_5', 'wp_6', 'edge', { 'type': 'waypoint', 'coords': [450, 750]} ]
+#    - ['wp_1', 'wp_6', 'edge', { 'type': 'waypoint', 'coords': [450, 750]} ] # Add wp_7 to wp_1 also to complete the graph
 
   # Populate tasks
   tasks:
