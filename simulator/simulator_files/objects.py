@@ -25,14 +25,14 @@ class Robot:
     def add_observations(self):
         # Add robot self-observable information to the observation space
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position_status', 'data':np.array([999, 999, 999]),   'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status',      'data':[],                          'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status',   'data':False,                       'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status',  'data':0,                           'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status',    'data':0,                           'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status',  'data':0,                           'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map',   'data':{},                          'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_chosen_door',   'has_status',   {'type':'chosen_door',           'data':0,                           'weight':0, 'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_waypoint',      'in_progress',  {'type':'waypoint',              'data':{},                          'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status',      'data':[],                          'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status',   'data':False,                       'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading_status',  'data':0,                           'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status',    'data':0,                           'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id_status',  'data':0,                           'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map',   'data':{},                          'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_chosen_door',   'has_status',   {'type':'chosen_door',           'data':0,                           'weight':0, 'time':0} ])
+        # self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_waypoint',      'in_progress',  {'type':'waypoint',              'data':{},                          'weight':0, 'time':0} ])
     
     def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points, traffic_score):
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)

@@ -35,7 +35,7 @@ class RunOptimisation():
     def __init__(self):
         self.info_types = []
         self.cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
-        self.num_iterations = 30  # Number of iterations for each batch
+        self.num_iterations = 10  # Number of iterations for each batch
 
         # Variables to track dynamic averages
         self.total_w = 0
@@ -70,7 +70,7 @@ class RunOptimisation():
     def get_hive_mind_info_types(self):
         """Retrieve all nodes with 'weight' attribute and group them by their 'type' attribute."""
         sim = Simulator(self.cfg_obj, verbose=verbose)
-        hive_mind = sim.Hive_Mind.graph
+        hive_mind = sim.optimisation_hive_mind.graph
 
         nodes_with_weight = [n for n, d in hive_mind.nodes(data=True) if 'weight' in d]
         groups = {}
@@ -104,7 +104,7 @@ class RunOptimisation():
 
         return w_ave, t_ave
 
-    def main(self):
+    def main_1(self):
         """Main method for greedy optimization."""
         # Step 1: Retrieve groups of nodes with the same 'type' attribute
         groups = self.get_hive_mind_info_types()
@@ -129,9 +129,9 @@ class RunOptimisation():
             # Record results based on fitness
             if 1.2 * fitness <= previous_fitness:  # Update condition based on fitness - aim for 20% improvement or better
                 previous_fitness = fitness
-                results.append( (selected_info_types.copy(), w_ave, avg_time, fitness, run_times))  # Record successful group
+                results.append( (selected_info_types.copy(), w, avg_time, fitness, run_times))  # Record successful group
             else:
-                results.append((selected_info_types.copy(), w_ave, avg_time, fitness, run_times))  # Record failed group
+                results.append((selected_info_types.copy(), w, avg_time, fitness, run_times))  # Record failed group
                 selected_info_types.remove(info_type)  # Remove from selected info types
 
             # Add a randomly selected info type ready for tbe next run
@@ -144,11 +144,75 @@ class RunOptimisation():
         result_file_path = os.path.join(current_dir, 'greedy_optimization_results.txt')
         with open(result_file_path, 'w') as file:
             file.write('Type\tRun Times\tWeight\tAverage Time\tFitness\n')
-            for selected_info_types, run_times, w_ave, avg_time, fitness in results:
-                file.write(f'{selected_info_types}\t{run_times}\t{w_ave}\t{avg_time}\t{fitness}\n')
+            for selected_info_types, run_times, w, avg_time, fitness in results:
+                file.write(f'{selected_info_types}\t{run_times}\t{w}\t{avg_time}\t{fitness}\n')
 
         print('Optimization complete. Results saved to "greedy_optimization_results.txt".')
 
+    def main(self):
+        """Main method for greedy optimization."""
+        # Step 1: Retrieve groups of nodes with the same 'type' attribute
+        groups = self.get_hive_mind_info_types()
+        selected_info_types = []
+        results = []
+        info_type = None
+        previous_fitness = float('inf')  # Track previous fitness
+
+        # Define robot counts to iterate over
+        robot_counts = [5]
+
+        # Open the result file in append mode
+        result_file_path = os.path.join(current_dir, 'greedy_optimization_results.txt')
+        with open(result_file_path, 'w') as file:
+            file.write('num_robots\tw\trun_time\tfitness\tgroups\tselected_info_types\n')  # Write headers
+
+        for num_robots in robot_counts:
+            self.cfg_obj.set('number_of_agents', num_robots)  # Update number of agents
+
+            for _ in range(len(groups) + 1):
+                iteration_fitnesses = []
+
+                # Run the simulation self.num_iterations times, one iteration at a time
+                for iteration in range(self.num_iterations):
+                    # Run a single iteration of the simulation
+                    avg_time, run_times = self.run_simulation(selected_info_types, iterations=1)
+
+                    # Extract the single run time from run_times (should only contain one value)
+                    run_time = run_times[0]
+
+                    # Calculate w (number of types in selected_info_types)
+                    w = len(selected_info_types)
+
+                    # Update dynamic averages for w_ave and t_ave
+                    w_ave, t_ave = self.update_averages(w, avg_time)
+
+                    # Calculate fitness based on the current batch
+                    fitness = self.calculate_fitness(w, w_ave, avg_time, t_ave)
+
+                    # Append the fitness to the iteration fitnesses
+                    iteration_fitnesses.append(fitness)
+
+                    # Append results live to the file
+                    with open(result_file_path, 'a') as file:
+                        file.write(f'{num_robots}\t{w}\t{run_time}\t{fitness}\t{selected_info_types}\n')
+
+                # Calculate the average fitness over all iterations in this loop
+                avg_fitness = sum(iteration_fitnesses) / len(iteration_fitnesses)
+                print(f'AVERAGE FOR THIS GROUP{selected_info_types} ----- {avg_fitness}')
+
+                # Evaluate overall fitness improvement
+                if 1.2 * avg_fitness <= previous_fitness:  # Update condition based on average fitness
+                    previous_fitness = avg_fitness
+                else:
+                    selected_info_types.remove(info_type)  # Remove from selected info types
+
+                # Add a randomly selected info type ready for the next greedy optimization run
+                if groups:
+                    info_type, nodes = random.choice(list(groups.items()))
+                    selected_info_types.append(info_type)
+                    del groups[info_type]
+
+        print('Optimization complete. Results saved to "greedy_optimization_results.txt".')
 
 ###### Run experiment ######
 

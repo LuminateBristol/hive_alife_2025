@@ -5,6 +5,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
+import copy
 
 class  Simulator:
 
@@ -74,10 +75,16 @@ class  Simulator:
                 for wp in map:
                     self.Hive_Mind.add_information_node(wp[0], wp[1], wp[2], direction=False, **wp[3])
 
+        # Add a optimistion version on which the cleanup (see below) is not ran
+        # This keeps the Hive full size ready to optimise on
+        # This is a bit of a hack # TODO: move this to optimisation script
+        self.optimisation_hive_mind = copy.deepcopy(self.Hive_Mind)
+
         # Build robo_mind and add observation space to Hive Mind for each agent
         for agent in self.swarm.agents:
             agent.build_robo_mind(entities, tasks, map)
             self.Hive_Mind.add_robot_observation_space(agent.observation_space)
+            self.optimisation_hive_mind.add_robot_observation_space(agent.observation_space)
             self.Hive_Mind.cleanup_hive_mind()
 
         # Handle graph printing

@@ -53,7 +53,7 @@ def run_ex():
 def run_many_log():
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
     num_runs = 50
-    num_robots = [200]
+    num_robots = [5,10,50,100,200]
 
     # Open file once and write the header
     with open('results/logistics_baseline.txt', 'w') as f:

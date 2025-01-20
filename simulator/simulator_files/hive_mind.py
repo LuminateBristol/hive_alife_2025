@@ -202,9 +202,14 @@ class GraphMind(LocalGraph):
         '''
         Cleanup Hive Mind by removing all robot data items that have a weight==0
         These items are not updated by the robots in the current iteration and therefore are not being used
+        This is called at the start of each simulation run
         '''
-        nodes_to_remove = [n for n, attr in self.graph.nodes(data=True) if attr.get('weight') == 0]
-        self.graph.remove_nodes_from(nodes_to_remove)
+        # nodes_to_remove = [n for n, attr in self.graph.nodes(data=True) if attr.get('weight') == 0]
+        # self.graph.remove_nodes_from(nodes_to_remove)
+
+        # For optimisatio purposes - this has been removed
+        # TODO: review this part of the code for each task and workout its use / integration to optimisation
+        pass
 # class OptimiseHiveMind(): # TODO: update this so it takes in the Hive Mind as an input somewhere and returns new weights - the hive mind this time will be a sim.hive_mind object (move to run file maybe?)
 #     def __init__(self, robot_observation_space, tasks):
 #         self.robot_observation_space = robot_observation_space
