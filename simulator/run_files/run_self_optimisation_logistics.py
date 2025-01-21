@@ -46,7 +46,7 @@ class RunOptimisation():
         """Run the simulation multiple times and return the average completion time along with individual times."""
         total_time = 0
         run_times = []
-        print(f"\nStarting batch run for the following information types: {selected_info_types}")
+        # print(f"\nStarting batch run for the following information types: {selected_info_types}")
 
         for i in range(iterations):
             # Init simulator
@@ -82,15 +82,15 @@ class RunOptimisation():
 
         return groups
 
-    def calculate_fitness(self, w, w_ave, t, t_ave):
-        """Calculate fitness using the given formula."""
-        if w_ave and t_ave:
-            fitness = 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
-        elif w_ave:
-            fitness = 0.2 * (w / w_ave)
-        elif t_ave:
-            fitness = 1.0 * (t / t_ave)
-        return fitness
+    # def calculate_fitness(self, w, w_ave, t, t_ave):
+    #     """Calculate fitness using the given formula."""
+    #     if w_ave and t_ave:
+    #         fitness = 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
+    #     elif w_ave:
+    #         fitness = 0.2 * (w / w_ave)
+    #     elif t_ave:
+    #         fitness = 1.0 * (t / t_ave)
+    #     return fitness
 
     def update_averages(self, w, t):
         """Update the dynamic averages for w and t after each batch."""
@@ -152,28 +152,37 @@ class RunOptimisation():
     def main(self):
         """Main method for greedy optimization."""
         # Step 1: Retrieve groups of nodes with the same 'type' attribute
-        groups = self.get_hive_mind_info_types()
-        selected_info_types = []
-        results = []
-        info_type = None
-        previous_fitness = float('inf')  # Track previous fitness
+
 
         # Define robot counts to iterate over
-        robot_counts = [5]
+        robot_counts = [50, 100, 200]
 
         # Open the result file in append mode
         result_file_path = os.path.join(current_dir, 'greedy_optimization_results.txt')
         with open(result_file_path, 'w') as file:
-            file.write('num_robots\tw\trun_time\tfitness\tgroups\tselected_info_types\n')  # Write headers
+            file.write('num_robots\tw\trun_time\tselected_info_types\n')  # Write headers
 
         for num_robots in robot_counts:
+            # Initiate the Hive info
+            groups = self.get_hive_mind_info_types()
+            selected_info_types = []
+            results = []
+            info_type = None
+            previous_fitness = float('inf')  # Track previous fitness
+
+            # Set number of agents
             self.cfg_obj.set('number_of_agents', num_robots)  # Update number of agents
 
+            # Make an empty list for the batch times - this records the average completion time for each batch of runs
+            # A batch of runs is ran self.num_iteration times with a single communication strategy
+            self.optimisation_batch_times = []
+
             for _ in range(len(groups) + 1):
-                iteration_fitnesses = []
+                iteration_time = []
 
                 # Run the simulation self.num_iterations times, one iteration at a time
                 for iteration in range(self.num_iterations):
+
                     # Run a single iteration of the simulation
                     avg_time, run_times = self.run_simulation(selected_info_types, iterations=1)
 
@@ -183,26 +192,24 @@ class RunOptimisation():
                     # Calculate w (number of types in selected_info_types)
                     w = len(selected_info_types)
 
-                    # Update dynamic averages for w_ave and t_ave
-                    w_ave, t_ave = self.update_averages(w, avg_time)
-
-                    # Calculate fitness based on the current batch
-                    fitness = self.calculate_fitness(w, w_ave, avg_time, t_ave)
-
-                    # Append the fitness to the iteration fitnesses
-                    iteration_fitnesses.append(fitness)
+                    # Add to list of times for completed runs
+                    iteration_time.append(run_time)
 
                     # Append results live to the file
                     with open(result_file_path, 'a') as file:
-                        file.write(f'{num_robots}\t{w}\t{run_time}\t{fitness}\t{selected_info_types}\n')
+                        file.write(f'{num_robots}\t{w}\t{run_time}\t{selected_info_types}\n')
 
-                # Calculate the average fitness over all iterations in this loop
-                avg_fitness = sum(iteration_fitnesses) / len(iteration_fitnesses)
-                print(f'AVERAGE FOR THIS GROUP{selected_info_types} ----- {avg_fitness}')
+                # Calculate the fitness using maximum normalisation from average run time for all batches
+                # fitness = ave_time_this_batch / max([ave_times_for_all_batches])
+                ave_time = sum(iteration_time) / len(iteration_time)
+                self.optimisation_batch_times.append(ave_time)
+                fitness = ave_time / max(self.optimisation_batch_times)
+
+                print(f'AVERAGE FOR THIS GROUP{selected_info_types} ----- Time: {ave_time} ----- Fitness: {fitness}')
 
                 # Evaluate overall fitness improvement
-                if 1.2 * avg_fitness <= previous_fitness:  # Update condition based on average fitness
-                    previous_fitness = avg_fitness
+                if 1.2 * fitness <= previous_fitness:  # Update condition based on average fitness
+                    previous_fitness = fitness
                 else:
                     selected_info_types.remove(info_type)  # Remove from selected info types
 
@@ -211,6 +218,7 @@ class RunOptimisation():
                     info_type, nodes = random.choice(list(groups.items()))
                     selected_info_types.append(info_type)
                     del groups[info_type]
+                print(f'Running for: {selected_info_types}')
 
         print('Optimization complete. Results saved to "greedy_optimization_results.txt".')
 

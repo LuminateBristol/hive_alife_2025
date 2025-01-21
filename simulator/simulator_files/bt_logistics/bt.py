@@ -232,6 +232,7 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         elif node_name.endswith('progress'):
             # 1) A robot is progressing the task
             # If we are progressing the task, update Hive Mind
+
             if data['robot'] == self.str_index and data['hive'] == 0:
                 nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})
 
@@ -255,8 +256,8 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                 hive_node = self.blackboard.hive_mind.graph.nodes[node_name]
                 robot_node = self.blackboard.robo_mind.graph.nodes[node_name]
 
-                # Check timings - take  most recent data as correct
-                if hive_node.get('time') > robot_node.get('time'):
+                # Check timings - take earliest as correct - i.e. first robot to pick the box takes priority
+                if hive_node.get('time') < robot_node.get('time'):
                     nx.set_node_attributes(robo_mind, {node_name: hive_mind_attr})
                 else:
                     nx.set_node_attributes(hive_mind, {node_name: robo_mind_attr})

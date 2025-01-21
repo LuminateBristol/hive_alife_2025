@@ -67,7 +67,7 @@ exp_1_logistics:
     - ['task_1', 'delivery_point_1', 'delivers_to', {}]
     - ['task_1', 'box_yel', 'box_colour', {}]
     - ['task_1', 'task_1_completion', 'has_status', {'type':'task_completion_status', 'data':0, 'weight':0, 'time':0}]
-    - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':0, 'time':0}]
+    - ['task_1', 'task_1_progress', 'has_status', {'type':'task_progress_status', 'data':0, 'weight':01, 'time':0}]
     # Task 2
     - ['tasks', 'task_2', 'child_of', {'type':'task', 'id':2, 'time':0}]
     - ['task_2', 'delivery_point_2', 'delivers_to', {}]
