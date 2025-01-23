@@ -21,7 +21,7 @@ from simulator import CFG_FILES
 export_data = False
 verbose = True    
 batch_id = 'test'
-ex_id = 'exp_1_logistics'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+ex_id = 'exp_2_area_coverage'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 
@@ -52,8 +52,8 @@ def run_ex():
 
 def run_many_log():
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
-    num_runs = 50
-    num_robots = [5,10,50,100]
+    num_runs = 30
+    num_robots = [200]
 
     # Open file once and write the header
     with open('results/logistics_baseline.txt', 'w') as f:
@@ -66,7 +66,7 @@ def run_many_log():
         # Run
         for i in range(num_runs):
             sim = Simulator(cfg_obj, verbose=verbose)
-            counter = sim.run(iteration=i)
+            counter = sim.run(iteration=i+20)
 
             # Append results for this run
             with open('results/logistics_baseline.txt', 'a') as f:  # Append mode
@@ -77,7 +77,7 @@ def run_many_log():
 def run_many_acov():
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
     num_runs = 50
-    num_robots = [5,10,50,100,200]
+    num_robots = [0]
 
     # Open file once and write the header
     with open('results/logistics_optimised.txt', 'w') as f:
@@ -89,7 +89,7 @@ def run_many_acov():
 
         # Run
         for i in range(num_runs):
-            sim = Simulator(cfg_obj, verbose=verbose)
+            sim = VizSim(cfg_obj, verbose=verbose)
             counter = sim.run(iteration=i)
             # total_cells = (sim.cfg.get('warehouse', 'width') * sim.cfg.get('warehouse', 'height')) / sim.cfg.get('warehouse', 'cell_size') ** 2
             # percent = (len(sim.warehouse.pheromone_map) / total_cells) * 100
@@ -128,8 +128,8 @@ def run_many_traf():
 
 def main():
     t0 = time.time()
-    run_many_log()
-    # run_many_acov()
+    # run_many_log()
+    run_many_acov()
     # run_many_traf()
     t1 = time.time()
     dt = t1-t0
