@@ -69,17 +69,17 @@ class Robot:
         self.blackboard.register_key(key="map", access=py_trees.common.Access.WRITE)
         self.blackboard.map = map
 
-    def build_robo_mind(self, entities, tasks, map):
+    def build_robo_mind(self, entities, tasks, map=None):
         self.add_observations()
         self.robo_mind = GraphMind()
 
-        if entities:
+        if entities is not None:
             for entity in entities:
                 self.robo_mind.add_information_node(entity[0], entity[1], entity[2], **entity[3])
-        if tasks:
+        if tasks is not None:
             for task in tasks:
                 self.robo_mind.add_information_node(task[0], task[1], task[2], **task[3])
-        if map:
+        if map is not None:
             for wp in map:
                 self.robo_mind.add_information_node(wp[0], wp[1], wp[2], **wp[3])
 

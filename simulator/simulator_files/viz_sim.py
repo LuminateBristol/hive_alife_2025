@@ -11,15 +11,16 @@ class VizSim(Simulator):
         self.verbose = True
 
     def plot_walls(self, ax):
+
         # Plot horizontal walls
-        for wall in self.cfg.get('wallsh'):
+        for wall in self.cfg.get(self.cfg.get('map'), 'wallsh'):
             start, end = wall
             x0, y0 = start
             x1, y1 = end
             ax.plot([x0, x1], [y0, y1], 'k-')  # 'k-' means black solid line
 
         # Plot vertical walls 
-        for wall in self.cfg.get('wallsv'):
+        for wall in self.cfg.get(self.cfg.get('map'), 'wallsv'):
             start, end = wall
             x0, y0 = start
             x1, y1 = end

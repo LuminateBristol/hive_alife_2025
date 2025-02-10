@@ -4,7 +4,6 @@ import time
 
 # We need to setup  parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-print(parent_dir)
 sys.path.insert(0, parent_dir)
 
 from simulator_files import *
@@ -21,7 +20,7 @@ from simulator import CFG_FILES
 export_data = False
 verbose = True    
 batch_id = 'test'
-ex_id = 'exp_2_area_coverage'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+ex_id = 'exp_3_traffic'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 

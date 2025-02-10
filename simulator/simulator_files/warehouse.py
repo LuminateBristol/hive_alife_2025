@@ -12,8 +12,8 @@ class Warehouse:
 
 		self.width = config.get('warehouse', 'width')
 		self.height = config.get('warehouse' , 'height')
-		self.wallsh = config.get('wallsh')
-		self.wallsv = config.get('wallsv')
+		self.wallsh = config.get(config.get('map'), 'wallsh')
+		self.wallsv = config.get(config.get('map'), 'wallsv')
 		self.init_boxes = config.get('warehouse', 'boxes')
 		self.box_range = config.get('warehouse', 'box_radius')*2.0	#box_range # range at which a box can be picked up
 		self.radius = config.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)

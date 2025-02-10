@@ -64,17 +64,6 @@ class  Simulator:
             for task in tasks:
                 self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
 
-        # Add map from config
-        try:
-            map = self.cfg.get('map')
-        except:
-            print('No map defined in config')
-            map = None
-        else:
-            if map is not None:
-                for wp in map:
-                    self.Hive_Mind.add_information_node(wp[0], wp[1], wp[2], direction=False, **wp[3])
-
         # Add a optimistion version on which the cleanup (see below) is not ran
         # This keeps the Hive full size ready to optimise on
         # This is a bit of a hack # TODO: move this to optimisation script
@@ -82,7 +71,7 @@ class  Simulator:
 
         # Build robo_mind and add observation space to Hive Mind for each agent
         for agent in self.swarm.agents:
-            agent.build_robo_mind(entities, tasks, map)
+            agent.build_robo_mind(entities, tasks)
             self.Hive_Mind.add_robot_observation_space(agent.observation_space)
             self.optimisation_hive_mind.add_robot_observation_space(agent.observation_space)
             self.Hive_Mind.cleanup_hive_mind()
