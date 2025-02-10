@@ -37,7 +37,7 @@ Users are encouraged to create new or modify existing behaviour trees for their 
 ### File structure
 The object-oriented approach of this simulator means that there is an interlinking relationship between different objects in the file structure. The diagram below gives and overview as to how each part fits together.
 
-<img src="images/dot_2d_flow.jpg" alt="File Structure" width="200"/>
+See images/dot_2d_flow.jpg for a depiction of how information moves around the simulator.
 
 #### Run Files (simulator)
 | Simulator File | Description                                                                                |
@@ -47,32 +47,34 @@ The object-oriented approach of this simulator means that there is an interlinki
 
 
 #### Simulator Files (simulator)
-| Simulator File | Description                                                                                |
-|----------------|--------------------------------------------------------------------------------------------|
-| bt_random_walk | Random walk behaviour tree                                                                 |
-| bt_setup.py    | File convention setup for behaviour trees                                                  |
-| faults.py      | Used for fault analysis only                                                               |
-| objects.py     | Contains the classes for all objects (robots, swarm and boxes)                             |
-| sim.py         | Contains the classes and functions for running the simulator                               |
-| viz_sim.py     | Contains the classes and functions for running the simulator with matplotlib visualisation |
-| warehouse.py   | Contains the classes and functions for settup up the warehouse                             |
+| Simulator File   | Description                                                                                |
+|------------------|--------------------------------------------------------------------------------------------|
+| bt_random_walk   | Random walk behaviour tree                                                                 |
+| bt_logistics     | Logistics task walk behaviour tree                                                         |
+| bt_area_coverage | Area coverage / map exploration behaviour tree                                             |
+| bt_traffic       | Traffic scenario behaviour tree                                                            |
+| bt_setup.py      | File convention setup for behaviour trees                                                  |
+| objects.py       | Contains the classes for all objects (robots, swarm and boxes)                             |
+| sim.py           | Contains the classes and functions for running the simulator                               |
+| viz_sim.py       | Contains the classes and functions for running the simulator with matplotlib visualisation |
+| warehouse.py     | Contains the classes and functions for settup up the warehouse                             |
 
 #### Config Files (cfg)
 
-| Config File    | Description                                                          |
-|----------------|----------------------------------------------------------------------|
-| default.yaml   | Sets up the general parameters of the simulation including:          |
-|                | - robot parameters (size, speed, sensor range)                       |
-|                | - warehouse parameters (size, physics, object size)                  |
-|                | - simulator parameters (timeout, save options)                       |
-| exp_setup.yaml | Sets up the specific experimental parameters for each run including: |
-|                | - number of agents                                                   |
-|                | - beheviour tree controller                                          |
-|                | - object setup                                                       |
-|                | - tolerances                                                         |
-| map.yaml       | Sets up the walls for the maps:                                      |
-|                | - these are currently split into vertical and horizontal walls       |
-|                | - use a nested list format to enter start and end point of each wall |
+| Config File    | Description                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| default.yaml   | Sets up the general parameters of the simulation including:                 |
+|                | - robot parameters (size, speed, sensor range)                              |
+|                | - warehouse parameters (size, physics, object size)                         |
+|                | - simulator parameters (timeout, save options)                              |
+| exp_setup.yaml | Sets up the specific experimental parameters for each experiment including: |
+|                | - number of agents                                                          |
+|                | - behaviour tree controller                                                 |
+|                | - object setup                                                              |
+|                | - tolerances                                                                |
+| map.yaml       | Sets up the walls for the maps:                                             |
+|                | - these are currently split into vertical and horizontal walls              |
+|                | - use a nested list format to enter start and end point of each wall        |
 
 #### Library Files (lib)
 
@@ -80,12 +82,6 @@ The object-oriented approach of this simulator means that there is an interlinki
 |-------------|----------------------------------------------------------------|
 | Config.py   | Functions for parsing the config files into useable parameters |
 
-
-
-## Contributing
-
-Contributions are always welcome!
-
-As every user is likely to have a slightly different simulation setup, we encourage users to create a branch for their own use. If you develop a new behaviour tree that may be useful to others, we can add it to the examples or keep it as an aptly named seperate branch.
-
-Enjoy!
+#### MkDocs
+Further documentation on the simulator files is provided in mkdocs through the 'hive_documentation' directory.
+This can be ran locally using the mkdocs serve command - see mkdocs info online here: https://www.mkdocs.org/
