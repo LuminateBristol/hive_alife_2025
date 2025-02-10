@@ -4,11 +4,20 @@ import random
 from .objects import Box, DeliveryPoint
 
 class Warehouse:
-
-	RANDOM_OBJ_POS = 0
-	AVOID_DROP_ZONE = 1		# Boxes only dropped outside of (>) predefined drop zone limit
+	"""
+    Represents a warehouse environment where robots and objects are positioned.
+    Handles the initialization of objects, robots, and the pheromone mapping.
+    """
 
 	def __init__(self, config, swarm, hive_mind = None):
+		"""
+        Initializes the warehouse with dimensions, walls, boxes, and other relevant settings.
+
+        Args:
+            config (Config): Configuration object with warehouse parameters.
+            swarm (class object): The swarm operating within the warehouse - initated in sim.py - see objects.py for definition
+            hive_mind (class object): Hive knowledge graph 0 initiated in sim.py - see hive_mind.py for definition
+        """
 
 		self.width = config.get('warehouse', 'width')
 		self.height = config.get('warehouse' , 'height')
@@ -27,7 +36,7 @@ class Warehouse:
 		self.boxes = [] # centre coordinates of boxes starts as an empty list
 		for colour in config.get('warehouse', 'boxes'):
 			for i in range(config.get('warehouse', 'boxes')[colour]):
-				  self.boxes.append(Box(colour=colour))
+				self.boxes.append(Box(colour=colour))
 		self.number_of_boxes = len(self.boxes)
 
 		# LOGISTICS: Initiate depot
@@ -50,8 +59,20 @@ class Warehouse:
 		
 		self.rob_c = np.array(self.rob_c) # convert list to array
 
-	def generate_object_positions(self, conf):
-		if conf == self.RANDOM_OBJ_POS:
+	def generate_object_positions(self, object_position):
+		"""
+        Generates initial positions for objects and robots within the warehouse based on the chosen configuration.
+
+        Args:
+            object_position (int): Configuration mode defining initial object placement rules - defined in exp_setup.yaml
+        """
+
+		# Set initial position integers
+		self.RANDOM_OBJ_POS = 0
+		self.AVOID_DROP_ZONE = 1  # Boxes only dropped outside of (>) predefined drop zone limit
+
+
+		if object_position == self.RANDOM_OBJ_POS:
 
 			# Calculate a list of possible x-y coordinates that objects can be placed into, this prevents objects being spawned over one another
 			possible_x = int((self.width)/(self.radius*2)) # number of positions possible on the x axis
@@ -89,7 +110,7 @@ class Warehouse:
 					self.boxes[b].x = c_select[b + self.swarm.number_of_agents][0]
 					self.boxes[b].y = c_select[b + self.swarm.number_of_agents][1]
 
-		elif conf == self.AVOID_DROP_ZONE:
+		elif object_position == self.AVOID_DROP_ZONE:
 
 			# Calculate a list of possible x-y coordinates that objects can be placed into, this prevents objects being spawned over one another
 			possible_x = int((self.width) / (self.radius * 4))  # number of positions possible on the x axis
@@ -131,9 +152,17 @@ class Warehouse:
 			raise Exception("Object position not valid")
 
 	def update_pheromone_map(self):
-		'''
-		Update the hash grid pheromone map based on the latest positions of the robots at each iteration
-		'''
+		"""
+        Updates the pheromone map based on the robots' positions at each time step.
+        This is based on a hash grid with a set resolution (cell_size).
+
+        The robots all use the same hash function to convert theit x-y position into a cell_id.
+        The pheromone map stores the cell_ids in a dictionary where the key is cell id and the value is number of
+        visits.
+
+        This warehouse level map adds all numbers of visits together to get a total phereomone map.
+        """
+
 		cell_size = 25 # TODO: add to config - robot size
 		for robot in self.rob_c:
 			# Robot's current coordinates
@@ -151,39 +180,59 @@ class Warehouse:
 			else:
 				self.pheromone_map[cell_id] = 1
 
-	def iterate(self, pheromones=False): # moves the robot and box positions forward in one time step
+	def iterate(self, pheromones=False):
+		"""
+        Moves the simulation forward by one time step, updating robot and box positions.
 
-			# Run setup command if this is the first iteration of the BT
-			if self.counter == 0:
-				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=1)
-			else:
-				self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=0)
+        Args:
+            pheromones (bool, optional): If True, updates the pheromone map. Defaults to False.
+        """
 
-				# Update pheromones
-				if pheromones:
-					self.update_pheromone_map()
+		# Run setup command if this is the first iteration of the BT
+		if self.counter == 0:
+			self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=1)
+		else:
+			self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=0)
 
-				# Run Hive Mind cleanup
-				# (note in reality this would be handled by the Hive server but since this is hosted in the warehouse, we run here)
-				if self.hive_mind is not None:
-					self.hive_mind.cleanup_hive_mind()
+			# Update pheromones
+			if pheromones:
+				self.update_pheromone_map()
 
-			self.counter += 1
-			self.swarm.counter = self.counter
+			# Run Hive Mind cleanup
+			# (note in reality this would be handled by the Hive server but since this is hosted in the warehouse, we run here)
+			if self.hive_mind is not None:
+				self.hive_mind.cleanup_hive_mind()
+
+		self.counter += 1
+		self.swarm.counter = self.counter
 
 class WallBounds:
+	"""
+    Defines the standard format for walls in the warehouse, specifying height, width, and walls.
+    """
 
-    def __init__(self):
-        self.start = np.array([0,0])
-        self.end = np.array([0,0])
-        self.width = 1
-        self.hitbox = []
+	def __init__(self):
+		"""
+        Initializes the wall at zero values
+        """
+		self.start = np.array([0,0])
+		self.end = np.array([0,0])
+		self.width = 1
+		self.hitbox = []
 
 class BoxBounds:
-	'''
-	Class which contains definitions for building a bounding box.
-	'''
+	"""
+    Defines the bounding box for objects in the warehouse, specifying height, width, and walls.
+    """
 	def __init__(self, h, w, mid_point):
+		"""
+		Initializes the bounding box with given dimensions and midpoint.
+
+		Args:
+		    h (float): Height of the box.
+		    w (float): Width of the box.
+		    mid_point (tuple): The midpoint coordinates of the box.
+		"""
 		self.height = h
 		self.width = w
 		self.walls = []
@@ -198,8 +247,23 @@ class BoxBounds:
 		self.walls[3].start = [mid_point[0]+(0.5*w), mid_point[1]+(0.5*h)]; self.walls[3].end = [mid_point[0]+(0.5*w), mid_point[1]-(0.5*h)]
 
 class Map:
+	"""
+    Represents the warehouse map, containing walls and partitions.
+    Generates walls and divides the map into structured areas for swarm navigation.
+    See map.yaml for config
+    """
 
 	def __init__(self, width, height, wallsh, wallsv, wall_divisions=10):
+		"""
+        Initializes the map with specified dimensions, walls, and optional subdivisions.
+
+        Args:
+            width (float): The width of the warehouse.
+            height (float): The height of the warehouse.
+            wallsh (list): List of horizontal walls.
+            wallsv (list): List of vertical walls.
+            wall_divisions (int, optional): Number of divisions for structuring walls. Defaults to 10.
+        """
 		self.width = width
 		self.height = height
 		self._wallsh = wallsh
@@ -213,10 +277,10 @@ class Map:
 		self.generate()
 		self.generate_wall_divisions(wall_divisions)
 	
-	def generate(self):		
-		# Updated map generation:
-		# For more complex map builds, the map can be described wall by wall (note it is possible to automate the wall generation from coordinates but this is not done here)
-		
+	def generate(self):
+		"""
+        Generates walls for the warehouse based on predefined configurations.
+        """
 		# Horizontal walls
 		for wall in range(len(self._wallsh)):
 			self.wallsh = np.append(self.wallsh, WallBounds())
@@ -232,6 +296,12 @@ class Map:
 		self.walls = np.append(self.walls, self.wallsv)
 	
 	def generate_wall_divisions(self, divisions=10):
+		"""
+        Creates subdivisions within the map to aid navigation and object placement.
+
+        Args:
+            divisions (int, optional): Number of subdivisions for wall placement. Defaults to 10.
+        """
 		wall_divisions = np.array([])
 		
 		# Generate vertical walls

@@ -41,16 +41,6 @@ exp_1_logistics:
     - [ 'delivery_points', 'delivery_point_8', 'child_of', { 'type': 'dp', 'coords': [ 1875, 17 ] } ]
     - [ 'delivery_points', 'delivery_point_9', 'child_of', { 'type': 'dp', 'coords': [ 2125, 17 ] } ]
     - [ 'delivery_points', 'delivery_point_10', 'child_of', { 'type': 'dp', 'coords': [ 2375, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_1', 'child_of', { 'type': 'dp', 'coords': [ 50, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_2', 'child_of', { 'type': 'dp', 'coords': [ 150, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_3', 'child_of', { 'type': 'dp', 'coords': [ 250, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_4', 'child_of', { 'type': 'dp', 'coords': [ 350, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_5', 'child_of', { 'type': 'dp', 'coords': [ 450, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_6', 'child_of', { 'type': 'dp', 'coords': [ 550, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_7', 'child_of', { 'type': 'dp', 'coords': [ 650, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_8', 'child_of', { 'type': 'dp', 'coords': [ 750, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_9', 'child_of', { 'type': 'dp', 'coords': [ 850, 17 ] } ]
-#    - [ 'delivery_points', 'delivery_point_10', 'child_of', { 'type': 'dp', 'coords': [ 950, 17 ] } ]
     - [ 'boxes', 'box_yel', 'child_of', { 'type': 'box', 'colour': 'yellow' } ]
     - [ 'boxes', 'box_blu', 'child_of', { 'type': 'box', 'colour': 'blue' } ]
     - [ 'boxes', 'box_red', 'child_of', { 'type': 'box', 'colour': 'red' } ]
@@ -168,9 +158,6 @@ exp_2_area_coverage:
     # Task 1
     - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
 
-  # TODO: this is only used for delivery point tracking I think? - i.e. for tracking task progress globally
-  task_log: {}
-
   tolerances:
     place_tol: 2
     abandon_tol: 50
@@ -183,7 +170,7 @@ exp_3_traffic:
   exit_criteria: 'traffic'
   behaviour_tree: 'traffic'
   map: map2
-  number_of_agents: 20
+  number_of_agents: 5
 
   # Setup warehouse parameters
   warehouse:
@@ -201,32 +188,21 @@ exp_3_traffic:
 
   # Populate behaviour tree with initial entities and tasks
   entities:
-    - [ None, 'tasks', None, { 'type': 'entity' } ] # TODO: Moved to non-directional graph so I'm not convinced on this format - perhaps node_name - relation - other_node_names would be more generalisable?
+    - [ None, 'tasks', None, { 'type': 'entity' } ]
     - [ None, 'robots', None, { 'type': 'entity' } ]
     - [ None, 'doors', None, { 'type': 'entity' } ]
     - [ None, 'map', None, {'type': 'entity'} ]
     - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 840]} ]
     - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1670] } ]
     - [ None, 'targets', None, { 'type': 'entity' } ]
-    - [ 'tasks', 'task_1', 'child_of', { 'type': 'task', 'coords': [50, 1250]} ] # TODO update these to 'task' type to be consistent with previous work
+    - [ 'tasks', 'task_1', 'child_of', { 'type': 'task', 'coords': [50, 1250]} ]
     - [ 'tasks', 'task_2', 'child_of', { 'type': 'task', 'coords': [2450, 1250]} ]
-
-  # Populate graph map
-#  map:
-#    - ['map', 'wp_1', 'child_of', {'type': 'waypoint', 'coords': [50, 500]} ]
-#    - ['wp_1', 'wp_2', 'edge', { 'type': 'waypoint', 'coords': [450, 250]} ]
-#    - ['wp_2', 'wp_3', 'edge', { 'type': 'waypoint', 'coords': [ 550, 250 ]} ]
-#    - ['wp_3', 'wp_4', 'edge', { 'type': 'waypoint', 'coords': [950, 500]} ]
-#    - ['wp_4', 'wp_5', 'edge', { 'type': 'waypoint', 'coords': [550, 750]} ]
-#    - ['wp_5', 'wp_6', 'edge', { 'type': 'waypoint', 'coords': [450, 750]} ]
-#    - ['wp_1', 'wp_6', 'edge', { 'type': 'waypoint', 'coords': [450, 750]} ] # Add wp_7 to wp_1 also to complete the graph
 
   # Populate tasks
   tasks:
     # Task 1
     - ['tasks', 'task_1', 'child_of', {'type':'task', 'id':1, 'time':0}]
 
-  # TODO: this is only used for delivery point tracking I think? - i.e. for tracking task progress globally
   task_log: {}
 
   tolerances:

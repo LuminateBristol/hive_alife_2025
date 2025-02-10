@@ -82,16 +82,6 @@ class RunOptimisation():
 
         return groups
 
-    # def calculate_fitness(self, w, w_ave, t, t_ave):
-    #     """Calculate fitness using the given formula."""
-    #     if w_ave and t_ave:
-    #         fitness = 0.2 * (w / w_ave) + 1.0 * (t / t_ave)
-    #     elif w_ave:
-    #         fitness = 0.2 * (w / w_ave)
-    #     elif t_ave:
-    #         fitness = 1.0 * (t / t_ave)
-    #     return fitness
-
     def update_averages(self, w, t):
         """Update the dynamic averages for w and t after each batch."""
         self.total_w += w

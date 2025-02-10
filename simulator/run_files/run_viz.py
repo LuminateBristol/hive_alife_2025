@@ -14,26 +14,29 @@ parent_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
 sys.path.insert(0, parent_dir)
 from simulator import CFG_FILES
 
-
 ###### Experiment parameters ######
 
-export_data = False
-verbose = True    
-batch_id = 'test'
-ex_id = 'exp_3_traffic'                             # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
+verbose = True
+ex_id = 'exp_3_traffic'   # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
 
 ###### Config class ######
 
-default_cfg_file = CFG_FILES['default']     # Config for general parameters in cfg folder NOTE: change this file to update general parameters
-cfg_file = CFG_FILES['aamas_exps']           # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
-map_file = CFG_FILES['map']                 # Config for map parameters in cfg folder     NOTE: change this file to update the map settings
+default_cfg_file = CFG_FILES['default']
+cfg_file = CFG_FILES['exp_setup']
+map_file = CFG_FILES['map']
 
 ###### Functions ######
 def run_ex():
+    """
+    Runs a single experiment by initializing the configuration, setting up parameters,
+    creating the simulation object, and executing the simulation.
+
+    The function retrieves the number of agents and boxes from the configuration,
+    updates the configuration parameters, and runs the simulation.
+    """
 
     # Setup config for this experiment
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
-    #cfg_obj.print()
 
     agentnum = cfg_obj.get('number_of_agents')
     boxes = cfg_obj.get('boxes')
@@ -50,6 +53,11 @@ def run_ex():
     print(f' TOTAL COUNTS: {counter}')
 
 def main():
+    """
+    Main function to execute the experiment.
+    It records the start time, runs the experiment, records the end time,
+    and prints the total execution time.
+    """
     t0 = time.time()
     run_ex()
     t1 = time.time()

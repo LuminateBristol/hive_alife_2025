@@ -8,14 +8,48 @@ from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
 import copy
 
 class  Simulator:
+    """
+    The Simulator class serves as the main overarching simulation manager, orchestrating all components of the simulation.
+    It initializes and manages the swarm, warehouse, delivery points, and Hive Mind, ensuring the execution of the simulation.
+    """
 
     def __init__(self, config, verbose=False):
+        """
+        Initialize the simulation environment.
 
+        Args:
+            config (class object): Configuration dictionary containing simulation parameters - see lib folder
+            verbose (bool, optional): If True, prints verbose output. Defaults to False.
+        """
         self.verbose = verbose
         self.exit_run = False
         self.cfg = config
         self.exit_criteria = self.cfg.get('exit_criteria')
         self.drop_zone_limit = self.cfg.get('drop_zone_limit')
+
+        # Init task
+        self.task_setup()
+
+        # Init swarm
+        try:
+            self.swarm = self.build_swarm(self.cfg)
+        except Exception as e:
+            raise e
+
+        # Init Hive and Robot Knowledge Graph
+        self.hive_setup()
+
+        # Init warehouse
+        self.warehouse = Warehouse(
+            self.cfg,
+            self.swarm,
+            hive_mind=self.Hive_Mind)
+
+    def task_setup(self):
+        """
+        Setup task parameters depending on the selected task
+        - see lib and exp_setup.yaml - for specification
+        """
 
         # LOGISTICS SETUP
         self.deliverypoints = []
@@ -35,11 +69,12 @@ class  Simulator:
         # TRAFFIC SETUP
         self.traffic_score = {'score': 0}
 
-        # Init swarm
-        try:
-            self.swarm = self.build_swarm(self.cfg)
-        except Exception as e:
-            raise e
+    def hive_setup(self):
+        """
+        Setup the Hive and Robot knowledge graphs from the following:
+        - task / entities: config file - exp_setup.yaml
+        - robot observations: objects.py - add_observation_space
+        """
 
         # Build Hive Mind
         self.Hive_Mind = GraphMind()
@@ -66,7 +101,6 @@ class  Simulator:
 
         # Add a optimistion version on which the cleanup (see below) is not ran
         # This keeps the Hive full size ready to optimise on
-        # This is a bit of a hack # TODO: move this to optimisation script
         self.optimisation_hive_mind = copy.deepcopy(self.Hive_Mind)
 
         # Build robo_mind and add observation space to Hive Mind for each agent
@@ -82,13 +116,17 @@ class  Simulator:
             self.Hive_Mind.plot_node_tree('robot_1')
             self.Hive_Mind.print_hive_mind(attribute_filter={'in_need': 0})
 
-        # Init warehouse
-        self.warehouse = Warehouse(
-            self.cfg,
-            self.swarm,
-            hive_mind=self.Hive_Mind)
-
     def build_swarm(self, cfg):
+        """
+        Construct the swarm by creating robot agents and adding them to the swarm.
+
+        Args:
+            cfg (dict): Configuration dictionary containing swarm and robot parameters.
+
+        Returns:
+            Swarm: The initialized swarm object.
+        """
+
         robot_obj = Robot(
             cfg.get('robot', 'radius'), 
             cfg.get('robot', 'max_v'),
@@ -114,11 +152,20 @@ class  Simulator:
         return swarm
 
     def iterate(self):
+        """
+        Perform a single iteration of the simulation by updating the warehouse and checking exit conditions.
+        """
         self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
         
         self.exit_sim(counter=self.warehouse.counter)
 
     def exit_sim(self, counter=None):
+        """
+        Determine whether the simulation should terminate based on predefined exit criteria.
+
+        Args:
+            counter (int, optional): The current time step of the simulation. Defaults to None.
+        """
         if self.exit_criteria == 'counter':
             if counter > self.cfg.get('time_limit'):
                 print('{counter} counts reached - Time limit expired')
@@ -154,7 +201,16 @@ class  Simulator:
                 self.exit_run = True
 
     def print_pheromone_map(self, data_map, width, height, name):
-        """ Print pheromone map for post-analysis"""
+        """
+        Generate and save a pheromone map visualization for post-analysis.
+
+        Args:
+            data_map (dict): A dictionary mapping grid coordinates to pheromone values.
+            width (int): The width of the warehouse grid.
+            height (int): The height of the warehouse grid.
+            name (str): The filename for saving the output image.
+        """
+
         # Extract x, y coordinates and strength values
         x_coords = [key[0] for key in data_map.keys()]
         y_coords = [key[1] for key in data_map.keys()]
@@ -176,6 +232,16 @@ class  Simulator:
         plt.close()  # Close the figure to free memory
 
     def run(self, iteration=0):
+        """
+        Run the simulation loop until the exit criteria are met.
+
+        Args:
+            iteration (int, optional): The starting iteration number. Defaults to 0.
+
+        Returns:
+            int: The total number of iterations completed before termination.
+        """
+
         if self.verbose:
             if iteration:
                 print(f"Running simulation iteration: {iteration}")
@@ -186,61 +252,3 @@ class  Simulator:
             self.iterate()
 
         return self.warehouse.counter
-
-class SimTest(Simulator):
-
-    def run(self, testID=0):
-        self.testID = testID
-        if self.verbose:
-            print("Running with seed: %d"%self.random_seed)
-
-        while self.warehouse.counter <= self.cfg.get('time_limit'):
-            self.test_hook()
-            self.iterate()
-        
-        if self.verbose:
-            print("\n")
-
-    def test_hook(self):
-        if self.testID == 0:
-            self.test_count_lifted_box()
-        if self.testID == 1:
-            self.test_walls_in_range()
-        if self.testID == 2:
-            self.test_agents_in_range()
-
-    def test_walls_in_range(self):
-        no_ag = self.swarm.number_of_agents
-        self.swarm.heading = np.array([0.]*no_ag)
-        self.swarm.robot_v *= 0
-        rob_test = [self.warehouse.width/2, self.warehouse.height/2]
-        self.swarm.repulsion_o = 0
-        self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
-        box_test = rob_test
-        self.warehouse.box_c = np.array([box_test, np.add(rob_test,[25,0])])
-
-        data = self.data_model.get_model_data()
-        if self.warehouse.counter%10 == 1:
-            print("Walls in range: %s / Nearest dist: %s / Nearest id: %s"%(
-                str(data['walls_in_range']),
-                str(data['nearest_wall_distance']),
-                str(data['nearest_wall_id'])
-            ))
-
-    def test_agents_in_range(self):
-        no_ag = self.swarm.number_of_agents
-        self.swarm.heading = np.array([0.]*no_ag)
-        self.swarm.robot_v *= 0
-        rob_test = [self.warehouse.width/2, self.warehouse.height/2]
-        self.swarm.repulsion_o = 0
-        self.warehouse.rob_c = np.array([rob_test, [0,0], [30,0]])
-        box_test = rob_test
-        self.warehouse.box_c = np.array([box_test, np.add(rob_test,[25,0])])
-
-        data = self.data_model.get_model_data()
-        if self.warehouse.counter%10 == 1:
-            print("Agents in range: %s / Nearest dist: %s / Nearest id: %s"%(
-                str(data['agents_in_range'].tolist()),
-                str(data['nearest_agent_distance'].tolist()),
-                str(data['nearest_agent_id'].tolist())
-            ))

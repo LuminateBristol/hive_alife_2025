@@ -8,43 +8,61 @@ class LocalGraph:
     A generalised knowledge graph format to be inherited for formalisation of the Hive Mind KG
     '''
     def __init__(self):
+        """
+        Initializes an empty MultiDiGraph.
+        This makes for a directional graph.
+        """
         self.graph = nx.MultiDiGraph()
 
     def add_node(self, node_name):
-        '''
-        Adds a node in the graph.
-        :param node_name: Name of the node
-        '''
+        """
+        Adds a node to the graph.
+
+        Args:
+            node_name (str): Name of the node to add.
+        """
         self.graph.add_node(node_name)
 
     def add_edge(self, node1, node2, edge_type=None, direction=True):
-        '''
+        """
         Adds an edge between two nodes in the graph.
-        '''
+
+        Args:
+            node1 (str): Source node.
+            node2 (str): Destination node.
+            edge_type (str, optional): Type of relationship between nodes. Defaults to None.
+            direction (bool, optional): Indicates if the edge is directed. Defaults to True.
+        """
         self.graph.add_edge(node1, node2, edge_type=edge_type, direction=direction)
 
     def add_edges(self, edges):
-        '''
-        Add multiple edges between existing nodes.
-        :param edges: A list containing nodes between which edges will be added e.g. [(1, 2), (2, 3), (3, 4)]
-        '''
+        """
+        Adds multiple edges between existing nodes.
+
+        Args:
+            edges (list of tuples): List of tuples representing edges (e.g., [(1, 2), (2, 3)]).
+        """
         self.graph.add_edges_from(edges)
 
     def display_graph(self):
-        '''
-        Displays teh graph nodes and edges
-        :return:
-        '''
+        """
+        Displays the graph nodes and edges in the console.
+        """
         print("Nodes in the graph:")
         print(self.graph.nodes(data=True))
         print("\nEdges in the graph:")
         print(self.graph.edges(data=True))
 
     def check_for_node(self, node_name):
-        '''
-        Checks if node exists
-        :return: True if node exists, otherwise False.
-        '''
+        """
+        Checks if a node exists in the graph.
+
+        Args:
+            node_name (str): Name of the node to check.
+
+        Returns:
+            bool: True if the node exists, otherwise False.
+        """
         if node_name in self.graph.nodes:
             return True
         else:
@@ -53,8 +71,10 @@ class LocalGraph:
     def update_attribute(self, node_name, **attributes):
         """
         Updates attributes for a specific node.
-        :param node_id: Node whose attributes need to be updated
-        :param attributes: Updated key-value pairs (e.g. battery status)
+
+        Args:
+            node_name (str): Node whose attributes need to be updated.
+            **attributes: Key-value pairs representing updated attributes.
         """
         if node_name in self.graph.nodes:
             # Update the node's attributes directly
@@ -63,30 +83,42 @@ class LocalGraph:
             print(f"Node {node_name} does not exist.")
 
 class GraphMind(LocalGraph):
-    '''
+    """
     Knowledge graph specifically for the Graph Mind.
-    '''
+    """
 
     def __init__(self):
+        """
+        Initializes the GraphMind by inheriting from LocalGraph.
+        """
         super().__init__()
 
     def add_robot_observation_space(self, robot_observation_space):
-        '''
-        :param: robot_observation_space
-            Provide list of lists for possible observations that the robot can contribute to the Graph Mind
-            Inner list format: [observation, edge_type, **attributes]
-        '''
+        """
+        Adds robot observations to the Graph Mind.
+        This is specifically setup for the format so those observations must be provided in that format.
+        Observations are defined in objects.py
+
+        Args:
+            robot_observation_space (list): List of lists containing robot observations.
+        """
         for observation in robot_observation_space:
             attributes = copy.deepcopy(observation[3])
             self.add_information_node(parent_node=observation[0], info_node=observation[1], edge_type=observation[2], direction=True, **attributes)
 
     def add_information_node(self, parent_node, info_node, edge_type=None, direction=True, **attributes):
         """
-        Add new information to the Graph Mind.
-        :param parent_node: Name of the parent node
-        :param info_node: Name of the new node
-        :param edge_type: Type of the edge connecting the nodes
-        :param attributes: Any attributed data to be added to the Node - in key-pair format e.g., {'id': task_id, 'type': 'task'}
+        Adds new information to the Graph Mind.
+
+        Args:
+            parent_node (str): Name of the parent node.
+            info_node (str): Name of the new node.
+            edge_type (str, optional): Type of the edge. Defaults to None.
+            direction (bool, optional): Indicates if the edge is directed. Defaults to True.
+            **attributes: Additional attributes for the node.
+
+        Returns:
+            str: The name of the added info node.
         """
         try:
             self.check_for_node(parent_node)
@@ -104,6 +136,15 @@ class GraphMind(LocalGraph):
         return info_node
 
     def find_node(self, node_name):
+        """
+        Finds and returns a node if it exists.
+
+        Args:
+            node_name (str): The name of the node to search for.
+
+        Returns:
+            str or None: Node name if found, otherwise None.
+        """
         for node, data in self.graph.nodes(data=True):
             if node == node_name:
                 return node
@@ -112,9 +153,11 @@ class GraphMind(LocalGraph):
 
     def update_weight_for_node_name(self, node_name, weight):
         """
-        Update the needs_weight for all nodes with the same name.
-        :param node_name: Name of the node to update the weight for
-        :param weight: The weight to assign
+        Updates the weight for all nodes with the same name.
+
+        Args:
+            node_name (str): Name of the node.
+            weight (int): New weight to be assigned.
         """
         for node, data in self.graph.nodes(data=True):
             if node == node_name:
@@ -122,9 +165,10 @@ class GraphMind(LocalGraph):
 
     def print_graph_mind(self, attribute_filter=None):
         """
-        Visualize nodes in the graph based on the specified attribute filter.
+        Visualizes nodes in the graph based on an optional attribute filter.
 
-        :param attribute_filter: A dictionary containing the attributes to filter nodes by (e.g., {'weight': 1})
+        Args:
+            attribute_filter (dict, optional): Dictionary containing attributes to filter nodes (e.g., {'weight': 1}). Defaults to None.
         """
         plt.figure(figsize=(12, 8))
         pos = nx.arf_layout(self.graph)  # or another layout
@@ -164,11 +208,10 @@ class GraphMind(LocalGraph):
 
     def plot_node_tree(self, node):
         """
-        Plots the specified node and all of its successors (i.e., all nodes reachable from it).
+        Plots a node and all of its successors in a hierarchical format.
 
-        Parameters:
-        graph (networkx.DiGraph): The directed graph containing the nodes.
-        node: The node to plot along with all its successors.
+        Args:
+            node (str): The node to plot along with its successors.
         """
         if not self.graph.has_node(node):
             print(f"Node {node} does not exist in the graph.")
@@ -199,74 +242,12 @@ class GraphMind(LocalGraph):
         plt.show()
 
     def cleanup_hive_mind(self):
-        '''
-        Cleanup Hive Mind by removing all robot data items that have a weight==0
-        These items are not updated by the robots in the current iteration and therefore are not being used
-        This is called at the start of each simulation run
-        '''
+        """
+        Cleans up the Hive Mind by removing nodes with a weight of 0.
+        """
         # nodes_to_remove = [n for n, attr in self.graph.nodes(data=True) if attr.get('weight') == 0]
         # self.graph.remove_nodes_from(nodes_to_remove)
 
         # For optimisatio purposes - this has been removed
         # TODO: review this part of the code for each task and workout its use / integration to optimisation
         pass
-# class OptimiseHiveMind(): # TODO: update this so it takes in the Hive Mind as an input somewhere and returns new weights - the hive mind this time will be a sim.hive_mind object (move to run file maybe?)
-#     def __init__(self, robot_observation_space, tasks):
-#         self.robot_observation_space = robot_observation_space
-#         self.tasks = tasks
-#
-#     def cost_function(self, task_time, messages, w_T=1, w_M=1):
-#         return w_T * task_time + w_M * messages
-#
-#     def build_hive_mind(self):
-#         self.Hive_Mind = HiveMind()
-#         self.Hive_Mind.build_hive_mind(self.robot_observation_space, self.tasks)
-#
-#     def simulate_task(self, hive_mind):
-#         # You already have the simulator integrated
-#         task_time, messages = run_simulation(hive_mind)
-#         return task_time, messages
-#
-#     def greedy_optimization(self, simulate_task, num_simulations=10):
-#         best_cost = float('inf')
-#         best_weights = {}
-#
-#         # Gather all unique node names (e.g., 'battery_status', 'task_status')
-#         unique_node_names = set(observation[2] for observation in self.robot_observation_space)
-#
-#         for node_name in unique_node_names:
-#             # Test weight = 1 for all nodes with the same name
-#             print(f"Testing node: {node_name} with weight=1")
-#             self.build_hive_mind()
-#             self.Hive_Mind.update_weight_for_node_name(node_name, weight=1)
-#
-#             costs = []
-#             for _ in range(num_simulations):
-#                 task_time, messages = simulate_task(self.Hive_Mind)
-#                 current_cost = self.cost_function(task_time, messages)
-#                 costs.append(current_cost)
-#
-#             avg_cost_weight_1 = sum(costs) / num_simulations
-#
-#             # Test weight = 0 for all nodes with the same name
-#             print(f"Testing node: {node_name} with weight=0")
-#             self.build_hive_mind()
-#             self.Hive_Mind.update_weight_for_node_name(node_name, weight=0)
-#
-#             costs = []
-#             for _ in range(num_simulations):
-#                 task_time, messages = simulate_task(self.Hive_Mind)
-#                 current_cost = self.cost_function(task_time, messages)
-#                 costs.append(current_cost)
-#
-#             avg_cost_weight_0 = sum(costs) / num_simulations
-#
-#             # Keep the best weight (0 or 1)
-#             if avg_cost_weight_1 < avg_cost_weight_0:
-#                 print(f"Node {node_name} weight=1 performs better with cost: {avg_cost_weight_1}")
-#                 best_weights[node_name] = 1
-#             else:
-#                 print(f"Node {node_name} weight=0 performs better with cost: {avg_cost_weight_0}")
-#                 best_weights[node_name] = 0
-#
-#         return best_weights

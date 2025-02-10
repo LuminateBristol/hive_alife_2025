@@ -4,13 +4,31 @@ import numpy as np
 
 
 class VizSim(Simulator):
+    """
+    A visualisation class for the simulator that extends the Simulator class.
+    This class is responsible for rendering the simulation environment, plotting walls,
+    agent positions, movement, and other visual elements.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the VizSim class.
+
+        Args:
+            *args: Variable-length argument list passed to the Simulator class.
+            **kwargs: Arbitrary keyword arguments passed to the Simulator class.
+        """
         super().__init__(*args, **kwargs)
         self.snapshot_s = [1]  # [50,1250,2250]
         self.verbose = True
 
     def plot_walls(self, ax):
+        """
+        Plots the walls of the simulation environment on the given matplotlib axis.
+
+        Args:
+            ax (matplotlib.axes.Axes): The matplotlib axis on which to plot the walls.
+        """
 
         # Plot horizontal walls
         for wall in self.cfg.get(self.cfg.get('map'), 'wallsh'):
@@ -19,14 +37,20 @@ class VizSim(Simulator):
             x1, y1 = end
             ax.plot([x0, x1], [y0, y1], 'k-')  # 'k-' means black solid line
 
-        # Plot vertical walls 
+        # Plot vertical walls
         for wall in self.cfg.get(self.cfg.get('map'), 'wallsv'):
             start, end = wall
             x0, y0 = start
             x1, y1 = end
             ax.plot([x0, x1], [y0, y1], 'k-')
 
-    def generate_dot_positional_data(self, faulty=False):
+    def generate_dot_positional_data(self):
+        """
+        Generates positional data for agents as dots on the visualisation.
+
+        Returns:
+            tuple: A tuple containing lists of x-coordinates, y-coordinates, and marker styles.
+        """
         agent_range = range(self.cfg.get('number_of_agents'))
         x_data = [
             [self.warehouse.rob_c[i, 0] for i in agent_range]
@@ -38,6 +62,12 @@ class VizSim(Simulator):
         return (x_data, y_data, marker)
 
     def generate_dot_heading_arrow(self):
+        """
+        Generates arrow vectors to indicate the heading direction of each agent.
+
+        Returns:
+            tuple: Lists of x-coordinates and y-coordinates for the arrows.
+        """
         length = 20
         steps = 20
         agents = self.swarm.number_of_agents
@@ -53,6 +83,17 @@ class VizSim(Simulator):
         return x_vec, y_vec
 
     def get_marker_size_in_data_units(self, cell_size, ax, scale_factor=0.75):
+        """
+        Computes the size of a marker in data units to maintain a scaled appearance in the visualiser.
+
+        Args:
+            cell_size (float): The size of the cell in data units.
+            ax (matplotlib.axes.Axes): The axis on which to compute the marker size.
+            scale_factor (float, optional): Scaling factor to adjust marker size. Defaults to 0.75.
+
+        Returns:
+            float: The computed marker size in points.
+        """
         # Get the limits of the axes
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
@@ -80,6 +121,20 @@ class VizSim(Simulator):
         return marker_size_in_points
 
     def iterate(self, frame, dot=None, boxes=None, h_line=None, cam_range=None, snapshot=False):
+        """
+        Advances the simulation by one step and updates the visualisation.
+
+        Args:
+            frame (int): The current frame number.
+            dot (list, optional): List of plotted agent markers.
+            boxes (list, optional): List of plotted boxes.
+            h_line (list, optional): List of heading arrows.
+            cam_range (matplotlib plot object, optional): Camera range visualisation.
+            snapshot (bool, optional): If True, captures a snapshot. Defaults to False.
+
+        Returns:
+            list: Updated plot elements.
+        """
         self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
         counter = self.warehouse.counter
 
@@ -98,7 +153,21 @@ class VizSim(Simulator):
 
         return dot + h_line + boxes + [cam_range]
 
-    def animate(self, i, counter, dot=None, boxes=None, h_line=None, cam_range=None):
+    def animate(self, i, counter, dot=None, boxes=None, h_line=None, cam_range=None): 
+        """
+        Animates the visualisation.
+
+        Args:
+            frame (int): The current frame number.
+            dot (list, optional): List of plotted agent markers.
+            boxes (list, optional): List of plotted boxes.
+            h_line (list, optional): List of heading arrows.
+            cam_range (matplotlib plot object, optional): Camera range visualisation.
+            snapshot (bool, optional): If True, captures a snapshot. Defaults to False.
+
+        Returns:
+            list: Updated plot elements.
+        """
         cam_range.set_data(
             [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
             [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))]
@@ -136,6 +205,12 @@ class VizSim(Simulator):
         return dot, boxes, h_line, cam_range
 
     def exit_sim(self, counter=None):
+        """
+        Sets the exit criteria depending on the selected experiment - see exp_setup.yaml
+
+        Args:
+            counter (int, optional): Timestep that the simulation is currently on
+        """
         if self.exit_criteria == 'counter':
             if counter > self.cfg.get('time_limit'):
                 if self.verbose:
@@ -177,6 +252,12 @@ class VizSim(Simulator):
                 exit()
 
     def run(self, iteration=0):
+        """
+        Starts the simulation and visualisation.
+
+        Args:
+            iteration (int, optional): Iteration number. Defaults to 0.
+        """
         if self.verbose:
             print("Running")
 
@@ -187,6 +268,9 @@ class VizSim(Simulator):
             print("\n")
 
     def init_animate(self):
+        """
+        Initializes the animation environment and starts the visualisation.
+        """
         self.fig = plt.figure(figsize=(8, 8))
         plt.rcParams['font.size'] = '16'
         self.ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
@@ -234,7 +318,6 @@ class VizSim(Simulator):
 
         # TRAFFIC GRAPHICS
         # Plot the target points as squares
-
 
         # Plot DOTS robots
         x_data, y_data, marker = self.generate_dot_positional_data()
