@@ -80,8 +80,6 @@ class Warehouse:
 			list_n = [] # empty list of possible positions 
 			h = 0 # initiate all headings as 0 - random heading will be calculated in the behaviour tree
 
-			print(possible_x, possible_y)
-
 			for x in range(possible_x):
 				for y in range(possible_y):
 					list_n.append([x,y,h]) # list of possible positions in the warehouse

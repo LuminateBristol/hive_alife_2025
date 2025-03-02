@@ -196,7 +196,7 @@ class  Simulator:
             # if counter > self.cfg.get('time_limit'):
             #     print(f"{counter} counts reached - Time limit expired. Traffic score: {self.traffic_score['score']}")
             if self.traffic_score['score'] >= 100 or counter > self.cfg.get('time_limit'):
-                print(f"{counter} counts reached - Time reached {counter}. Traffic score: {self.traffic_score['score']}")
+                print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True
 
@@ -245,6 +245,7 @@ class  Simulator:
         if self.verbose:
             if iteration:
                 print(f"Running simulation iteration: {iteration}")
+                pass
             else:
                 print("Running simulation iteration: 0")
 

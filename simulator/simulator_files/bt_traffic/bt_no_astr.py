@@ -408,7 +408,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         self.update_speed()
         self.update_task_id()
         self.update_heading()
-        self.update_pheromone_map()
+        # self.update_pheromone_map()
         self.update_chosen_door()
         return py_trees.common.Status.SUCCESS
 
