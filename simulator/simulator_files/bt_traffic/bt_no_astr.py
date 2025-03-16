@@ -1,6 +1,7 @@
 import copy
 import random
 import math
+from asyncio import tasks
 from lib2to3.fixes.fix_metaclass import remove_trailing_newline
 
 import py_trees
@@ -316,9 +317,6 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
             # Update Hive Mind with latest robo_mind heading attributes
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
-        # elif node_type == 'robot':
-        #     print(f'Robot differences - not implemented yet')
-
     def initialise(self):
         self.compare_robot_hive_graphs()
 
@@ -410,6 +408,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         self.update_heading()
         # self.update_pheromone_map()
         self.update_chosen_door()
+
         return py_trees.common.Status.SUCCESS
 
 class Select_Action(py_trees.behaviour.Behaviour):
@@ -422,203 +421,338 @@ class Select_Action(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='heading', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='minima_timer', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='chosen_task', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='traffic_score', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.READ)
         self.setup()
 
-    def setup(self): 
-        self.logger.debug(f"Select action::setup {self.name}")
+        # Initial setup
         self.blackboard.action = 'init'
-        self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
-
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
-
-    def update(self):
-
-        if self.blackboard.action == 'init':
-
-            # Select task based on side of the map
-            x = self.blackboard.w_rob_c[self.robot_index][0]
-            graph = self.blackboard.robo_mind.graph
-            door_coords_1 = graph.nodes['task_1'].get('coords')
-            door_coords_2 = graph.nodes['task_2'].get('coords')
-            if abs(door_coords_1[0] - x) < abs(door_coords_2[0] - x):
-                self.blackboard.chosen_task = 'task_1'
-            else:
-                self.blackboard.chosen_task = 'task_2'
-
-            self.blackboard.action = 'choose_door'
-            self.blackboard.chosen_door = ''
-
-        if self.blackboard.action == 'choose_door':
-            # Check if door has been chosen
-            if self.blackboard.chosen_door:
-                self.blackboard.action = 'go_through_door'
-
-        if self.blackboard.action == 'go_through_door':
-            # Check to see if we are through door
-            graph = self.blackboard.robo_mind.graph
-            door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
-            task_coords = graph.nodes[self.blackboard.chosen_task].get('coords')
-            robot_coords = self.blackboard.w_rob_c[self.robot_index]
-
-            if abs(task_coords[0] - robot_coords[0]) < abs(task_coords[0] - door_coords[0]):
-                self.blackboard.action = 'go_to_task'
-
-        if self.blackboard.action == 'go_to_task':
-            # Check if we are within tol of task
-            graph = self.blackboard.robo_mind.graph
-            task_coords = graph.nodes[self.blackboard.chosen_task].get('coords')
-            robot_coords = self.blackboard.w_rob_c[self.robot_index]
-
-            dis = math.sqrt((task_coords[1] - robot_coords[1]) ** 2 + (task_coords[0] - robot_coords[0]) ** 2)
-            if dis < self.blackboard.place_tol:
-                # Task complete
-                self.blackboard.traffic_score['score'] += 1
-
-                # Set new task
-                if self.blackboard.chosen_task == 'task_1':
-                    self.blackboard.chosen_task = 'task_2'
-                else:
-                    self.blackboard.chosen_task = 'task_1'
-                self.blackboard.action = 'choose_door'
-
-        # print(self.blackboard.action)
-
-        return py_trees.common.Status.SUCCESS
-
-class Check_Action_Choose_Door(py_trees.behaviour.Behaviour):
-
-    def __init__(self,name, robot_index):
-        super().__init__(name)
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+        self.blackboard.chosen_door = None
+        self.blackboard.chosen_task = random.choice(['task_1', 'task_2'])
 
     def setup(self):
         self.logger.debug(f"Select action::setup {self.name}")
 
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
+        # For this task chosen action depends on the information available to the robot
+        # To handle this we create a dictionary to enable robots to make decisions based on available info
+        # The action is chosen depending on the information available
+        # This is hardcoded in this case but it could be evolved / could be a neural network / similar
 
-    def update(self):
-        if self.blackboard.action == 'choose_door':
-            return py_trees.common.Status.SUCCESS
-        else:
-            return py_trees.common.Status.FAILURE
+        self.door_proximity_threshold = 100
 
-class Choose_Door(py_trees.behaviour.Behaviour):
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        self.str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
-        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='chosen_task', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+        self.info_action_sets = [
+            {
+                "required_info": {None},
+                "rank": 4,
+                "fn": self.random_door
+            },
+            {
+                "required_info": {"robot_position"},
+                "rank": 3,
+                "fn": self.choose_door_by_traffic
+            },
+            {
+                "required_info": {"robot_position", "robot_heading"},
+                "rank": 2,
+                "fn": self.choose_door_by_traffic_and_giveway_heading   # TODO: could do something with directional traffic here too
+            },
+            {
+                "required_info": {"robot_position", "robot_task"},
+                "rank": 2,
+                "fn": self.choose_door_by_traffic_and_giveway_task
+            },
+            {
+                "required_info": {"chosen_door", "robot_heading"},
+                "rank": 1,
+                "fn": self.choose_door_by_consensus_heading
+            },
+            {
+                "required_info": {"chosen_door", "robot_task"},
+                "rank": 1,
+                "fn": self.choose_door_by_consensus_task
+            }
+        ]
 
-    def setup(self):
-        pass
-
-    def initialise(self):
-        pass
-
-    def consult_hive_mind(self):
-        '''
-        Check the Hive data to help inform our door decision.
-        For this task, we need two pieces of information for each robot:
-        1. chosen_door - this helps us reach consensus on which door to choose
-        2. some positional data - this informs which door to choose based on where we are going
-        Positional data that is useful here is heading / waypoint.
-
-        In combination with the chosen door data, position data allows us to align our movements with other robots.
-        E.g. if all robots moving left to right choose door_A and all moving right to left choose door_B, then we have
-        a much smoother collective movement for all - good traffic!
-        '''
-        graph = self.blackboard.hive_mind.graph
-        my_task = self.blackboard.chosen_task
-        my_heading_value = self.blackboard.w_rob_c[self.robot_index][2]
-
-        door_A_votes = 0
-        door_B_votes = 0
-
-        # First get a list of robot names who are publishing their 'chosen_door' data
-        chosen_door_nodes = [n for n in graph.nodes if n.endswith('chosen_door')]
-        task_nodes = [n for n in graph.nodes if n.endswith('task_id')]
-        heading_nodes = [n for n in graph.nodes if n.endswith('heading')]
-
-        # Check pairwise data 1 - chosen door and task_id
-        if task_nodes:
-            for chosen_door in chosen_door_nodes:
-                task_node = chosen_door.replace('_chosen_door', '_task_id')
-                if task_node in graph.nodes and graph.nodes[task_node].get('data') == my_task and not task_node.startswith(self.str_index):
-                    data = graph.nodes[chosen_door].get('data')
-                    if graph.nodes[chosen_door].get('data') == 'door_A':
-                        door_A_votes += 1
-                    else:
-                        door_B_votes += 1
-                elif task_node in graph.nodes and graph.nodes[task_node].get('data') != my_task:
-                    data = graph.nodes[chosen_door].get('data')
-                    if graph.nodes[chosen_door].get('data') == 'door_A':
-                        door_B_votes += 1
-                    else:
-                        door_A_votes += 1
-
-        # Check pairwise data_2 - chosen door and current heading
-        elif heading_nodes:
-            for chosen_door in chosen_door_nodes:
-                heading_node = chosen_door.replace('_chosen_door', '_heading')
-                heading_value = graph.nodes[heading_node].get('data')
-
-                # print(my_heading_value)
-                # print('them')
-                # print(heading_value)
-
-                if heading_node in graph.nodes:
-                    # If we are going in the same direction - align door decision
-                    if (
-                            # (np.pi/2 <= heading_value <= (3*np.pi)/2 and np.pi/2 <= my_heading_value <= (3*np.pi)/2)
-                            (abs(heading_value) < np.pi/2 and abs(my_heading_value) < np.pi/2) or
-                            (abs(heading_value) >= np.pi / 2 and abs(my_heading_value) >= np.pi / 2)
-                    ):
-                        if graph.nodes[chosen_door].get('data') == 'door_A':
-                            door_A_votes += 1
-                        else:
-                            door_B_votes += 1
-                    # If we are going in a opposite direction - choose opposite door decision
-                    else:
-                        if graph.nodes[chosen_door].get('data') == 'door_A':
-                            door_B_votes += 1
-                        else:
-                            door_A_votes += 1
-
-        return door_A_votes, door_B_votes
-
-    def update(self):
-        # Check if Hive data is available and can be used to inform door decision
-        door_A_votes, door_B_votes = self.consult_hive_mind()
-        if door_A_votes > door_B_votes:
-            self.blackboard.chosen_door = 'door_A'
-        elif door_B_votes > door_A_votes:
-            self.blackboard.chosen_door = 'door_B'
-        elif self.blackboard.chosen_door == '':
-            # If no data is available OR votes are even, choose a door randomly
-            # Note that this is only done when there is no door choice yet
-            # If a door has been chosen, then we continue with that door
+    def random_door(self):
+        """
+        Check if door selected, if not then select a door at random.
+        Set next action to 'go_to_door'.
+        """
+        if self.blackboard.chosen_door is None:
             self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
 
-        # print(self.robot_index, self.blackboard.chosen_door)
+        self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_traffic(self):
+        """
+        If no door has been selected - choose a door based on which has the least amount of robots nearby.
+        Set action to 'go_to_door'
+        """
+        if self.blackboard.chosen_door is None:
+            # Get graph
+            graph = self.blackboard.hive_mind.graph
+            door_A_votes = 0
+            door_B_votes = 0
+
+            # Get door coords from Hive
+            door_A_coords = graph.nodes['door_A'].get('coords')
+            door_B_coords = graph.nodes['door_B'].get('coords')
+
+            # Get traffic data from positions from Hive
+            position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
+            for node, attrs in position_nodes.items():
+                robot_position = attrs.get('data')
+                door_A_proximity = np.sqrt((robot_position[0]-door_A_coords[0])**2 + (robot_position[1]-door_A_coords[1])**2)
+                door_B_proximity = np.sqrt((robot_position[0]-door_B_coords[0])**2 + (robot_position[1]-door_B_coords[1])**2)
+
+                # Check if proximity is within 2 metres for it to be interesting from a traffic perspective
+                if door_A_proximity < self.door_proximity_threshold or door_B_proximity < self.door_proximity_threshold:
+                    if door_A_proximity < door_B_proximity:
+                        door_B_votes +=1
+                    else:
+                        door_A_votes +=1
+
+             # Choose door
+            if door_A_votes > door_B_votes:
+                self.blackboard.chosen_door = 'door_A'
+            elif door_B_votes > door_A_votes:
+                self.blackboard.chosen_door = 'door_B'
+            else:
+                self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
+
+        # Set action
+        self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_traffic_and_giveway_heading(self):
+        """
+        If no door is selected - choose door by traffic.
+        Once door is selected, given way if there are other robots coming towards us, through the door AND are closer to
+        the door than we are.
+        """
+        if self.blackboard.chosen_door is None:
+            self.choose_door_by_traffic()
+
+        # Check for incoming robots in case we need to give way
+        give_way = False
+
+        # Get door coords, my position and proximity to door
+        graph = self.blackboard.hive_mind.graph
+        door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        my_position = self.blackboard.w_rob_c[self.robot_index]
+        my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
+
+        # If we are within give way range, check robot positions:
+        if my_door_proximity < self.door_proximity_threshold:
+
+            # Get traffic data from positions from Hive
+            position_nodes = {n: attr for n, attr in graph.nodes(data=True) if attr.get('type') == 'robot_position'}
+
+            for node, attrs in position_nodes.items():
+                robot_position = attrs.get('data')
+                robot_door_proximity = np.sqrt((robot_position[0] - door_coords[0]) ** 2 + (robot_position[1] - door_coords[1]) ** 2)
+
+                # Check robot is close to door and closer than us
+                if robot_door_proximity < my_door_proximity:
+
+                    # Check if robot is heading in a different direction to us - only give way to robots that are closer to the door than we are
+                    robot_name = attrs.get('robot_name')
+                    robot_heading = graph.nodes[f'{robot_name}_heading']['data']
+                    if not (
+                            (abs(robot_heading) < np.pi / 2 and abs(my_position[2]) < np.pi / 2) or
+                            (abs(robot_heading) >= np.pi / 2 and abs(my_position[2]) >= np.pi / 2)
+                    ):
+                        # Give way
+                        give_way = False # TODO: Give way is not working well - causes jams from robots staying still - fix then switch on
+                        break
+
+        # Implement give_way if needed
+        if give_way:
+            self.blackboard.action = 'give_way'
+        else:
+            self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_traffic_and_giveway_task(self):
+        """
+        If no door is selected - choose door by traffic.
+        Once door is selected, given way if there are other robots coming towards us, through the door AND are closer to
+        the door than we are.
+        """
+        if self.blackboard.chosen_door is None:
+            self.choose_door_by_traffic()
+
+        # Check for incoming robots in case we need to give way
+        give_way = False
+
+        # Get door coords, my position and proximity to door
+        graph = self.blackboard.hive_mind.graph
+        door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        my_task = self.blackboard.chosen_task
+        my_position = self.blackboard.w_rob_c[self.robot_index]
+        my_door_proximity = (my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2
+
+        # If we are within give way range, check robot positions:
+        if my_door_proximity < self.door_proximity_threshold:
+
+            # Get traffic data from positions from Hive
+            position_nodes = {n: attr for n, attr in graph.nodes(data=True) if attr.get('type') == 'robot_position'}
+
+            for node, attrs in position_nodes.keys():
+                robot_position = attrs.get('data')
+                robot_door_proximity = (robot_position[0] - door_coords[0]) ** 2 + (robot_position[1] - door_coords[1]) ** 2
+
+                # Check robot is close to door and closer than us - only give way to robots that are closer to the door than we are
+                if robot_door_proximity <= my_door_proximity:
+
+                    # Check we are on different tasks (i.e. heading in different directions)
+                    robot_name = attrs.get('robot_name')
+                    robot_task = graph.nodes[f'{robot_name}_task_id']['data']
+                    if robot_task != my_task:
+                        # Give way
+                        give_way = True
+                        break
+
+        # Implement give_way if needed
+        if give_way:
+            self.blackboard.action = 'give_way'
+        else:
+            self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_consensus_heading(self):
+        """
+        Use Hive shared door choices from all connected robots to choose a door based on consensus
+        We count the number of robot using each door for a given direction they are moving and align ourselves with that
+        """
+        if self.blackboard.chosen_door is None:
+            # Get traffic data from positions from Hive
+            graph = self.blackboard.hive_mind.graph
+            door_nodes = {n: d['data'] for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
+            my_position = self.blackboard.w_rob_c[self.robot_index]
+
+            # Calculate votes for each direction
+            door_votes = {'door_A': 0, 'door_B': 0}
+
+            for node, attr in door_nodes.items():
+                # Get name, door choice and heading
+                robot_name = attr.get('robot_name')
+                chosen_door = attr.get('data')
+                robot_heading_node = graph.nodes[f'{robot_name}_heading']
+                robot_heading = graph.nodes[robot_heading_node].get('data')
+
+                # Compare to see if we are heading in the same direction (left to right or right to left)
+                same_direction = (abs(robot_heading) < np.pi / 2) == (abs(my_position[2]) < np.pi / 2)
+
+                # Vote for the chosen door
+                if chosen_door in door_votes:
+                    door_votes[chosen_door] += 1 if same_direction else -1  # Opposite direction cancels out
+
+            # Choose door with the highest consensus
+            self.blackboard.chosen_door = max(door_votes, key=door_votes.get)
+
+        # Set action
+        self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_consensus_task(self):
+        """
+        Use Hive shared door choices from all connected robots to choose a door based on consensus
+        We count the number of robot using each door for a given task they are moving towards and align ourselves with that
+        """
+        if self.blackboard.chosen_door is None:
+            # Get traffic data from positions from Hive
+            graph = self.blackboard.hive_mind.graph
+            door_nodes = {n: d['data'] for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
+
+            # Calculate votes for each direction
+            door_votes = {'door_A': 0, 'door_B': 0}
+
+            for node, attr in door_nodes.items():
+                # Get name, door choice and heading
+                robot_name = attr.get('robot_name')
+                chosen_door = attr.get('data')
+                robot_task = graph.nodes[f'{robot_name}_task_id'].get('data')
+
+                # Compare to see if we are heading in the same direction (left to right or right to left)
+                same_task = self.blackboard.chosen_task == robot_task
+
+                # Vote for the chosen door
+                if chosen_door in door_votes:
+                    door_votes[chosen_door] += 1 if same_task else -1  # Opposite direction cancels out
+
+            # Choose door with the highest consensus
+            self.blackboard.chosen_door = max(door_votes, key=door_votes.get)
+
+        # Set action
+        self.blackboard.action = 'go_to_door'
+
+    def get_available_hive_information_types(self):
+        '''
+        Here we simply search for what information types are available on the Hive with weight = 1.
+        This allows us to make decisions on what information to then extract and act on.
+        Treat this like the initial step of an information search or request.
+        :return: hive_info_types (list): list of all information type nodes available on the Hive
+        '''
+        graph = self.blackboard.hive_mind.graph
+        selected_nodes = {
+            attrs.get('type')
+            for node, attrs in graph.nodes(data=True)
+            if attrs.get('weight') == 1 and 'data' in attrs
+        }
+        return selected_nodes
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+
+        # Get door, task and robot coords
+        graph = self.blackboard.robo_mind.graph
+        try:
+            door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        except KeyError:
+            pass
+        task_coords = graph.nodes[self.blackboard.chosen_task].get('coords')
+        robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+        # If we have not yet chosen a door
+        # Or if we have not yet gone through a door (ie x-distance to door and x-distance to task are both same sign)
+        if (self.blackboard.chosen_door is None or
+            np.sign(robot_coords[0] - door_coords[0]) == np.sign(robot_coords[0] - task_coords[0])):
+
+            # Get shared information types in the Hive
+            selected_info_types = self.get_available_hive_information_types()
+
+            # Select action function based on available info
+            feasible_actions = []
+            for action in self.info_action_sets:
+                if action["required_info"].issubset(selected_info_types) or action["required_info"] == {None}:
+                    feasible_actions.append(action)
+
+            if not feasible_actions:
+                print("No feasible action found for the given info!")
+                return
+
+            # Choose the feasible action with the highest priority
+            best_action = min(feasible_actions, key=lambda a: a["rank"])
+            # print(best_action)
+            best_action["fn"]()
+
+        else:
+            # Else we have gone through the door so carry on to task
+            self.blackboard.action = 'go_to_task'
+
+            # If we are within place_tol of the task - set new task and reset door to None
+            dis_to_task = np.sqrt((robot_coords[0]-task_coords[0])**2 + (robot_coords[1]-task_coords[1])**2)
+            if dis_to_task < self.blackboard.place_tol:
+                self.blackboard.traffic_score['score'] += 1
+                self.blackboard.chosen_door = None
+                self.blackboard.chosen_task = 'task_2' if self.blackboard.chosen_task == 'task_1' else 'task_1'
 
         return py_trees.common.Status.SUCCESS
 
-class Check_Action_Go_Through_Door(py_trees.behaviour.Behaviour):
-
+class Check_Action_Go_To_Door(py_trees.behaviour.Behaviour):
     def __init__(self,name, robot_index):
         super().__init__(name)
         str_index = 'robot_' + str(robot_index)
@@ -632,12 +766,12 @@ class Check_Action_Go_Through_Door(py_trees.behaviour.Behaviour):
         self.logger.debug(f"select action::initialise {self.name}")
 
     def update(self):
-        if self.blackboard.action == 'go_through_door':
+        if self.blackboard.action == 'go_to_door':
             return py_trees.common.Status.SUCCESS
         else:
             return py_trees.common.Status.FAILURE
 
-class Go_Through_Door(py_trees.behaviour.Behaviour):
+class Go_To_Door(py_trees.behaviour.Behaviour):
     def __init__(self, name, robot_index):
         super().__init__(name)
         self.robot_index = robot_index
@@ -647,6 +781,8 @@ class Go_Through_Door(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='velocity', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='max_v', access=py_trees.common.Access.READ)
 
     def setup(self):
         pass
@@ -655,22 +791,71 @@ class Go_Through_Door(py_trees.behaviour.Behaviour):
         pass
 
     def update(self):
-        # Calculate heading to go through door based on door coordinates
-        graph = self.blackboard.robo_mind.graph
-        door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
-        robot_coords = self.blackboard.w_rob_c[self.robot_index]
 
-        dx = door_coords[0] - robot_coords[0]
-        dy = door_coords[1] - robot_coords[1]
+        if self.blackboard.chosen_door is not None: # TODO: check this - should always be True but sometimes gets to this point and is None
+            # Calculate heading to go through door based on door coordinates
+            graph = self.blackboard.robo_mind.graph
+            door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+            robot_coords = self.blackboard.w_rob_c[self.robot_index]
 
-        # Check which side of the door we are on
-        if dx < 0:
-            dx -= 50
+            dx = door_coords[0] - robot_coords[0]
+            dy = door_coords[1] - robot_coords[1]
+
+            # Check which side of the door we are on
+            if dx < 0:
+                dx -= 50
+            else:
+                dx += 50
+
+            heading = math.atan2(dy, dx)
+            self.blackboard.w_rob_c[self.robot_index][2] = heading
+            self.blackboard.velocity = self.blackboard.max_v
+
+            return py_trees.common.Status.SUCCESS
+
+        return py_trees.common.Status.FAILURE
+
+class Check_Action_Give_Way(py_trees.behaviour.Behaviour):
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'give_way':
+            return py_trees.common.Status.SUCCESS
         else:
-            dx += 50
+            return py_trees.common.Status.FAILURE
 
-        heading = math.atan2(dy, dx)
-        self.blackboard.w_rob_c[self.robot_index][2] = heading
+class Give_Way(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='doors', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='max_v', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='velocity', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # Set velocity to 0 until we move back into go_to action
+        self.blackboard.velocity = 0
 
         return py_trees.common.Status.SUCCESS
 
@@ -704,6 +889,8 @@ class Go_To_Task(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='tasks', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='chosen_task', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='velocity', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='max_v', access=py_trees.common.Access.READ)
 
     def setup(self):
         pass
@@ -721,6 +908,7 @@ class Go_To_Task(py_trees.behaviour.Behaviour):
 
         heading = math.atan2(dy, dx)
         self.blackboard.w_rob_c[self.robot_index][2] = heading
+        self.blackboard.velocity = self.blackboard.max_v
 
         return py_trees.common.Status.SUCCESS
 
@@ -802,7 +990,7 @@ class Send_Path(py_trees.behaviour.Behaviour):
         str_index = 'robot_' + str(robot_index)
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
         self.blackboard.register_key(key="action", access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key="max_v", access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key="velocity", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="w_boxes", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="map", access=py_trees.common.Access.READ)
@@ -878,7 +1066,7 @@ class Send_Path(py_trees.behaviour.Behaviour):
         # Set speed based on task (if picking or placing then use half speed)
         # Set speed based on task (if picking or placing then use half speed)
 
-        max_v = self.blackboard.max_v
+        max_v = self.blackboard.velocity
 
         # Compute forces on robot based on desired heading and nearby objects
         heading = self.blackboard.w_rob_c[self.robot_index][2]
@@ -946,22 +1134,27 @@ def create_root(robot_index):
     sense = Sense(name='Sense', robot_index=robot_index)
 
     # Select action
-    action = Select_Action(name='Select action', robot_index=robot_index)
+    select_action = Select_Action(name='Select Action', robot_index=robot_index)
 
     # Update local task log
-    update_robo_mind = Update_Robo_Mind(name='Update robo mind', robot_index=robot_index)
+    update_robo_mind = Update_Robo_Mind(name='Update Robo Graph', robot_index=robot_index)
 
     # Connect to HM local task log
-    connect_to_hm = Connect_To_Hive_Mind(name='Connect to HM', robot_index=robot_index)
+    connect_to_hm = Connect_To_Hive_Mind(name='Update Hive Graph', robot_index=robot_index)
 
-    # Choose door behaviour
-    choose_door = py_trees.composites.Sequence(name='Choose Door', memory=False)
-    choose_door.add_child(Check_Action_Choose_Door(name='Check if choose door', robot_index=robot_index))
-    choose_door.add_child(Choose_Door(name='Choose Door', robot_index=robot_index))
+    # Go to door behaviour
+    go_to_door = py_trees.composites.Sequence(name='Go To Door', memory=False)
+    go_to_door.add_child(Go_To_Door(name='Update door choice', robot_index=robot_index))
+    go_to_door.add_child(Check_Action_Go_To_Door(name='Check if go to door', robot_index=robot_index))
+    go_to_door.add_child(Go_To_Door(name='Go To Door', robot_index=robot_index))
+
+    # Give way behaviour
+    give_way = py_trees.composites.Sequence(name='Give Way', memory=False)
+    give_way.add_child(Check_Action_Give_Way(name='Check if give way', robot_index=robot_index))
+    give_way.add_child(Give_Way(name='Give Way', robot_index=robot_index))
 
     # Go through door behaviour
     go_through_door = py_trees.composites.Sequence(name='Go Through Door', memory=False)
-    go_through_door.add_child(Choose_Door(name='Update door choice', robot_index=robot_index))
     go_through_door.add_child(Check_Action_Go_Through_Door(name='Check if go through door', robot_index=robot_index))
     go_through_door.add_child(Go_Through_Door(name='Go Through Door', robot_index=robot_index))
 
@@ -970,33 +1163,86 @@ def create_root(robot_index):
     go_to_task.add_child(Check_Action_Go_To_task(name='Check if go to task', robot_index=robot_index))
     go_to_task.add_child(Go_To_Task(name='Go to task', robot_index=robot_index))
 
-    # Go through door behaviour
-    random_path = py_trees.composites.Sequence(name='Choose Door', memory=False)
-    random_path.add_child(Check_Action_Choose_Door(name='Check if choose door', robot_index=robot_index))
-    random_path.add_child(Choose_Door(name='Choose Door', robot_index=robot_index))
-
     # Step 1: Sequence to execute initial actions first
-    initial_actions = py_trees.composites.Sequence(name='Initial Actions', memory=False)
+    initial_actions = py_trees.composites.Sequence(name='Information Processing', memory=False)
     initial_actions.add_child(sense)
-    initial_actions.add_child(action)
     initial_actions.add_child(update_robo_mind)
     initial_actions.add_child(connect_to_hm)
 
     # Step 2: Robot actions after the initial actions
     DOTS_actions = py_trees.composites.Selector(name=f'DOTS Actions {str_index}', memory=True)
-    Path_actions = py_trees.composites.Sequence(name='Path Actions', memory=False)
 
     # Step 3: Task actions
-    DOTS_actions.add_child(choose_door)
+    DOTS_actions.add_child(go_to_door)
+    DOTS_actions.add_child(give_way)
     DOTS_actions.add_child(go_through_door)
     DOTS_actions.add_child(go_to_task)
 
-    # Step 4: Path actions
-    Path_actions.add_child(Send_Path(name='Send Path', robot_index=robot_index))
-
     # Combine: First run the initial actions, then move on to DOTS_actions
     root.add_child(initial_actions)
-    root.add_child(Path_actions)
+    root.add_child(select_action)
     root.add_child(DOTS_actions)
+    root.add_child(Send_Path(name='Send Path', robot_index=robot_index))
 
     return root
+
+
+
+
+
+class Check_Action_Go_Through_Door(py_trees.behaviour.Behaviour):
+
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'go_through_door':
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+
+class Go_Through_Door(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='doors', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # Calculate heading to go through door based on door coordinates
+        graph = self.blackboard.robo_mind.graph
+        door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        robot_coords = self.blackboard.w_rob_c[self.robot_index]
+
+        dx = door_coords[0] - robot_coords[0]
+        dy = door_coords[1] - robot_coords[1]
+
+        # Check which side of the door we are on
+        if dx < 0:
+            dx -= 50
+        else:
+            dx += 50
+
+        heading = math.atan2(dy, dx)
+        self.blackboard.w_rob_c[self.robot_index][2] = heading
+
+        return py_trees.common.Status.SUCCESS

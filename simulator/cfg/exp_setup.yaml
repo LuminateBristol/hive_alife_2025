@@ -6,7 +6,7 @@ exp_3_traffic:
   exit_criteria: 'traffic'
   behaviour_tree: 'traffic'
   map: map2
-  number_of_agents: 5
+  number_of_agents: 200
 
   # Setup warehouse parameters
   warehouse:
