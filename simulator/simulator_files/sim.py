@@ -193,7 +193,8 @@ class  Simulator:
                 self.exit_run = True
 
         elif self.exit_criteria == 'traffic':
-            if self.traffic_score['score'] >= 200 or counter > self.cfg.get('time_limit'):
+            print(counter, self.traffic_score)
+            if self.traffic_score['score'] >= 400 or counter > self.cfg.get('time_limit'):
                 print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True

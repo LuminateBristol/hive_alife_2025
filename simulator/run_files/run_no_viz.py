@@ -103,7 +103,7 @@ def run_many_acov():
 def run_many_traf():
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
     num_runs = 5
-    num_robots = [10]
+    num_robots = [100]
 
     # # Open file once and write the header
     # with open('results/traffic_optimised.txt', 'w') as f:
@@ -117,7 +117,7 @@ def run_many_traf():
         score_total = 0
         time_total = 0
         for i in range(num_runs):
-            sim = VizSim(cfg_obj, verbose=verbose)
+            sim = Simulator(cfg_obj, verbose=verbose)
             counter = sim.run(iteration=i)
             score = sim.traffic_score['score']
             score_total += score

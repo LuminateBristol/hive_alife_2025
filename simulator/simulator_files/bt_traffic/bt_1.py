@@ -442,8 +442,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         # The action is chosen depending on the information available
         # This is hardcoded in this case but it could be evolved / could be a neural network / similar
 
-        self.door_proximity_threshold = 500
-        self.door_threshold = 10
+        self.door_proximity_threshold = 100
 
         self.info_action_sets = [
             {
@@ -493,53 +492,37 @@ class Select_Action(py_trees.behaviour.Behaviour):
         If no door has been selected - choose a door based on which has the least amount of robots nearby.
         Set action to 'go_to_door'
         """
-        # Get graph
-        graph = self.blackboard.hive_mind.graph
-        door_A_votes = 0
-        door_B_votes = 0
+        if self.blackboard.chosen_door is None:
+            # Get graph
+            graph = self.blackboard.hive_mind.graph
+            door_A_votes = 0
+            door_B_votes = 0
 
-        # Get door coords from Hive
-        door_A_coords = graph.nodes['door_A'].get('coords')
-        door_B_coords = graph.nodes['door_B'].get('coords')
+            # Get door coords from Hive
+            door_A_coords = graph.nodes['door_A'].get('coords')
+            door_B_coords = graph.nodes['door_B'].get('coords')
 
-        # Get traffic data from positions from Hive
-        position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
-        for node, attrs in position_nodes.items():
-            robot_position = attrs.get('data')
-            door_A_proximity = np.sqrt((robot_position[0]-door_A_coords[0])**2 + (robot_position[1]-door_A_coords[1])**2)
-            door_B_proximity = np.sqrt((robot_position[0]-door_B_coords[0])**2 + (robot_position[1]-door_B_coords[1])**2)
+            # Get traffic data from positions from Hive
+            position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
+            for node, attrs in position_nodes.items():
+                robot_position = attrs.get('data')
+                door_A_proximity = np.sqrt((robot_position[0]-door_A_coords[0])**2 + (robot_position[1]-door_A_coords[1])**2)
+                door_B_proximity = np.sqrt((robot_position[0]-door_B_coords[0])**2 + (robot_position[1]-door_B_coords[1])**2)
 
-            # Check if proximity is within thresh for it to be interesting from a traffic perspective
-            if door_A_proximity < self.door_proximity_threshold:
-                door_A_votes +=1
-            elif door_B_proximity < self.door_proximity_threshold:
-                door_B_votes +=1
+                # Check if proximity is within 2 metres for it to be interesting from a traffic perspective
+                if door_A_proximity < self.door_proximity_threshold or door_B_proximity < self.door_proximity_threshold:
+                    if door_A_proximity < door_B_proximity:
+                        door_B_votes +=1
+                    else:
+                        door_A_votes +=1
 
-        if door_A_votes > self.door_threshold and door_B_votes > self.door_threshold:
-            # Both doors are above threshold => pick the LESSER queue or random if tied
-            SWAP_DIFF = self.door_proximity_threshold
-            if (door_A_votes - door_B_votes) > SWAP_DIFF:
-                self.blackboard.chosen_door = 'door_B'
-            elif (door_B_votes - door_A_votes) > SWAP_DIFF:
+             # Choose door
+            if door_A_votes > door_B_votes:
                 self.blackboard.chosen_door = 'door_A'
+            elif door_B_votes > door_A_votes:
+                self.blackboard.chosen_door = 'door_B'
             else:
-                # Tie-break
                 self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
-
-        elif door_A_votes > self.door_threshold:
-            # Door A is overloaded, so choose Door B
-            self.blackboard.chosen_door = 'door_B'
-
-        elif door_B_votes > self.door_threshold:
-            # Door B is overloaded, so choose Door A
-            self.blackboard.chosen_door = 'door_A'
-
-        else:
-            # Neither door is above threshold
-            # => Stay with current door if you have one, otherwise pick at random
-            if self.blackboard.chosen_door is None:
-                self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
-            # otherwise, keep the existing door
 
         # Set action
         self.blackboard.action = 'go_to_door'
@@ -550,8 +533,6 @@ class Select_Action(py_trees.behaviour.Behaviour):
         Once door is selected, given way if there are other robots coming towards us, through the door AND are closer to
         the door than we are.
         """
-
-        # Initial door selection
         if self.blackboard.chosen_door is None:
             self.choose_door_by_traffic()
 
@@ -564,12 +545,8 @@ class Select_Action(py_trees.behaviour.Behaviour):
         my_position = self.blackboard.w_rob_c[self.robot_index]
         my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
 
-        # If outside of the proximity range, check door traffic situation and update based on changing traffic conditions:
-        if my_door_proximity > self.door_proximity_threshold:
-            self.choose_door_by_traffic()
-
         # If we are within give way range, check robot positions:
-        else:
+        if my_door_proximity < self.door_proximity_threshold:
 
             # Get traffic data from positions from Hive
             position_nodes = {n: attr for n, attr in graph.nodes(data=True) if attr.get('type') == 'robot_position'}
@@ -589,7 +566,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
                             (abs(robot_heading) >= np.pi / 2 and abs(my_position[2]) >= np.pi / 2)
                     ):
                         # Give way
-                        give_way = False # TODO: Give way is not working well - causes jams from robots staying still - fix then switch on
+                        give_way = True
                         break
 
         # Implement give_way if needed
