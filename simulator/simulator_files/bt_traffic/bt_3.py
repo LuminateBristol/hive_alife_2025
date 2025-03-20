@@ -1,15 +1,3 @@
-'''
-Update for this work - 19.03.25
-- Updated the select action with info-action key pairs - this means that the next action depends info available
-- Updated rest of behaviour tree to match
-- Updated to work with any number of doors
-- Updated the possible info-action key pairs to:
-    - none - random door select
-    - positions - select door with least congestion based on live positions
-    - chosen_door - select door with least congestion based on chosen_door
-    - positions & heading - select door with least congestion in the opposite direction
-'''
-
 import copy
 import random
 import math
@@ -460,9 +448,8 @@ class Select_Action(py_trees.behaviour.Behaviour):
         # This is hardcoded in this case but it could be evolved / could be a neural network / similar
 
         self.door_proximity_threshold = 200
-
+        self.door_threshold = 10
         self.multiplier = 2
-        self.doors = 0 # TODO: need a better way of doing this - ideally should be in setup but needs to run after Hive Mind created
 
         self.info_action_sets = [
             {
@@ -472,18 +459,13 @@ class Select_Action(py_trees.behaviour.Behaviour):
             },
             {
                 "required_info": {"robot_position"},
-                "rank": 2,
+                "rank": 3,
                 "fn": self.choose_door_by_traffic_position
             },
             {
                 "required_info": {"chosen_door"},
                 "rank": 3,
                 "fn": self.choose_door_by_traffic_path
-            },
-            {
-                "required_info": {"robot_position", "robot_heading"},
-                "rank": 1,
-                "fn": self.choose_door_by_traffic_position_heading
             },
             # {
             #     "required_info": {"robot_position", "robot_heading"},
@@ -507,28 +489,13 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # }
         ]
 
-    def get_doors(self):
-        """
-        Get doors from Hive
-        :return: return list of door names
-        """
-        graph = self.blackboard.hive_mind.graph
-        door_list = [n for n in graph.nodes if n.startswith('door_')]
-
-        return door_list
-
     def random_door(self):
         """
         Check if door selected, if not then select a door at random.
         Set next action to 'go_to_door'.
         """
-
-        # Get list of available doors from the Hive
-        if not self.doors:
-            self.doors = self.get_doors()
-
         if self.blackboard.chosen_door is None:
-            self.blackboard.chosen_door = random.choice(self.doors)
+            self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
 
         self.blackboard.action = 'go_to_door'
 
@@ -537,105 +504,67 @@ class Select_Action(py_trees.behaviour.Behaviour):
         If no door has been selected - choose a door based on which has the least amount of robots nearby.
         Set action to 'go_to_door'
         """
-
-        # Get list of available doors from the Hive
-        if not self.doors:
-            self.doors = self.get_doors()
-
-        # Get door details
+        # Get graph
         graph = self.blackboard.hive_mind.graph
-        door_votes = {door: 0 for door in self.doors}
-        door_coords = {door: graph.nodes[door].get('coords') for door in self.doors}
+        door_A_votes = 0
+        door_B_votes = 0
+
+        # Get door coords from Hive
+        door_A_coords = graph.nodes['door_A'].get('coords')
+        door_B_coords = graph.nodes['door_B'].get('coords')
 
         if type == 'position':
-            # Set threshold
-            self.door_threshold = 5
-
             # Get traffic data from positions from Hive
             position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
-
             for node, attrs in position_nodes.items():
                 robot_position = attrs.get('data')
+                door_A_proximity = np.sqrt((robot_position[0]-door_A_coords[0])**2 + (robot_position[1]-door_A_coords[1])**2)
+                door_B_proximity = np.sqrt((robot_position[0]-door_B_coords[0])**2 + (robot_position[1]-door_B_coords[1])**2)
 
-                for door in self.doors:
-                    door_proximity = np.sqrt((robot_position[0] - door_coords[door][0]) ** 2 +
-                                             (robot_position[1] - door_coords[door][1]) ** 2)
-                    # Check if robot is within promximity of door, if so add it to the door congestion
-                    if door_proximity < self.door_proximity_threshold:
-                        door_votes[door] += 1
-
-        if type == 'position_heading':
-            # Set threshold
-            self.door_threshold = 0
-
-            # Get traffic data from positions from Hive
-            position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
-            my_position = self.blackboard.w_rob_c[self.robot_index]
-
-            for node, attrs in position_nodes.items():
-                # Get position and heading for each robot sharing its position
-                robot_name = attrs.get('robot_name')
-                robot_position = attrs.get('data')
-                robot_heading = graph.nodes[f'{robot_name}_heading'].get('data')
-
-                # Compare to see if we are heading in the same direction (left to right or right to left)
-                # For this case we are only interested in robots moving opposite direction to us as these are the
-                # ones that will cause us congestion
-                if (abs(robot_heading) < np.pi / 2) != (abs(my_position[2]) < np.pi / 2):
-
-                    # Add votes only if robot is within proximity of door
-                    for door in self.doors:
-                        door_proximity = np.sqrt((robot_position[0] - door_coords[door][0]) ** 2 +
-                                                 (robot_position[1] - door_coords[door][1]) ** 2)
-                        # Check if robot is within promximity of door, if so add it to the door congestion
-                        if door_proximity < self.door_proximity_threshold:
-                            door_votes[door] += 1
+                # Check if proximity is within thresh for it to be interesting from a traffic perspective
+                if door_A_proximity < self.door_proximity_threshold:
+                    door_A_votes +=1
+                elif door_B_proximity < self.door_proximity_threshold:
+                    door_B_votes +=1
 
         if type == 'path':
-            # Set threshold
-            self.door_threshold = 5
-
             # Get traffic data from positions from Hive
             chosen_door_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
-
             for node, attrs in chosen_door_nodes.items():
                 robot_chosen_door = attrs.get('data')
-                # Add robot's chosen door to congestion
-                if robot_chosen_door in door_votes:
-                    door_votes[robot_chosen_door] += 1
 
-        # Decision-making based on votes
-        # Find doors which have congestion greater than the door_threshold
-        # Decision-making based on votes
-        above_threshold_doors = [door for door, votes in door_votes.items() if votes > self.door_threshold]
-        SWAP_DIFF = 0 # TODO: changed up changed up chnaged up changed up
+                # Check if proximity is within thresh for it to be interesting from a traffic perspective
+                # Votes are bad = more traffic
+                if robot_chosen_door == 'door_A':
+                    door_A_votes += 1
+                elif robot_chosen_door == 'door_B':
+                    door_B_votes += 1
 
-        # 1) If multiple doors are above threshold including our own, then choose a new door provided it has significantly less
-        # congestion than our own (judged by SWAP_DIFF)
-        if len(above_threshold_doors) > 1 and self.blackboard.chosen_door in above_threshold_doors:
-            # Pick a new door only if it has significantly fewer votes than the current door
-            current_door = self.blackboard.chosen_door
-            min_door = min(door_votes, key=lambda d: door_votes[d])
-            if door_votes[min_door] + SWAP_DIFF < door_votes[current_door]:
-                self.blackboard.chosen_door = min_door
+        if (door_A_votes > self.door_threshold and door_B_votes > self.door_threshold and
+                self.blackboard.chosen_door is not None):
+            # Both doors are above threshold => pick the LESSER queue or random if tied
+            if door_A_votes > door_B_votes * self.multiplier:
+                self.blackboard.chosen_door = 'door_B'
+            elif door_B_votes > door_A_votes * self.multiplier:
+                self.blackboard.chosen_door = 'door_A'
+            # else:
+            #     # Tie-break
+            #     self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
 
-        # 2) If only our door is above threshold, choose randomly between available other doors provided they are
-        # significantly less congested than our own (judged by SWAP_DiFF)
-        elif len(above_threshold_doors) == 1 and self.blackboard.chosen_door in above_threshold_doors:
-            # If our door is above threshold and two others are below, pick randomly between the others
-            overloaded_door = above_threshold_doors[0]
-            current_door = self.blackboard.chosen_door
-            available_doors = [door for door in self.doors if door_votes[door] + SWAP_DIFF < door_votes[current_door]]
-            if len(available_doors) > 1:
-                self.blackboard.chosen_door = random.choice(available_doors)
-            elif available_doors:
-                # Pick the alternative door only if it has significantly fewer votes than the overloaded door
-                self.blackboard.chosen_door = available_doors[0]
+        elif door_A_votes > self.door_threshold:
+            # Door A is overloaded, so choose Door B
+            self.blackboard.chosen_door = 'door_B'
+
+        elif door_B_votes > self.door_threshold:
+            # Door B is overloaded, so choose Door A
+            self.blackboard.chosen_door = 'door_A'
 
         else:
-            # No door is overloaded; stick with current choice or pick randomly
+            # Neither door is above threshold
+            # => Stay with current door if you have one, otherwise pick at random
             if self.blackboard.chosen_door is None:
-                self.blackboard.chosen_door = random.choice(self.doors)
+                self.blackboard.chosen_door = random.choice(['door_A', 'door_B'])
+            # otherwise, keep the existing door
 
         # Set action
         self.blackboard.action = 'go_to_door'
@@ -691,28 +620,116 @@ class Select_Action(py_trees.behaviour.Behaviour):
 
         self.blackboard.action = 'go_to_door'
 
-    def choose_door_by_traffic_position_heading(self):
+    def choose_door_by_traffic_and_giveway_task(self):
         """
         If no door is selected - choose door by traffic.
         Once door is selected, given way if there are other robots coming towards us, through the door AND are closer to
         the door than we are.
         """
-
-        # Initial door selection
         if self.blackboard.chosen_door is None:
-            self.choose_door_by_traffic(type='position_heading')
+            self.choose_door_by_traffic()
+
+        # Check for incoming robots in case we need to give way
+        give_way = False
 
         # Get door coords, my position and proximity to door
         graph = self.blackboard.hive_mind.graph
         door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
+        my_task = self.blackboard.chosen_task
         my_position = self.blackboard.w_rob_c[self.robot_index]
-        my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
+        my_door_proximity = (my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2
 
-        # If outside of the proximity range, check door traffic situation and update based on changing traffic conditions
-        # If inside proximity range then we continue to commit to this door as late stage switches are detrimental in general
-        if my_door_proximity > self.door_proximity_threshold:
-            self.choose_door_by_traffic(type='position_heading')
+        # If we are within give way range, check robot positions:
+        if my_door_proximity < self.door_proximity_threshold:
 
+            # Get traffic data from positions from Hive
+            position_nodes = {n: attr for n, attr in graph.nodes(data=True) if attr.get('type') == 'robot_position'}
+
+            for node, attrs in position_nodes.keys():
+                robot_position = attrs.get('data')
+                robot_door_proximity = (robot_position[0] - door_coords[0]) ** 2 + (robot_position[1] - door_coords[1]) ** 2
+
+                # Check robot is close to door and closer than us - only give way to robots that are closer to the door than we are
+                if robot_door_proximity <= my_door_proximity:
+
+                    # Check we are on different tasks (i.e. heading in different directions)
+                    robot_name = attrs.get('robot_name')
+                    robot_task = graph.nodes[f'{robot_name}_task_id']['data']
+                    if robot_task != my_task:
+                        # Give way
+                        give_way = True
+                        break
+
+        # Implement give_way if needed
+        if give_way:
+            self.blackboard.action = 'give_way'
+        else:
+            self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_consensus_heading(self):
+        """
+        Use Hive shared door choices from all connected robots to choose a door based on consensus
+        We count the number of robot using each door for a given direction they are moving and align ourselves with that
+        """
+        if self.blackboard.chosen_door is None:
+            # Get traffic data from positions from Hive
+            graph = self.blackboard.hive_mind.graph
+            door_nodes = {n: d['data'] for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
+            my_position = self.blackboard.w_rob_c[self.robot_index]
+
+            # Calculate votes for each direction
+            door_votes = {'door_A': 0, 'door_B': 0}
+
+            for node, attr in door_nodes.items():
+                # Get name, door choice and heading
+                robot_name = attr.get('robot_name')
+                chosen_door = attr.get('data')
+                robot_heading_node = graph.nodes[f'{robot_name}_heading']
+                robot_heading = graph.nodes[robot_heading_node].get('data')
+
+                # Compare to see if we are heading in the same direction (left to right or right to left)
+                same_direction = (abs(robot_heading) < np.pi / 2) == (abs(my_position[2]) < np.pi / 2)
+
+                # Vote for the chosen door
+                if chosen_door in door_votes:
+                    door_votes[chosen_door] += 1 if same_direction else -1  # Opposite direction cancels out
+
+            # Choose door with the highest consensus
+            self.blackboard.chosen_door = max(door_votes, key=door_votes.get)
+
+        # Set action
+        self.blackboard.action = 'go_to_door'
+
+    def choose_door_by_consensus_task(self):
+        """
+        Use Hive shared door choices from all connected robots to choose a door based on consensus
+        We count the number of robot using each door for a given task they are moving towards and align ourselves with that
+        """
+        if self.blackboard.chosen_door is None:
+            # Get traffic data from positions from Hive
+            graph = self.blackboard.hive_mind.graph
+            door_nodes = {n: d['data'] for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
+
+            # Calculate votes for each direction
+            door_votes = {'door_A': 0, 'door_B': 0}
+
+            for node, attr in door_nodes.items():
+                # Get name, door choice and heading
+                robot_name = attr.get('robot_name')
+                chosen_door = attr.get('data')
+                robot_task = graph.nodes[f'{robot_name}_task_id'].get('data')
+
+                # Compare to see if we are heading in the same direction (left to right or right to left)
+                same_task = self.blackboard.chosen_task == robot_task
+
+                # Vote for the chosen door
+                if chosen_door in door_votes:
+                    door_votes[chosen_door] += 1 if same_task else -1  # Opposite direction cancels out
+
+            # Choose door with the highest consensus
+            self.blackboard.chosen_door = max(door_votes, key=door_votes.get)
+
+        # Set action
         self.blackboard.action = 'go_to_door'
 
     def get_available_hive_information_types(self):

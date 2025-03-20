@@ -7,6 +7,7 @@ exp_3_traffic:
   behaviour_tree: 'traffic'
   map: map2
   number_of_agents: 200
+  latency: 500
 
   # Setup warehouse parameters
   warehouse:
@@ -30,6 +31,9 @@ exp_3_traffic:
     - [ None, 'map', None, {'type': 'entity'} ]
     - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 840]} ]
     - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1670] } ]
+#    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 625]} ]
+#    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1250] } ]
+#    - [ 'doors', 'door_C', 'child_of', { 'type': 'door', 'coords': [1250, 1875] } ]
     - [ None, 'targets', None, { 'type': 'entity' } ]
     - [ 'tasks', 'task_1', 'child_of', { 'type': 'task', 'coords': [50, 1250]} ]
     - [ 'tasks', 'task_2', 'child_of', { 'type': 'task', 'coords': [2450, 1250]} ]

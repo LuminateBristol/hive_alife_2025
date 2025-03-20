@@ -147,7 +147,8 @@ class  Simulator:
                          print_bt = cfg.get('robot', 'print_bt'),
                          task_log = cfg.get('task_log'),  # TODO: remove - tasks come straight from the Hive Mind
                          delivery_points = self.deliverypoints,
-                         traffic_score = self.traffic_score
+                         traffic_score = self.traffic_score,
+                         latency = cfg.get('latency') # TODO: could we just pass the config file rather than endless passing of variables?
                          )
         return swarm
 
@@ -193,8 +194,8 @@ class  Simulator:
                 self.exit_run = True
 
         elif self.exit_criteria == 'traffic':
-            print(counter, self.traffic_score)
-            if self.traffic_score['score'] >= 400 or counter > self.cfg.get('time_limit'):
+            # print(counter, self.traffic_score)
+            if self.traffic_score['score'] >= 200 or counter > self.cfg.get('time_limit'):
                 print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True

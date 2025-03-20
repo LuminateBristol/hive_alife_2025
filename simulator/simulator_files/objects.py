@@ -47,7 +47,7 @@ class Robot:
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_chosen_door',   'has_status',   {'type':'chosen_door',           'robot_name':f'robot_{self.robot_index}',  'data':0,                           'weight':0, 'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_waypoint',      'in_progress',  {'type':'waypoint',              'robot_name':f'robot_{self.robot_index}',  'data':0,                           'weight':0, 'time':0} ])
     
-    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points, traffic_score):
+    def setup_bb(self, width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, delivery_points, traffic_score, latency):
         """
         Sets up the robot's blackboard, registering keys and initializing parameters.
 
@@ -75,6 +75,7 @@ class Robot:
         self.blackboard.register_key(key="local_task_log", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="delivery_points", access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key="traffic_score", access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key="latency", access=py_trees.common.Access.WRITE)
 
         self.blackboard.w_rob_c = []
         self.blackboard.w_boxes = []
@@ -90,6 +91,7 @@ class Robot:
         self.blackboard.local_task_log = copy.deepcopy(task_log) # Use deepcopy so that each robot has a unique copy
         self.blackboard.delivery_points = delivery_points
         self.blackboard.traffic_score = traffic_score
+        self.blackboard.latency = latency
         
     def add_map(self, map):
         """
@@ -180,7 +182,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
     
-    def add_agents(self, agent_obj, number, width, height, bt_controller, print_bt = False, task_log=None, delivery_points=None, traffic_score=None):
+    def add_agents(self, agent_obj, number, width, height, bt_controller, print_bt = False, task_log=None, delivery_points=None, traffic_score=None, latency=0):
         """
         Adds a specified number of robot agents to the swarm, initializing their behavior trees and blackboards.
 
@@ -218,7 +220,7 @@ class Swarm:
             name    = f'Pick Place DOTS: {str_index}'
             namespace = str_index
             ag.blackboard = py_trees.blackboard.Client(name=name, namespace=namespace)
-            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points, traffic_score)
+            ag.setup_bb(width, height, self.heading_change_rate, self.repulsion_o, self.repulsion_w, task_log, delivery_points, traffic_score, latency)
 
             self.number_of_agents += 1
 

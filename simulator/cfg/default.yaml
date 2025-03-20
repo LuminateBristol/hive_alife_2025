@@ -17,7 +17,7 @@ warehouse:
 
 faults: []
 
-time_limit: 25000
+time_limit: 50000
 animate: True
 save_animation: False
 heading_change_rate: 100 # ticks per change in heading

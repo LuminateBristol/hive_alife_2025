@@ -1,5 +1,15 @@
 '''
-Update for this work - 19.03.25
+Update for this work - 20.03.25
+- Latency implemented
+    - Artificial latency added
+    - This works adding latency to the Hive information RECEIVED from the Hive only
+    - Robo Hive update is as before
+    - Connect_to_hive_mind has been updated with latency (configured in cfg files)
+    - The latency works in a way that the number of timesteps configured - is the delay to getting information
+    - A list is created length = latency from config
+    - Pop Hive Mind data directly from the list at each timestep and insert new Hive Mind data each timestep
+    - This means that whatever length of list, is the number of timesteps before we get data sent through
+
 - Updated the select action with info-action key pairs - this means that the next action depends info available
 - Updated rest of behaviour tree to match
 - Updated to work with any number of doors
@@ -9,7 +19,6 @@ Update for this work - 19.03.25
     - chosen_door - select door with least congestion based on chosen_door
     - positions & heading - select door with least congestion in the opposite direction
 '''
-
 import copy
 import random
 import math
@@ -227,9 +236,14 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='latency', access=py_trees.common.Access.READ)
 
     def setup(self):
         self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
+
+        # Init latency buffer
+        if self.blackboard.latency:
+            self.latency_buffer = [{} for _ in range(self.blackboard.latency)]
 
     def compare_robot_hive_graphs(self):
         '''
@@ -242,11 +256,18 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         Nothing is directly returned. Instead, for each weighted node, we run an the update function with the node name, the Hive data
          and the Robot data as an input. This allows us to update the Hive or robot accordingly.
         '''
-        hive_mind_graph = self.blackboard.hive_mind.graph
         robot_graph = self.blackboard.robo_mind.graph
+        hive_mind_graph = self.blackboard.hive_mind.graph
 
         # Extract nodes where weight > 0 from the Hive Mind graph
-        weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+        weight_nodes_now = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+
+        # Handle latency for weighted nodes only - we could do this for whole graph but no need to store all that info as
+        # weighted nodes are the only ones we use.
+        # This is somewhat artificial a way to add latency but it does delay the useful information to the robot so has the
+        # same effect.
+        self.latency_buffer.insert(0, copy.deepcopy(weight_nodes_now))
+        weight_nodes = self.latency_buffer.pop()
 
         # Loop through nodes in the weight_nodes dictionary
         for node_name, hive_mind_attributes in weight_nodes.items():
@@ -334,9 +355,11 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
     def initialise(self):
-        self.compare_robot_hive_graphs()
+        pass
 
     def update(self):
+        self.compare_robot_hive_graphs()
+
         return py_trees.common.Status.SUCCESS
 
 class Update_Robo_Mind(py_trees.behaviour.Behaviour):
