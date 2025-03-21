@@ -103,7 +103,7 @@ def run_many_acov():
 def run_many_traf():
     cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
     num_runs = 3
-    num_robots = [10, 20, 50, 100]
+    num_robots = [100]
 
     # # Open file once and write the header
     # with open('results/traffic_optimised.txt', 'w') as f:

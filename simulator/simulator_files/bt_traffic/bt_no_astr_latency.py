@@ -259,15 +259,20 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         robot_graph = self.blackboard.robo_mind.graph
         hive_mind_graph = self.blackboard.hive_mind.graph
 
-        # Extract nodes where weight > 0 from the Hive Mind graph
-        weight_nodes_now = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+        if self.blackboard.latency:
+            # Extract nodes where weight > 0 from the Hive Mind graph
+            weight_nodes_now = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
 
-        # Handle latency for weighted nodes only - we could do this for whole graph but no need to store all that info as
-        # weighted nodes are the only ones we use.
-        # This is somewhat artificial a way to add latency but it does delay the useful information to the robot so has the
-        # same effect.
-        self.latency_buffer.insert(0, copy.deepcopy(weight_nodes_now))
-        weight_nodes = self.latency_buffer.pop()
+            # Handle latency for weighted nodes only - we could do this for whole graph but no need to store all that info as
+            # weighted nodes are the only ones we use.
+            # This is somewhat artificial a way to add latency but it does delay the useful information to the robot so has the
+            # same effect.
+            self.latency_buffer.insert(0, copy.deepcopy(weight_nodes_now))
+            weight_nodes = self.latency_buffer.pop()
+
+        else:
+            # Extract nodes where weight > 0 from the Hive Mind graph
+            weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
 
         # Loop through nodes in the weight_nodes dictionary
         for node_name, hive_mind_attributes in weight_nodes.items():
@@ -321,6 +326,7 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                 # If there are differences, perform actions based on node type
                 if data:
                     self.handle_update(node_name, data)
+
 
     def handle_update(self, node_name, data):
         '''
