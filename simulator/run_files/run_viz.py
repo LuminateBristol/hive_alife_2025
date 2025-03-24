@@ -26,6 +26,7 @@ cfg_file = CFG_FILES['exp_setup']
 map_file = CFG_FILES['map']
 
 ###### Functions ######
+
 def run_ex():
     """
     Runs a single experiment by initializing the configuration, setting up parameters,

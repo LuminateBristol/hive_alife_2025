@@ -393,6 +393,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         pass
 
     def update_pheromone_map(self):
+
         cell_size = 25  # Define hash cell size (e.g., 100 = 100 cm)
         # Access or initialize the pheromone map dictionary
         robo_pheromone_map = self.blackboard.robo_mind.graph.nodes[f'{self.str_index}_pheromone_map'].get('data')

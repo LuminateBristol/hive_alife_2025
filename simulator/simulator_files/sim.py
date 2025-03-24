@@ -114,7 +114,7 @@ class  Simulator:
         if self.cfg.get('print_kg') == True:
             self.Hive_Mind.print_graph_mind()
             self.Hive_Mind.plot_node_tree('robot_1')
-            self.Hive_Mind.print_hive_mind(attribute_filter={'in_need': 0})
+            self.Hive_Mind.print_hive_mind()
 
     def build_swarm(self, cfg):
         """
