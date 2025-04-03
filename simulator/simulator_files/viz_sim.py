@@ -31,14 +31,14 @@ class VizSim(Simulator):
         """
 
         # Plot horizontal walls
-        for wall in self.cfg.get(self.cfg.get('map'), 'wallsh'):
+        for wall in self.map_cfg.get(self.exp_cfg.get('map'), 'wallsh'):
             start, end = wall
             x0, y0 = start
             x1, y1 = end
             ax.plot([x0, x1], [y0, y1], 'k-')  # 'k-' means black solid line
 
         # Plot vertical walls
-        for wall in self.cfg.get(self.cfg.get('map'), 'wallsv'):
+        for wall in self.map_cfg.get(self.exp_cfg.get('map'), 'wallsv'):
             start, end = wall
             x0, y0 = start
             x1, y1 = end
@@ -51,7 +51,7 @@ class VizSim(Simulator):
         Returns:
             tuple: A tuple containing lists of x-coordinates, y-coordinates, and marker styles.
         """
-        agent_range = range(self.cfg.get('number_of_agents'))
+        agent_range = range(self.exp_cfg.get('number_of_agents'))
         x_data = [
             [self.warehouse.rob_c[i, 0] for i in agent_range]
         ]
@@ -135,7 +135,7 @@ class VizSim(Simulator):
         Returns:
             list: Updated plot elements.
         """
-        self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
+        self.warehouse.iterate()
         counter = self.warehouse.counter
 
         dot, boxes, h_line, cam_range = self.animate(frame, counter, dot, boxes, h_line, cam_range)
@@ -169,8 +169,8 @@ class VizSim(Simulator):
             list: Updated plot elements.
         """
         cam_range.set_data(
-            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
-            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))]
+            [self.warehouse.rob_c[i, 0] for i in range(self.exp_cfg.get('number_of_agents'))],
+            [self.warehouse.rob_c[i, 1] for i in range(self.exp_cfg.get('number_of_agents'))]
         )
 
         # Re-plot pheromone cells based on updated pheromone_map
@@ -216,28 +216,28 @@ class VizSim(Simulator):
                 if self.verbose:
                     print("in", counter, "seconds")
 
-                if self.cfg.get('animate'):
+                if self.gen_cfg.get('animate'):
                     exit()
 
         elif self.exit_criteria == 'logistics':
 
-            if all(dp.delivered for dp in self.deliverypoints):
+            if all(dp.delivered for dp in self.processed_delivery_points):
                 if self.verbose:
                     print("All boxes delivered in", counter, "seconds")
 
-                if self.cfg.get('animate'):
+                if self.gen_cfg.get('animate'):
                     exit()
 
-            if counter > self.cfg.get('time_limit'):
+            if counter > self.gen_cfg.get('time_limit'):
                 if self.verbose:
                     print("in", counter, "seconds")
 
-                if self.cfg.get('animate'):
+                if self.gen_cfg.get('animate'):
                     exit()
 
         elif self.exit_criteria == 'area_coverage':
-            if counter > self.cfg.get('time_limit'):
-                total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+            if counter > self.gen_cfg.get('time_limit'):
+                total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
                 print(self.warehouse.pheromone_map)
                 percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
                 print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
@@ -273,14 +273,14 @@ class VizSim(Simulator):
         """
         self.fig = plt.figure(figsize=(8, 8))
         plt.rcParams['font.size'] = '16'
-        self.ax = plt.axes(xlim=(0, self.cfg.get('warehouse', 'width')), ylim=(0, self.cfg.get('warehouse', 'height')))
+        self.ax = plt.axes(xlim=(0, self.gen_cfg.get('warehouse', 'width')), ylim=(0, self.gen_cfg.get('warehouse', 'height')))
         self.cell_size = 1  # Set cell size based on configuration
 
 
         # Get marker sizes
-        robot_size = self.cfg.get('robot', 'radius')  # Size in data units
-        box_size = self.cfg.get('warehouse', 'box_radius')
-        camera_sensor_range = self.cfg.get('robot', 'camera_sensor_range')
+        robot_size = self.gen_cfg.get('robot', 'radius')  # Size in data units
+        box_size = self.gen_cfg.get('warehouse', 'box_radius')
+        camera_sensor_range = self.gen_cfg.get('robot', 'camera_sensor_range')
 
         # Initialize all potential pheromone markers (set low opacity)
         self.pheromone_marker_size = self.get_marker_size_in_data_units(robot_size, self.ax) # TODO: cell_size in config / 2
@@ -292,8 +292,8 @@ class VizSim(Simulator):
         # Scale marker sizes to data units
         cam_range_marker_size = self.get_marker_size_in_data_units(camera_sensor_range, self.ax)
         cam_range, = self.ax.plot(
-            [self.warehouse.rob_c[i, 0] for i in range(self.cfg.get('number_of_agents'))],
-            [self.warehouse.rob_c[i, 1] for i in range(self.cfg.get('number_of_agents'))],
+            [self.warehouse.rob_c[i, 0] for i in range(self.exp_cfg.get('number_of_agents'))],
+            [self.warehouse.rob_c[i, 1] for i in range(self.exp_cfg.get('number_of_agents'))],
             'ko',
             markersize=cam_range_marker_size,
             color="#f2f2f2",
@@ -302,7 +302,7 @@ class VizSim(Simulator):
 
         # LOGISTICS GRAPHICS
         # Plot delivery points as squares
-        for dp in self.deliverypoints:
+        for dp in self.processed_delivery_points:
             box_marker_size = self.get_marker_size_in_data_units(box_size, self.ax)
 
             # Plot each delivery point as a square
@@ -313,8 +313,8 @@ class VizSim(Simulator):
                     alpha=0.35)
 
         # Plot dropzone
-        self.ax.fill_between(np.linspace(0, self.cfg.get('warehouse', 'width'), 100), 0, self.cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
-        self.ax.axhline(y=self.cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
+        self.ax.fill_between(np.linspace(0, self.gen_cfg.get('warehouse', 'width'), 100), 0, self.exp_cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)
+        self.ax.axhline(y=self.exp_cfg.get('warehouse', 'drop_zone_limit'), color='black', linewidth=1)
 
         # TRAFFIC GRAPHICS
         # Plot the target points as squares

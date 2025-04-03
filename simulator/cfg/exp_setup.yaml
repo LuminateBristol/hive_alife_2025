@@ -161,11 +161,10 @@ exp_2_area_coverage:
     abandon_tol: 50
     pre_place_delta: 10
 
-
 exp_3_traffic:
   # Area coverage example experimental setup
   exit_criteria: 'traffic'
-  behaviour_tree: 'traffic'
+  behaviour_tree: 'traffic_hive'  # Options: 'traffic_hive' / 'traffic_centralised'
   map: map2
   number_of_agents: 50
   latency: 0
@@ -180,9 +179,6 @@ exp_3_traffic:
     pheromones: False
     cell_size: 0
     object_position: 0
-    # Doors / targets - for traffic consensus experiment
-    doors: [[1250, 840], [1250, 1670]]
-    targets: [[50, 1250], [2450, 1250]]
 
   # Populate behaviour tree with initial entities and tasks
   entities:

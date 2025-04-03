@@ -24,11 +24,16 @@ verbose = True
 ex_id = 'exp_3_traffic'
 
 ###### Config class ######
-default_cfg_file = CFG_FILES['default']
-cfg_file = CFG_FILES['exp_setup']
-map_file = CFG_FILES['map']
+gen_cfg = CFG_FILES['default']
+exp_cfg = CFG_FILES['exp_setup']
+map_cfg = CFG_FILES['map']
 
-###### GA Hyperparameters ######
+# Setup config for this experiment
+gen_cfg = Config(cfg_path=gen_cfg)
+exp_cfg = Config(cfg_path=exp_cfg, ex_id=ex_id)
+map_cfg = Config(cfg_path=map_cfg)
+
+###### GA Parameters ######
 POPULATION_SIZE = 10
 NUM_GENERATIONS = 20
 MUTATION_RATE = 0.4             # Set to 0.0 for no mutation
@@ -41,7 +46,6 @@ NUM_ITERATIONS = 10             # Number of iterations ran per generation
 
 class GeneticOptimisation:
     def __init__(self):
-        self.cfg_obj = Config(cfg_file, default_cfg_file, ex_id=ex_id, map=map_file)
         self.num_iterations = NUM_ITERATIONS
 
         # Fitness function weights
@@ -54,20 +58,17 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
     def create_result_file(self):
-        """Generate a filename containing key GA parameters."""
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_tour{TOURNAMENT_SIZE}.txt"
         file_path = os.path.join(current_dir, filename)
         info_types = self.get_hive_mind_info_types()
 
-        # Write headers + info type mapping in the first line
         with open(file_path, 'w') as file:
-            file.write("INFO_TYPES: " + "\t".join(info_types) + "\n")  # First line: Info type labels
-            file.write("generation\tgenome\tfitness\n")  # Headers
+            file.write("INFO_TYPES: " + "\t".join(info_types) + "\n")
+            file.write("generation\tgenome\tfitness\n")
 
         return file_path
 
     def save_results(self, generation, population, fitness_scores):
-        """Save results to a file including generation, genome, and fitness."""
         with open(self.result_file_path, 'a') as file:
             for i in range(len(population)):
                 genome = population[i]
@@ -75,19 +76,19 @@ class GeneticOptimisation:
                 file.write(f"{generation}\t{genome}\t{fitness}\n")
 
     def get_hive_mind_info_types(self):
-        """Retrieve all nodes with 'weight' attribute and group them by their 'type' attribute."""
-        sim = Simulator(self.cfg_obj, verbose=verbose)
+        sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
         hive_mind = sim.optimisation_hive_mind.graph
-
-        nodes_with_weight = [n for n, d in hive_mind.nodes(data=True) if 'weight' in d]
+        # Find a groups of all information nodes with the same name
+        information_nodes = [n for n, d in hive_mind.nodes(data=True) if 'weight' in d]
         groups = {}
-        for node in nodes_with_weight:
+        for node in information_nodes:
             node_type = hive_mind.nodes[node]['type']
             if node_type not in groups:
                 groups[node_type] = []
             groups[node_type].append(node)
 
-        return list(groups.keys())  # Return list of unique info types (genes)
+        # Return list of information types available for weight optimisation
+        return list(groups.keys())
 
     def run_simulation(self, selected_info_types):
         """Run the simulation multiple times and return the average completion time."""
@@ -95,7 +96,7 @@ class GeneticOptimisation:
         run_times = []
 
         for i in range(self.num_iterations):
-            sim = Simulator(self.cfg_obj, verbose=verbose)
+            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
 
             # Update weights for selected info types
             for node in sim.Hive_Mind.graph.nodes(data=True):
@@ -130,7 +131,9 @@ class GeneticOptimisation:
     def roulette_wheel_selection(self, population, fitness_scores):
         """Select parents using fitness-proportionate selection."""
         total_fitness = sum(fitness_scores)
-        selection_probs = [1 - (fitness_scores[i] / total_fitness) for i in range(len(population))]  # Invert since lower is better
+        selection_probs = [1 - (fitness_scores[i] / total_fitness) for i in range(len(population))]
+        # Selects k=POPULATION_SIZE genomes with a bias based on selection_probs ie. probability of selection
+        # Note - this method allows for replacement selection - i.e. high selection_prob genomes can be selected more than once
         selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
         return selected
 
@@ -139,8 +142,8 @@ class GeneticOptimisation:
         selected = []
 
         while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
-            tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))  # Avoid oversampling
-            best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])  # Min fitness is better
+            tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
+            best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
             selected.append(best_individual)
 
         return selected
@@ -173,9 +176,26 @@ class GeneticOptimisation:
         self.dependency_groups = {k: v for k, v in dependency_counts.items() if v > len(top_individuals) // 2}
 
     def main(self):
-        """Main loop for genetic algorithm."""
+        """
+        The genetic algorithm works as follows:
+        1. Init population - random 1s and 0s for every available information type on the Hive
+        2. Evaluate fitness - run the simulation on each genome foe self.num_iterations
+                            - return the average completion time over all iterations
+                            - return the hive compute (num of shared infos) TODO: update this to num*[sizes_of_info_types]
+                            - calculate fitness as a function of completion time and hive compute
+        3. Use roulette wheel to method to select parents for mating - add random parent if odd number
+        4. Use crossover function to create offspring for all parents.
+                            - Only crossover based on CROSSOVER_RATE probability, otherwise return original parents
+                            - For every parent entered - there are always two children produced
+        5. For the offspring - apply mutation - bit-flip each of the info weights basd on a probability = MUTATION_RATE
+        6. Select elite genomes based on percentage ELITISM_RATE
+        7. Add together all elite genomes + enough offspring to make up a full POPULATION_SIZE
+
+        Note - there is options to track dependencies but this is not currently implemented
+        """
         info_types = self.get_hive_mind_info_types()  # Get all available groups (info types)
         num_info_types = len(info_types)
+        print(info_types)
 
         # Initialize population genomes
         population = self.initialize_population(num_info_types)
@@ -199,7 +219,7 @@ class GeneticOptimisation:
             #     self.update_dependency_tracking(population, fitness_scores)
 
             # Selection
-            selected_parents = self.roulette_wheel_selection(population, fitness_scores) # Enter the selection method here...
+            selected_parents = self.roulette_wheel_selection(population, fitness_scores)
 
             # Ensure selected parents count is even for pairing used in crossover
             if len(selected_parents) % 2 == 1:

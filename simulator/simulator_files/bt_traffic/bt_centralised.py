@@ -242,6 +242,8 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
 
         # Init latency buffer
+        # In this implementation - all weight nodes are added to the buffer at each timestep - this is the only info that the robots request
+        # Weight nodes are stored in a dict hence the implementation below:
         if self.blackboard.latency:
             self.latency_buffer = [{} for _ in range(self.blackboard.latency)]
 
@@ -255,6 +257,9 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
 
         Nothing is directly returned. Instead, for each weighted node, we run an the update function with the node name, the Hive data
          and the Robot data as an input. This allows us to update the Hive or robot accordingly.
+
+        Latency is handled simply through teh latency buffer which is of length = latency. At each timestep the latest
+        request from the Hive is added to the buffer and the last request on record is popped out.
         '''
         robot_graph = self.blackboard.robo_mind.graph
         hive_mind_graph = self.blackboard.hive_mind.graph
@@ -326,7 +331,6 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                 # If there are differences, perform actions based on node type
                 if data:
                     self.handle_update(node_name, data)
-
 
     def handle_update(self, node_name, data):
         '''
@@ -513,27 +517,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
                 "required_info": {"robot_position", "robot_heading"},
                 "rank": 1,
                 "fn": self.choose_door_by_traffic_position_heading
-            },
-            # {
-            #     "required_info": {"robot_position", "robot_heading"},
-            #     "rank": 2,
-            #     "fn": self.choose_door_by_traffic_and_giveway_heading   # TODO: could do something with directional traffic here too
-            # },
-            # {
-            #     "required_info": {"robot_position", "robot_task"},
-            #     "rank": 2,
-            #     "fn": self.choose_door_by_traffic_and_giveway_task
-            # },
-            # {
-            #     "required_info": {"chosen_door", "robot_heading"},
-            #     "rank": 1,
-            #     "fn": self.choose_door_by_consensus_heading
-            # },
-            # {
-            #     "required_info": {"chosen_door", "robot_task"},
-            #     "rank": 1,
-            #     "fn": self.choose_door_by_consensus_task
-            # }
+            }
         ]
 
     def get_doors(self):

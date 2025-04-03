@@ -9,7 +9,7 @@ class Warehouse:
     Handles the initialization of objects, robots, and the pheromone mapping.
     """
 
-	def __init__(self, config, swarm, hive_mind = None):
+	def __init__(self, gen_cfg, exp_cfg, map_cfg, swarm, hive_mind = None):
 		"""
         Initializes the warehouse with dimensions, walls, boxes, and other relevant settings.
 
@@ -18,14 +18,15 @@ class Warehouse:
             swarm (class object): The swarm operating within the warehouse - initated in sim.py - see objects.py for definition
             hive_mind (class object): Hive knowledge graph 0 initiated in sim.py - see hive_mind.py for definition
         """
-
-		self.width = config.get('warehouse', 'width')
-		self.height = config.get('warehouse' , 'height')
-		self.wallsh = config.get(config.get('map'), 'wallsh')
-		self.wallsv = config.get(config.get('map'), 'wallsv')
-		self.init_boxes = config.get('warehouse', 'boxes')
-		self.box_range = config.get('warehouse', 'box_radius')*2.0	#box_range # range at which a box can be picked up
-		self.radius = config.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)
+		self.gen_cfg = gen_cfg
+		self.exp_cfg = exp_cfg
+		self.width = gen_cfg.get('warehouse', 'width')
+		self.height = gen_cfg.get('warehouse' , 'height')
+		self.wallsh = map_cfg.get(exp_cfg.get('map'), 'wallsh')
+		self.wallsv = map_cfg.get(exp_cfg.get('map'), 'wallsv')
+		self.init_boxes = exp_cfg.get('warehouse', 'boxes')
+		self.box_range = gen_cfg.get('warehouse', 'box_radius')*2.0	#box_range # range at which a box can be picked up
+		self.radius = gen_cfg.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)
 		self.pheromone_map = {}
 		self.hive_mind = hive_mind
 
@@ -34,13 +35,13 @@ class Warehouse:
 
 		# LOGISTICS: Initialise boxes
 		self.boxes = [] # centre coordinates of boxes starts as an empty list
-		for colour in config.get('warehouse', 'boxes'):
-			for i in range(config.get('warehouse', 'boxes')[colour]):
+		for colour in exp_cfg.get('warehouse', 'boxes'):
+			for i in range(exp_cfg.get('warehouse', 'boxes')[colour]):
 				self.boxes.append(Box(colour=colour))
 		self.number_of_boxes = len(self.boxes)
 
 		# LOGISTICS: Initiate depot
-		if config.get('warehouse', 'depot') == True:
+		if exp_cfg.get('warehouse', 'depot') == True:
 			self.depot = True
 		else:
 			self.depot = False
@@ -54,8 +55,8 @@ class Warehouse:
 
 		# Initiate robots
 		self.rob_c = []
-		self.drop_zone_limit = config.get('warehouse', 'drop_zone_limit')
-		self.generate_object_positions(int(config.get('warehouse', 'object_position')))
+		self.drop_zone_limit = exp_cfg.get('warehouse', 'drop_zone_limit')
+		self.generate_object_positions(int(exp_cfg.get('warehouse', 'object_position')))
 		
 		self.rob_c = np.array(self.rob_c) # convert list to array
 
@@ -161,7 +162,7 @@ class Warehouse:
         This warehouse level map adds all numbers of visits together to get a total phereomone map.
         """
 
-		cell_size = 25 # TODO: add to config - robot size
+		cell_size = self.exp_cfg.get('warehouse', 'cell_size') # TODO: add to config - robot size
 		for robot in self.rob_c:
 			# Robot's current coordinates
 			x = robot[0]
@@ -178,7 +179,7 @@ class Warehouse:
 			else:
 				self.pheromone_map[cell_id] = 1
 
-	def iterate(self, pheromones=False):
+	def iterate(self):
 		"""
         Moves the simulation forward by one time step, updating robot and box positions.
 
@@ -193,7 +194,7 @@ class Warehouse:
 			self.rob_c, self.boxes = self.swarm.iterate(self.rob_c, self.boxes, init=0)
 
 			# Update pheromones
-			if pheromones:
+			if self.exp_cfg.get('warehouse', 'pheromones'):
 				self.update_pheromone_map()
 
 			# Run Hive Mind cleanup

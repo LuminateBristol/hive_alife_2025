@@ -1,11 +1,14 @@
 from pathlib import Path
+
+from scipy.stats import expon
+
 dir_root = Path(__file__).resolve().parents[1]
 
 import numpy as np
-import random
+import py_trees
 import matplotlib.pyplot as plt
-from . import Swarm, Warehouse, Robot, DeliveryPoint, GraphMind
 import copy
+from . import Swarm, Swarm_Centralised, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class  Simulator:
     """
@@ -13,7 +16,7 @@ class  Simulator:
     It initializes and manages the swarm, warehouse, delivery points, and Hive Mind, ensuring the execution of the simulation.
     """
 
-    def __init__(self, config, verbose=False):
+    def __init__(self, gen_config, exp_config, map_config, verbose=False):
         """
         Initialize the simulation environment.
 
@@ -23,16 +26,18 @@ class  Simulator:
         """
         self.verbose = verbose
         self.exit_run = False
-        self.cfg = config
-        self.exit_criteria = self.cfg.get('exit_criteria')
-        self.drop_zone_limit = self.cfg.get('drop_zone_limit')
+        self.gen_cfg = gen_config
+        self.exp_cfg = exp_config
+        self.map_cfg = map_config
+        self.exit_criteria = self.exp_cfg.get('exit_criteria')
+        self.drop_zone_limit = self.exp_cfg.get('drop_zone_limit')
 
         # Init task
         self.task_setup()
 
         # Init swarm
         try:
-            self.swarm = self.build_swarm(self.cfg)
+            self.swarm = self.build_swarm()
         except Exception as e:
             raise e
 
@@ -41,7 +46,9 @@ class  Simulator:
 
         # Init warehouse
         self.warehouse = Warehouse(
-            self.cfg,
+            self.gen_cfg,
+            self.exp_cfg,
+            self.map_cfg,
             self.swarm,
             hive_mind=self.Hive_Mind)
 
@@ -52,8 +59,8 @@ class  Simulator:
         """
 
         # LOGISTICS SETUP
-        self.deliverypoints = []
-        delivery_points = self.cfg.get('delivery_points')
+        self.processed_delivery_points = []
+        delivery_points = self.exp_cfg.get('delivery_points')
         # Convert task_log to DeliveryPoint objects and append to the list
         if delivery_points is not None:
             for dp_id, dp_info in delivery_points.items():
@@ -61,7 +68,7 @@ class  Simulator:
                 colour = dp_info['colour']
                 delivered = dp_info['status']  # Assuming 'status' indicates if delivered or not
                 # Append the DeliveryPoint instance
-                self.deliverypoints.append(DeliveryPoint(x, y, colour, delivered, dp_id))
+                self.processed_delivery_points.append(DeliveryPoint(x, y, colour, delivered, dp_id))
 
         # AREA_COVERAGE SETUP
         # na
@@ -81,7 +88,7 @@ class  Simulator:
 
         # Add entities from config
         try:
-            entities = self.cfg.get('entities')
+            entities = self.exp_cfg.get('entities')
         except:
             print('No entities defined in config')
             entities = None
@@ -91,7 +98,7 @@ class  Simulator:
 
         # Add tasks from config
         try:
-            tasks = self.cfg.get('tasks')
+            tasks = self.exp_cfg.get('tasks')
         except:
             print('No tasks defined in config')
             tasks = None
@@ -108,15 +115,14 @@ class  Simulator:
             agent.build_robo_mind(entities, tasks)
             self.Hive_Mind.add_robot_observation_space(agent.observation_space)
             self.optimisation_hive_mind.add_robot_observation_space(agent.observation_space)
-            self.Hive_Mind.cleanup_hive_mind()
 
         # Handle graph printing
-        if self.cfg.get('print_kg') == True:
+        if self.gen_cfg.get('print_kg') == True:
             self.Hive_Mind.print_graph_mind()
             self.Hive_Mind.plot_node_tree('robot_1')
             self.Hive_Mind.print_hive_mind()
 
-    def build_swarm(self, cfg):
+    def build_swarm(self):
         """
         Construct the swarm by creating robot agents and adding them to the swarm.
 
@@ -127,36 +133,17 @@ class  Simulator:
             Swarm: The initialized swarm object.
         """
 
-        robot_obj = Robot(
-            cfg.get('robot', 'radius'), 
-            cfg.get('robot', 'max_v'),
-            camera_sensor_range=cfg.get('robot', 'camera_sensor_range'),
-            place_tol = cfg.get('tolerances', 'place_tol')
-        )
-        
-        swarm = Swarm(
-            repulsion_o=cfg.get('warehouse', 'repulsion_object'), 
-            repulsion_w=cfg.get('warehouse', 'repulsion_wall'),
-            heading_change_rate=cfg.get('heading_change_rate')
-        )
+        robot_obj = Robot( self.gen_cfg,  self.exp_cfg)
+        swarm = Swarm(self.gen_cfg, self.exp_cfg)
+        swarm.add_agents(robot_obj,  processed_delivery_points=self.processed_delivery_points, traffic_score = self.traffic_score)
 
-        swarm.add_agents(robot_obj, cfg.get('number_of_agents'),
-                         width=self.cfg.get('warehouse', 'width'),
-                         height=self.cfg.get('warehouse', 'height'),
-                         bt_controller=self.cfg.get('behaviour_tree'),
-                         print_bt = cfg.get('robot', 'print_bt'),
-                         task_log = cfg.get('task_log'),  # TODO: remove - tasks come straight from the Hive Mind
-                         delivery_points = self.deliverypoints,
-                         traffic_score = self.traffic_score,
-                         latency = cfg.get('latency') # TODO: could we just pass the config file rather than endless passing of variables?
-                         )
         return swarm
 
     def iterate(self):
         """
         Perform a single iteration of the simulation by updating the warehouse and checking exit conditions.
         """
-        self.warehouse.iterate(self.cfg.get('warehouse', 'pheromones'))
+        self.warehouse.iterate()
         
         self.exit_sim(counter=self.warehouse.counter)
 
@@ -168,26 +155,26 @@ class  Simulator:
             counter (int, optional): The current time step of the simulation. Defaults to None.
         """
         if self.exit_criteria == 'counter':
-            if counter > self.cfg.get('time_limit'):
+            if counter > self.gen_cfg.get('time_limit'):
                 print('{counter} counts reached - Time limit expired')
                 self.exit_threads = True
                 self.exit_run = True
 
         elif self.exit_criteria == 'logistics':
-            if all(dp.delivered for dp in self.deliverypoints):
+            if all(dp.delivered for dp in self.processed_delivery_points):
                 print(f'All deliveries complete in {counter} timesteps - Exit sim.')
                 self.exit_threads = True
                 self.exit_run = True
 
-            if counter > self.cfg.get('time_limit'):
+            if counter > self.gen_cfg.get('time_limit'):
                 print(f'{counter} counts reached - Time limit expired')
                 self.exit_threads = True
                 self.exit_run = True
 
         elif self.exit_criteria == 'area_coverage':
-            total_cells = (self.cfg.get('warehouse', 'width') * self.cfg.get('warehouse', 'height')) / self.cfg.get('warehouse', 'cell_size') ** 2
+            total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
             percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
-            if counter > self.cfg.get('time_limit') or percent_explored >= 80:
+            if counter > self.gen_cfg.get('time_limit') or percent_explored >= 80:
                 print(f'{counter} counts reached - percentage explored: {percent_explored}%')
                 # self.print_pheromone_map(self.warehouse.pheromone_map, self.cfg.get('warehouse', 'width'), self.cfg.get('warehouse', 'height'), 'test')
                 self.exit_threads = True
@@ -195,7 +182,7 @@ class  Simulator:
 
         elif self.exit_criteria == 'traffic':
             # print(counter, self.traffic_score)
-            if self.traffic_score['score'] >= 200 or counter > self.cfg.get('time_limit'):
+            if self.traffic_score['score'] >= 200 or counter > self.gen_cfg.get('time_limit'):
                 print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True
@@ -249,7 +236,7 @@ class  Simulator:
             else:
                 print(f"Running simulation.")
 
-        while self.warehouse.counter <= self.cfg.get('time_limit') and self.exit_run is False:
+        while self.warehouse.counter <= self.gen_cfg.get('time_limit') and self.exit_run is False:
             self.iterate()
 
         return self.warehouse.counter
