@@ -35,13 +35,13 @@ map_cfg = Config(cfg_path=map_cfg)
 
 ###### GA Parameters ######
 POPULATION_SIZE = 10
-NUM_GENERATIONS = 20
-MUTATION_RATE = 0.4             # Set to 0.0 for no mutation
-CROSSOVER_RATE = 0.2            # Set to 0.0 for no crossover
-ELITISM_RATE = 0.2
-TOURNAMENT_SIZE = 5
-DEPENDENCY_UPDATE_INTERVAL = 2  # Update dependency tracking every 5 generations
-NUM_ITERATIONS = 10             # Number of iterations ran per generation
+NUM_GENERATIONS = 10
+MUTATION_RATE = 0.1             # Set to 0.0 for no mutation
+CROSSOVER_RATE = 0.5            # Set to 0.0 for no crossover
+ELITISM_RATE = 0.3
+# TOURNAMENT_SIZE = 5
+# DEPENDENCY_UPDATE_INTERVAL = 2  # Update dependency tracking every 5 generations
+NUM_ITERATIONS = 5             # Number of iterations ran per generation
 
 
 class GeneticOptimisation:
@@ -58,22 +58,24 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
     def create_result_file(self):
-        filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_tour{TOURNAMENT_SIZE}.txt"
+        filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"
         file_path = os.path.join(current_dir, filename)
         info_types = self.get_hive_mind_info_types()
 
         with open(file_path, 'w') as file:
             file.write("INFO_TYPES: " + "\t".join(info_types) + "\n")
-            file.write("generation\tgenome\tfitness\n")
+            file.write("generation\tgenome\tave_time\ttot_weight\tfitness\n")
 
         return file_path
 
-    def save_results(self, generation, population, fitness_scores):
+    def save_results(self, generation, population, ave_time, tot_weight, fitness_scores):
         with open(self.result_file_path, 'a') as file:
             for i in range(len(population)):
                 genome = population[i]
+                _ave_time = ave_time[i]
+                _tot_weight = tot_weight[i]
                 fitness = fitness_scores[i]
-                file.write(f"{generation}\t{genome}\t{fitness}\n")
+                file.write(f"{generation}\t{genome}\t{_ave_time}\t{_tot_weight}\t{fitness}\n")
 
     def get_hive_mind_info_types(self):
         sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
@@ -117,9 +119,9 @@ class GeneticOptimisation:
         Genome = population = a list of selected information types to be ran for this run of th simulation.
         """
         avg_time = self.run_simulation(genome)
-        w = len(genome)  # Number of info types
-        fitness = self.performance_weight * avg_time + self.communication_weight * w
-        return fitness
+        w = sum(genome)  # Number of info types
+        fitness = self.performance_weight * avg_time + self.communication_weight * w # TODO: fix this so that it normalises (both?) for best fitness
+        return avg_time, w, fitness
 
     def initialize_population(self, num_info_types):
         """
@@ -202,24 +204,38 @@ class GeneticOptimisation:
 
         for generation in range(NUM_GENERATIONS):
             print(f"----------------------------Generation {generation+1} / {NUM_GENERATIONS}----------------------------")
-            print(population)
+            # print(population)
 
             # Convert population of bitwise information genomes into population of information types format
             population_info_type = []
+            ave_times = []
+            tot_weights = []
             fitness_scores = []
             for genome in population:
                 population_info_type.append([info_types[i] for i in range(len(info_types)) if genome[i] == 1])
-                fitness_scores.append(self.evaluate_fitness(genome))
+                avg_time, w, fitness = self.evaluate_fitness(genome)
+                ave_times.append(avg_time)
+                tot_weights.append(w)
+                fitness_scores.append(fitness)
+
+            # Update fitness score based using normalisation for this population set
+            # TODO: this is a hacky way of doing this - need to update code!
+            max_ave_time = max(ave_times)
+            normalised_fitness_scores = []
+            for i in range(len(population)):
+                normalised_fitness = (ave_times[i] / max_ave_time) + 0.2 * tot_weights[i]
+                normalised_fitness_scores.append(normalised_fitness)
+
 
             # Save results for this generation
-            self.save_results(generation, population, fitness_scores)
+            self.save_results(generation, population, ave_times, tot_weights, normalised_fitness_scores)
 
             # # Track dependencies dynamically
             # if generation % DEPENDENCY_UPDATE_INTERVAL == 0:
             #     self.update_dependency_tracking(population, fitness_scores)
 
             # Selection
-            selected_parents = self.roulette_wheel_selection(population, fitness_scores)
+            selected_parents = self.roulette_wheel_selection(population, normalised_fitness_scores)
 
             # Ensure selected parents count is even for pairing used in crossover
             if len(selected_parents) % 2 == 1:
@@ -236,17 +252,17 @@ class GeneticOptimisation:
                 self.mutate(child)
 
             # Apply elitism: Keep best solutions using fitness scores
-            num_elites = ELITISM_RATE * POPULATION_SIZE
-            elite_indices = sorted(range(len(fitness_scores)), key=lambda i: fitness_scores[i])[:num_elites]
+            num_elites = int(ELITISM_RATE * POPULATION_SIZE)
+            elite_indices = sorted(range(len(normalised_fitness_scores)), key=lambda i: normalised_fitness_scores[i])[:num_elites]
             elite_individuals = [population[i] for i in elite_indices]
 
             # Fill the rest of the NEW population with offspring (truncated for max population size)
             population = elite_individuals + offspring[:POPULATION_SIZE - num_elites]
 
         # Final best solution
-        best_index = fitness_scores.index(min(fitness_scores))  # Get index of best solution
+        best_index = normalised_fitness_scores.index(min(normalised_fitness_scores))  # Get index of best solution
         best_solution = population[best_index]
-        print(f"\nOptimal Information Set: {best_solution} | Fitness: {fitness_scores[best_index]}")
+        print(f"\nOptimal Information Set: {best_solution} | Fitness: {normalised_fitness_scores[best_index]}")
 
 
 ###### Run experiment ######
