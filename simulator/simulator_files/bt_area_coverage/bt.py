@@ -2,7 +2,6 @@ import copy
 import random
 import math
 from lib2to3.fixes.fix_metaclass import remove_trailing_newline
-from turtledemo.nim import computerzug
 
 import py_trees
 import numpy as np

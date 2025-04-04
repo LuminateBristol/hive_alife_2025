@@ -4,6 +4,7 @@ import random
 import numpy as np
 from itertools import combinations
 from collections import defaultdict
+import multiprocessing
 
 # We need to setup parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -43,7 +44,12 @@ ELITISM_RATE = 0.3
 # DEPENDENCY_UPDATE_INTERVAL = 2  # Update dependency tracking every 5 generations
 NUM_ITERATIONS = 5             # Number of iterations ran per generation
 
+# Multi processing wrapper:
+def evaluate_genome_wrapper(args): # TODO: at the moment this only parallelises the genomes - i.e. max cores = 10. Future work needs to flatten this to we parallise over Num_genomes + Num_iterations - i;e. setup list of jobs which contains all genomres * NUM_ITERATIONS and send this to multiprocessing. Following this, we can then combine them again and take averages for the entire genome 
+        self_instance, genome = args
+        return self_instance.evaluate_fitness(genome)
 
+# Genetic algorithm:
 class GeneticOptimisation:
     def __init__(self):
         self.num_iterations = NUM_ITERATIONS
@@ -55,7 +61,11 @@ class GeneticOptimisation:
         # Track dependencies dynamically
         self.dependency_groups = {}
 
+        # File save setup
         self.result_file_path = self.create_result_file()
+
+        # Multiprocessing setup
+        self.num_cores = 10
 
     def create_result_file(self):
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"
@@ -98,7 +108,7 @@ class GeneticOptimisation:
         run_times = []
 
         for i in range(self.num_iterations):
-            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
+            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=False)
 
             # Update weights for selected info types
             for node in sim.Hive_Mind.graph.nodes(data=True):
@@ -139,7 +149,7 @@ class GeneticOptimisation:
         selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
         return selected
 
-    def tournament_selection(self, population, fitness_scores):
+    # def tournament_selection(self, population, fitness_scores):
         """Select individuals for crossover using tournament selection while ensuring a large enough group."""
         selected = []
 
@@ -164,7 +174,7 @@ class GeneticOptimisation:
             if random.random() < MUTATION_RATE:
                 genome[i] = 1 - genome[i]  # Flip bit
 
-    def update_dependency_tracking(self, population, fitness_scores):
+    # def update_dependency_tracking(self, population, fitness_scores):
         """Track co-occurrences of info types in high-fitness solutions."""
         dependency_counts = defaultdict(int)
 
@@ -176,7 +186,7 @@ class GeneticOptimisation:
 
         # Filter for strong dependencies
         self.dependency_groups = {k: v for k, v in dependency_counts.items() if v > len(top_individuals) // 2}
-
+    
     def main(self):
         """
         The genetic algorithm works as follows:
@@ -206,6 +216,11 @@ class GeneticOptimisation:
             print(f"----------------------------Generation {generation+1} / {NUM_GENERATIONS}----------------------------")
             # print(population)
 
+            # Multiprocessing setup
+            with multiprocessing.Pool(processes=self.num_cores) as pool:    
+                # Pass self along with genome for each evaluation
+                results = pool.map(evaluate_genome_wrapper, [(self, genome) for genome in population])
+
             # Convert population of bitwise information genomes into population of information types format
             population_info_type = []
             ave_times = []
@@ -213,7 +228,7 @@ class GeneticOptimisation:
             fitness_scores = []
             for genome in population:
                 population_info_type.append([info_types[i] for i in range(len(info_types)) if genome[i] == 1])
-                avg_time, w, fitness = self.evaluate_fitness(genome)
+                avg_time, w, fitness = results[i]
                 ave_times.append(avg_time)
                 tot_weights.append(w)
                 fitness_scores.append(fitness)
@@ -225,7 +240,6 @@ class GeneticOptimisation:
             for i in range(len(population)):
                 normalised_fitness = (ave_times[i] / max_ave_time) + 0.2 * tot_weights[i]
                 normalised_fitness_scores.append(normalised_fitness)
-
 
             # Save results for this generation
             self.save_results(generation, population, ave_times, tot_weights, normalised_fitness_scores)
