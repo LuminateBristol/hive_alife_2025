@@ -46,8 +46,12 @@ NUM_ITERATIONS = 5             # Number of iterations ran per generation
 
 # Multi processing wrapper:
 def evaluate_genome_wrapper(args): # TODO: at the moment this only parallelises the genomes - i.e. max cores = 10. Future work needs to flatten this to we parallise over Num_genomes + Num_iterations - i;e. setup list of jobs which contains all genomres * NUM_ITERATIONS and send this to multiprocessing. Following this, we can then combine them again and take averages for the entire genome 
-        self_instance, genome = args
-        return self_instance.evaluate_fitness(genome)
+        self_instance, genome, info_types = args
+        selected_info_types = []
+        for index, i in enumerate(genome):
+            if i:
+                selected_info_types.append(info_types[index])
+        return self_instance.evaluate_fitness(selected_info_types)
 
 # Genetic algorithm:
 class GeneticOptimisation:
@@ -107,6 +111,8 @@ class GeneticOptimisation:
         total_time = 0
         run_times = []
 
+        print(f'eit: "{selected_info_types}')
+
         for i in range(self.num_iterations):
             sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=False)
 
@@ -149,16 +155,16 @@ class GeneticOptimisation:
         selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
         return selected
 
-    # def tournament_selection(self, population, fitness_scores):
-        """Select individuals for crossover using tournament selection while ensuring a large enough group."""
-        selected = []
+    # # def tournament_selection(self, population, fitness_scores):
+    #     """Select individuals for crossover using tournament selection while ensuring a large enough group."""
+    #     selected = []
 
-        while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
-            tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
-            best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
-            selected.append(best_individual)
+    #     while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
+    #         tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
+    #         best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
+    #         selected.append(best_individual)
 
-        return selected
+    #     return selected
 
     def crossover(self, parent1, parent2):
         """Perform crossover to create new offspring."""
@@ -174,18 +180,18 @@ class GeneticOptimisation:
             if random.random() < MUTATION_RATE:
                 genome[i] = 1 - genome[i]  # Flip bit
 
-    # def update_dependency_tracking(self, population, fitness_scores):
-        """Track co-occurrences of info types in high-fitness solutions."""
-        dependency_counts = defaultdict(int)
+    # # def update_dependency_tracking(self, population, fitness_scores):
+    #     """Track co-occurrences of info types in high-fitness solutions."""
+    #     dependency_counts = defaultdict(int)
 
-        # Analyze top-performing individuals
-        top_individuals = sorted(population, key=lambda x: fitness_scores[tuple(x)])[:POPULATION_SIZE // 2]
-        for individual in top_individuals:
-            for combo in combinations(individual, 2):  # Track pairwise co-occurrences
-                dependency_counts[combo] += 1
+    #     # Analyze top-performing individuals
+    #     top_individuals = sorted(population, key=lambda x: fitness_scores[tuple(x)])[:POPULATION_SIZE // 2]
+    #     for individual in top_individuals:
+    #         for combo in combinations(individual, 2):  # Track pairwise co-occurrences
+    #             dependency_counts[combo] += 1
 
-        # Filter for strong dependencies
-        self.dependency_groups = {k: v for k, v in dependency_counts.items() if v > len(top_individuals) // 2}
+    #     # Filter for strong dependencies
+    #     self.dependency_groups = {k: v for k, v in dependency_counts.items() if v > len(top_individuals) // 2}
     
     def main(self):
         """
@@ -219,14 +225,14 @@ class GeneticOptimisation:
             # Multiprocessing setup
             with multiprocessing.Pool(processes=self.num_cores) as pool:    
                 # Pass self along with genome for each evaluation
-                results = pool.map(evaluate_genome_wrapper, [(self, genome) for genome in population])
+                results = pool.map(evaluate_genome_wrapper, [(self, genome, info_types) for genome in population])
 
             # Convert population of bitwise information genomes into population of information types format
             population_info_type = []
             ave_times = []
             tot_weights = []
             fitness_scores = []
-            for genome in population:
+            for i, genome in enumerate(population):
                 population_info_type.append([info_types[i] for i in range(len(info_types)) if genome[i] == 1])
                 avg_time, w, fitness = results[i]
                 ave_times.append(avg_time)
