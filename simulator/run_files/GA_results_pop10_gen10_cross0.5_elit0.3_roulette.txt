@@ -1,0 +1,2 @@
+INFO_TYPES: robot_position	robot_led_status	robot_lifter_status	robot_heading	robot_speed_status	robot_task_id	robot_pheromone_map	chosen_door	waypoint
+generation	genome	ave_time	tot_weight	fitness

@@ -2,7 +2,7 @@ import sys
 import os
 import time
 
-from babel.messages.setuptools_frontend import extract_messages
+# from babel.messages.setuptools_frontend import extract_messages
 
 # We need to setup  parent directories to properly import other modules
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -30,7 +30,7 @@ gen_cfg = CFG_FILES['default']
 exp_cfg = CFG_FILES['exp_setup']
 map_cfg = CFG_FILES['map']
 gen_cfg = Config(cfg_path=gen_cfg)
-exp_cfg = Config(cfg_path=exp_cfg)
+exp_cfg = Config(cfg_path=exp_cfg, ex_id=ex_id)
 map_cfg = Config(cfg_path=map_cfg)
 
 # Experiment set from cfg file 'exp_setup' NOTE: change this file to update experimental parameters
