@@ -36,7 +36,7 @@ map_cfg = Config(cfg_path=map_cfg)
 
 ###### GA Parameters ######
 POPULATION_SIZE = 10
-NUM_GENERATIONS = 10
+NUM_GENERATIONS = 20
 MUTATION_RATE = 0.1             # Set to 0.0 for no mutation
 CROSSOVER_RATE = 0.5            # Set to 0.0 for no crossover
 ELITISM_RATE = 0.3
@@ -69,7 +69,7 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
         # Multiprocessing setup
-        self.num_cores = 10
+        self.num_cores = 5
 
     def create_result_file(self):
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"
@@ -111,7 +111,7 @@ class GeneticOptimisation:
         total_time = 0
         run_times = []
 
-        print(f'eit: "{selected_info_types}')
+        # print(f'eit: "{selected_info_types}')
 
         for i in range(self.num_iterations):
             sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=False)
@@ -129,13 +129,13 @@ class GeneticOptimisation:
         average_time = total_time / self.num_iterations
         return average_time
 
-    def evaluate_fitness(self, genome):
+    def evaluate_fitness(self, selected_info_types):
         """
         Evaluate fitness of a given genome (set of selected info types).
         Genome = population = a list of selected information types to be ran for this run of th simulation.
         """
-        avg_time = self.run_simulation(genome)
-        w = sum(genome)  # Number of info types
+        avg_time = self.run_simulation(selected_info_types)
+        w = len(selected_info_types)  # Number of info types
         fitness = self.performance_weight * avg_time + self.communication_weight * w # TODO: fix this so that it normalises (both?) for best fitness
         return avg_time, w, fitness
 

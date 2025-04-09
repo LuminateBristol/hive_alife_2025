@@ -326,6 +326,7 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
 
                         else:
                             # Handle any other types as needed
+                            pass
                             # print(f"Unsupported type for {key}:, {hive_data,} {type(hive_data)}") TODO: this is being picked up for strings for chosen door - has no effect on results but needs fixing!
 
                 # If there are differences, perform actions based on node type
