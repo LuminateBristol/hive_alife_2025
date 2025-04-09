@@ -166,7 +166,7 @@ exp_3_traffic:
   exit_criteria: 'traffic'
   behaviour_tree: 'traffic_hive'  # Options: 'traffic_hive' / 'traffic_centralised'
   map: map2
-  number_of_agents: 100
+  number_of_agents: 10
   latency: 0
 
   # Setup warehouse parameters
@@ -186,8 +186,8 @@ exp_3_traffic:
     - [ None, 'robots', None, { 'type': 'entity' } ]
     - [ None, 'doors', None, { 'type': 'entity' } ]
     - [ None, 'map', None, {'type': 'entity'} ]
-    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 840]} ]
-    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1670] } ]
+    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 830]} ] # NOTE: tweaked y-values for smoother door entrance/exit from task locations
+    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1680] } ]
 #    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 625]} ]
 #    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1250] } ]
 #    - [ 'doors', 'door_C', 'child_of', { 'type': 'door', 'coords': [1250, 1875] } ]
