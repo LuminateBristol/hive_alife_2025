@@ -38,9 +38,9 @@ map_cfg = Config(cfg_path=map_cfg)
 POPULATION_SIZE = 10
 NUM_GENERATIONS = 20
 MUTATION_RATE = 0.1             # Set to 0.0 for no mutation
-CROSSOVER_RATE = 0.5            # Set to 0.0 for no crossover
+CROSSOVER_RATE = 0.7            # Set to 0.0 for no crossover
 ELITISM_RATE = 0.3
-# TOURNAMENT_SIZE = 5
+TOURNAMENT_SIZE = 3
 # DEPENDENCY_UPDATE_INTERVAL = 2  # Update dependency tracking every 5 generations
 NUM_ITERATIONS = 5             # Number of iterations ran per generation
 
@@ -60,7 +60,7 @@ class GeneticOptimisation:
 
         # Fitness function weights
         self.performance_weight = 1
-        self.communication_weight = 0.2
+        self.communication_weight = 0.1
 
         # Track dependencies dynamically
         self.dependency_groups = {}
@@ -146,25 +146,26 @@ class GeneticOptimisation:
         """
         return [[random.choice([0, 1]) for _ in range(num_info_types)] for _ in range(POPULATION_SIZE)]
 
-    def roulette_wheel_selection(self, population, fitness_scores):
-        """Select parents using fitness-proportionate selection."""
-        total_fitness = sum(fitness_scores)
-        selection_probs = [1 - (fitness_scores[i] / total_fitness) for i in range(len(population))]
-        # Selects k=POPULATION_SIZE genomes with a bias based on selection_probs ie. probability of selection
-        # Note - this method allows for replacement selection - i.e. high selection_prob genomes can be selected more than once
-        selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
-        return selected
-
-    # # def tournament_selection(self, population, fitness_scores):
-    #     """Select individuals for crossover using tournament selection while ensuring a large enough group."""
-    #     selected = []
-
-    #     while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
-    #         tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
-    #         best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
-    #         selected.append(best_individual)
-
+    # def roulette_wheel_selection(self, population, fitness_scores):
+    #     """Select parents using fitness-proportionate selection."""
+    #     total_fitness = sum(fitness_scores)
+    #     selection_probs = [1 - ((fitness_scores[i] ** 3) / total_fitness) for i in range(len(population))]
+    #     # Selects k=POPULATION_SIZE genomes with a bias based on selection_probs ie. probability of selection
+    #     # probability of selection is highly biased towards fitness < 1 through the cube law
+    #     # Note - this method allows for replacement selection - i.e. high selection_prob genomes can be selected more than once
+    #     selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
     #     return selected
+
+    def tournament_selection(self, population, fitness_scores):
+        """Select individuals for crossover using tournament selection while ensuring a large enough group."""
+        selected = []
+
+        while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
+            tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
+            best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
+            selected.append(best_individual)
+
+        return selected
 
     def crossover(self, parent1, parent2):
         """Perform crossover to create new offspring."""
@@ -237,14 +238,15 @@ class GeneticOptimisation:
                 avg_time, w, fitness = results[i]
                 ave_times.append(avg_time)
                 tot_weights.append(w)
-                fitness_scores.append(fitness)
+                fitness_scores.append(fitness) # TODO: do we need this fitness here if we are going to calculate the normaliased ones anyway?
 
             # Update fitness score based using normalisation for this population set
             # TODO: this is a hacky way of doing this - need to update code!
             max_ave_time = max(ave_times)
+            max_w = max(tot_weights)
             normalised_fitness_scores = []
             for i in range(len(population)):
-                normalised_fitness = (ave_times[i] / max_ave_time) + 0.2 * tot_weights[i]
+                normalised_fitness = self.performance_weight * (ave_times[i] / max_ave_time) + self.communication_weight * (tot_weights[i] / max_w) 
                 normalised_fitness_scores.append(normalised_fitness)
 
             # Save results for this generation
@@ -255,7 +257,7 @@ class GeneticOptimisation:
             #     self.update_dependency_tracking(population, fitness_scores)
 
             # Selection
-            selected_parents = self.roulette_wheel_selection(population, normalised_fitness_scores)
+            selected_parents = self.tournament_selection(population, normalised_fitness_scores)
 
             # Ensure selected parents count is even for pairing used in crossover
             if len(selected_parents) % 2 == 1:
