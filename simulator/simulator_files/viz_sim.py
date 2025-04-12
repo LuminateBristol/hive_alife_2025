@@ -211,7 +211,7 @@ class VizSim(Simulator):
         Args:
             counter (int, optional): Timestep that the simulation is currently on
         """
-        if self.exit_criteria == 'counter':
+        if self.task == 'counter':
             if counter > self.cfg.get('time_limit'):
                 if self.verbose:
                     print("in", counter, "seconds")
@@ -219,7 +219,7 @@ class VizSim(Simulator):
                 if self.gen_cfg.get('animate'):
                     exit()
 
-        elif self.exit_criteria == 'logistics':
+        elif self.task == 'logistics':
 
             if all(dp.delivered for dp in self.processed_delivery_points):
                 if self.verbose:
@@ -235,7 +235,7 @@ class VizSim(Simulator):
                 if self.gen_cfg.get('animate'):
                     exit()
 
-        elif self.exit_criteria == 'area_coverage':
+        elif self.task == 'area_coverage':
             if counter > self.gen_cfg.get('time_limit'):
                 total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
                 print(self.warehouse.pheromone_map)
@@ -243,7 +243,7 @@ class VizSim(Simulator):
                 print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
                 exit()
 
-        elif self.exit_criteria == 'traffic':
+        elif self.task == 'traffic':
             # if counter > self.cfg.get('time_limit'):
             if self.traffic_score['score'] >= 100:
                 print(f"{counter} counts reached - Time limit expired. Traffic score: {self.traffic_score['score']}")

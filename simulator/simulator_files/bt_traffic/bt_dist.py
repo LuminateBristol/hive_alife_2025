@@ -1,15 +1,5 @@
 '''
-Update for this work - 20.03.25
-- Latency implemented
-    - Artificial latency added
-    - This works adding latency to the Hive information RECEIVED from the Hive only
-    - Robo Hive update is as before
-    - Connect_to_hive_mind has been updated with latency (configured in cfg files)
-    - The latency works in a way that the number of timesteps configured - is the delay to getting information
-    - A list is created length = latency from config
-    - Pop Hive Mind data directly from the list at each timestep and insert new Hive Mind data each timestep
-    - This means that whatever length of list, is the number of timesteps before we get data sent through
-
+Update for this work - 19.03.25
 - Updated the select action with info-action key pairs - this means that the next action depends info available
 - Updated rest of behaviour tree to match
 - Updated to work with any number of doors
@@ -19,6 +9,7 @@ Update for this work - 20.03.25
     - chosen_door - select door with least congestion based on chosen_door
     - positions & heading - select door with least congestion in the opposite direction
 '''
+
 import copy
 import random
 import math
@@ -236,16 +227,9 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='latency', access=py_trees.common.Access.READ)
 
     def setup(self):
         self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
-
-        # Init latency buffer
-        # In this implementation - all weight nodes are added to the buffer at each timestep - this is the only info that the robots request
-        # Weight nodes are stored in a dict hence the implementation below:
-        if self.blackboard.latency:
-            self.latency_buffer = [{} for _ in range(self.blackboard.latency)]
 
     def compare_robot_hive_graphs(self):
         '''
@@ -257,27 +241,12 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
 
         Nothing is directly returned. Instead, for each weighted node, we run an the update function with the node name, the Hive data
          and the Robot data as an input. This allows us to update the Hive or robot accordingly.
-
-        Latency is handled simply through teh latency buffer which is of length = latency. At each timestep the latest
-        request from the Hive is added to the buffer and the last request on record is popped out.
         '''
-        robot_graph = self.blackboard.robo_mind.graph
         hive_mind_graph = self.blackboard.hive_mind.graph
+        robot_graph = self.blackboard.robo_mind.graph
 
-        if self.blackboard.latency:
-            # Extract nodes where weight > 0 from the Hive Mind graph
-            weight_nodes_now = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
-
-            # Handle latency for weighted nodes only - we could do this for whole graph but no need to store all that info as
-            # weighted nodes are the only ones we use.
-            # This is somewhat artificial a way to add latency but it does delay the useful information to the robot so has the
-            # same effect.
-            self.latency_buffer.insert(0, copy.deepcopy(weight_nodes_now))
-            weight_nodes = self.latency_buffer.pop()
-
-        else:
-            # Extract nodes where weight > 0 from the Hive Mind graph
-            weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+        # Extract nodes where weight > 0 from the Hive Mind graph
+        weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
 
         # Loop through nodes in the weight_nodes dictionary
         for node_name, hive_mind_attributes in weight_nodes.items():
@@ -325,9 +294,8 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
                             pass
 
                         else:
-                            pass
                             # Handle any other types as needed
-                            # print(f"Unsupported type for {key}:, {hive_data,} {type(hive_data)}") TODO: this is being picked up for strings for chosen door - has no effect on results but needs fixing!
+                            print(f"Unsupported type for {key}: {type(hive_data)}")
 
                 # If there are differences, perform actions based on node type
                 if data:
@@ -366,11 +334,127 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
 
     def initialise(self):
-        pass
-
-    def update(self):
         self.compare_robot_hive_graphs()
 
+    def update(self):
+        return py_trees.common.Status.SUCCESS
+
+class Connect_To_Neighbour_Mind(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
+
+    def get_neighbour_graph(self, neighbour_id, neighbour_graph):
+        '''
+        Here we update the distributed_mind_graph - this is a local copy of all robot observations that is updated when within communication range of other robots
+        '''
+        swarm_mind_graph = self.blackboard.distributed_mind.graph
+        robot_graph = self.blackboard.robo_mind.graph
+
+        if neighbour_id not in swarm_mind_graph:
+
+
+        # Extract nodes where weight > 0 from the Hive Mind graph
+        weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+
+        # Loop through nodes in the weight_nodes dictionary
+        for node_name, hive_mind_attributes in weight_nodes.items():
+            # Check if the node exists in the robot's knowledge graph
+            if node_name in robot_graph.nodes:
+                robot_attributes = robot_graph.nodes[node_name]
+
+                # Compare attributes of the two nodes
+                data = {}
+                for key in hive_mind_attributes:
+                    if key == 'data':                    # We only update data attributes as part of the Hive Mind standard architecture
+                        hive_data = hive_mind_attributes[key]
+                        robot_data = robot_attributes[key]
+
+                        # Handle comparison for different types
+                        if isinstance(hive_data, np.ndarray) or isinstance(hive_data, list):
+                            # Compare arrays or lists (ensure same shape/length for arrays)
+                            if len(hive_data) == len(robot_data):  # Length check for lists or arrays
+                                if not np.array_equal(hive_data, robot_data):
+                                    data['hive'] = hive_mind_attributes[key]
+                                    data['robot'] = robot_attributes.get(key)
+                                    data['attribute'] = key
+
+                        elif isinstance(robot_data, str): # TODO: check if all work with robot_data better as it takes away none errors
+                            # Compare strings
+                            if hive_data != robot_data:
+                                data['hive'] = hive_mind_attributes[key]
+                                data['robot'] = robot_attributes.get(key)
+                                data['attribute'] = key
+
+                        elif isinstance(hive_data, (int, float, bool)):
+                            # Compare integers or floats
+                            if hive_data != robot_data:
+                                data['hive'] = hive_mind_attributes[key]
+                                data['robot'] = robot_attributes.get(key)
+                                data['attribute'] = key
+
+                        elif isinstance(hive_data, dict):
+                            if hive_data.keys() != robot_data.keys():
+                                data['hive'] = hive_mind_attributes[key]
+                                data['robot'] = robot_attributes.get(key)
+                                data['attribute'] = key
+
+                        elif hive_data == None:
+                            pass
+
+                        else:
+                            # Handle any other types as needed
+                            print(f"Unsupported type for {key}: {type(hive_data)}")
+
+                # If there are differences, perform actions based on node type
+                if data:
+                    self.handle_update(node_name, data)
+
+    def handle_update(self, node_name, data):
+        '''
+        Handles the update of information based on the node name.
+        Each node name has a different pre=programmed update protocol.
+        We either update the Hive or the Robo Mind based on the data.
+        We use deepcopy because we do not want to intrinsically link the two data objects in Hive and Robo minds
+        :param node_name: name of node containing information
+        :param data: data held by attributes in the hive and robot (see compare_robot_hive_graphs)
+        :return:
+        '''
+        robo_mind = self.blackboard.robo_mind.graph
+        hive_mind = self.blackboard.hive_mind.graph
+        robo_mind_attr = self.blackboard.robo_mind.graph.nodes[node_name]
+        hive_mind_attr = self.blackboard.hive_mind.graph.nodes[node_name]
+
+        if node_name.endswith('position'):
+            # Update Hive Mind with robo_mind position attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('chosen_door'):
+            # Update Hive Mind with latest robo_mind chosen door attributes
+            data = robo_mind_attr['data']
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('task_id'):
+            # Update Hive Mind with latest robo_mind waypoint attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+        elif node_name.endswith('heading'):
+            # Update Hive Mind with latest robo_mind heading attributes
+            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
+    def initialise(self):
+        self.compare_robot_hive_graphs()
+
+    def update(self):
         return py_trees.common.Status.SUCCESS
 
 class Update_Robo_Mind(py_trees.behaviour.Behaviour):
@@ -519,6 +603,11 @@ class Select_Action(py_trees.behaviour.Behaviour):
                 "rank": 1,
                 "fn": self.choose_door_by_traffic_position_heading
             }
+            # {
+            #     "required_info": {"chosen_door", "robot_heading"},
+            #     "rank": 1,
+            #     "fn": self.choose_door_by_consensus_heading
+            # }
         ]
 
     def get_doors(self):
@@ -857,6 +946,50 @@ class Go_To_Door(py_trees.behaviour.Behaviour):
 
         return py_trees.common.Status.FAILURE
 
+class Check_Action_Give_Way(py_trees.behaviour.Behaviour):
+    def __init__(self,name, robot_index):
+        super().__init__(name)
+        str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
+        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        self.logger.debug(f"Select action::setup {self.name}")
+
+    def initialise(self):
+        self.logger.debug(f"select action::initialise {self.name}")
+
+    def update(self):
+        if self.blackboard.action == 'give_way':
+            return py_trees.common.Status.SUCCESS
+        else:
+            return py_trees.common.Status.FAILURE
+
+class Give_Way(py_trees.behaviour.Behaviour):
+    def __init__(self, name, robot_index):
+        super().__init__(name)
+        self.robot_index = robot_index
+        self.str_index = 'robot_' + str(robot_index)
+        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
+        self.blackboard.register_key(key='doors', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='max_v', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='velocity', access=py_trees.common.Access.WRITE)
+
+    def setup(self):
+        pass
+
+    def initialise(self):
+        pass
+
+    def update(self):
+        # Set velocity to 0 until we move back into go_to action
+        self.blackboard.velocity = 0
+
+        return py_trees.common.Status.SUCCESS
+
 class Check_Action_Go_To_task(py_trees.behaviour.Behaviour):
 
     def __init__(self,name, robot_index):
@@ -1142,8 +1275,19 @@ def create_root(robot_index):
 
     # Go to door behaviour
     go_to_door = py_trees.composites.Sequence(name='Go To Door', memory=False)
+    go_to_door.add_child(Go_To_Door(name='Update door choice', robot_index=robot_index))
     go_to_door.add_child(Check_Action_Go_To_Door(name='Check if go to door', robot_index=robot_index))
     go_to_door.add_child(Go_To_Door(name='Go To Door', robot_index=robot_index))
+
+    # Give way behaviour
+    give_way = py_trees.composites.Sequence(name='Give Way', memory=False)
+    give_way.add_child(Check_Action_Give_Way(name='Check if give way', robot_index=robot_index))
+    give_way.add_child(Give_Way(name='Give Way', robot_index=robot_index))
+
+    # Go through door behaviour
+    go_through_door = py_trees.composites.Sequence(name='Go Through Door', memory=False)
+    go_through_door.add_child(Check_Action_Go_Through_Door(name='Check if go through door', robot_index=robot_index))
+    go_through_door.add_child(Go_Through_Door(name='Go Through Door', robot_index=robot_index))
 
     # Go to task
     go_to_task = py_trees.composites.Sequence(name='Go To task', memory=False)
@@ -1161,6 +1305,8 @@ def create_root(robot_index):
 
     # Step 3: Task actions
     DOTS_actions.add_child(go_to_door)
+    DOTS_actions.add_child(give_way)
+    DOTS_actions.add_child(go_through_door)
     DOTS_actions.add_child(go_to_task)
 
     # Combine: First run the initial actions, then move on to DOTS_actions
@@ -1229,49 +1375,5 @@ class Go_Through_Door(py_trees.behaviour.Behaviour):
 
         heading = math.atan2(dy, dx)
         self.blackboard.w_rob_c[self.robot_index][2] = heading
-
-        return py_trees.common.Status.SUCCESS
-
-class Check_Action_Give_Way(py_trees.behaviour.Behaviour):
-    def __init__(self,name, robot_index):
-        super().__init__(name)
-        str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(str_index))
-        self.blackboard.register_key(key='action', access=py_trees.common.Access.WRITE)
-
-    def setup(self):
-        self.logger.debug(f"Select action::setup {self.name}")
-
-    def initialise(self):
-        self.logger.debug(f"select action::initialise {self.name}")
-
-    def update(self):
-        if self.blackboard.action == 'give_way':
-            return py_trees.common.Status.SUCCESS
-        else:
-            return py_trees.common.Status.FAILURE
-
-class Give_Way(py_trees.behaviour.Behaviour):
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        self.str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
-        self.blackboard.register_key(key='doors', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='max_v', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='velocity', access=py_trees.common.Access.WRITE)
-
-    def setup(self):
-        pass
-
-    def initialise(self):
-        pass
-
-    def update(self):
-        # Set velocity to 0 until we move back into go_to action
-        self.blackboard.velocity = 0
 
         return py_trees.common.Status.SUCCESS

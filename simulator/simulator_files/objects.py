@@ -37,10 +37,10 @@ class Robot:
         Adds self-observable information of the robot to the observation space.
         These observations include position, heading, speed, and various status attributes.
         """
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position',        'weight':1, 'robot_name':f'robot_{self.robot_index}',  'data':np.array([999, 999, 999]),   'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position',        'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':np.array([999, 999, 999]),   'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status',      'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':[],                          'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status',   'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':False,                       'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading',         'weight':1, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading',         'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status',    'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id',         'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map',   'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':{},                          'time':0} ])
@@ -207,6 +207,8 @@ class Swarm:
         repulsion_w         = self.gen_cfg.get('warehouse', 'repulsion_wall')
         heading_change_rate = self.gen_cfg.get('heading_change_rate')
 
+        print(bt_controller)
+
         # Create swarm
         for num in range(number):
             ag = copy.deepcopy(agent_obj) # Use deepcopy soy that each robot is a unique agent object
@@ -310,7 +312,7 @@ class Swarm_Centralised:
         self.number_of_agents = 0
         self.gen_cfg = gen_config
         self.exp_cfg = exp_config
-        self.task = self.exp_cfg.get('behaviour_tree')
+        self.task = self.exp_cfg.get('task')
         self.repulsion_o = self.gen_cfg.get('warehouse','repulsion_object')  # repulsion distance between agents-objects
         self.repulsion_w = self.gen_cfg.get('warehouse', 'repulsion_wall')  # repulsion distance between agents-walls
         self.heading_change_rate = self.gen_cfg.get('heading_change_rate')
@@ -338,7 +340,7 @@ class Swarm_Centralised:
         width = self.gen_cfg.get('warehouse', 'width')
         height = self.gen_cfg.get('warehouse', 'height')
         bt_controller = self.exp_cfg.get('behaviour_tree')
-        print_bt = self.exp_cfg.get('robot', 'print_bt')
+        print_bt = self.gen_cfg.get('robot', 'print_bt')
         repulsion_o = self.gen_cfg.get('warehouse', 'repulsion_object')
         repulsion_w = self.gen_cfg.get('warehouse', 'repulsion_wall')
         heading_change_rate = self.gen_cfg.get('heading_change_rate')
