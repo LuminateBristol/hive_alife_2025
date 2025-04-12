@@ -36,11 +36,11 @@ map_cfg = Config(cfg_path=map_cfg)
 
 ###### GA Parameters ######
 POPULATION_SIZE = 10
-NUM_GENERATIONS = 10
+NUM_GENERATIONS = 20
 MUTATION_RATE = 0.1             # Set to 0.0 for no mutation
-CROSSOVER_RATE = 0.5            # Set to 0.0 for no crossover
+CROSSOVER_RATE = 0.7            # Set to 0.0 for no crossover
 ELITISM_RATE = 0.3
-# TOURNAMENT_SIZE = 5
+TOURNAMENT_SIZE = 3
 # DEPENDENCY_UPDATE_INTERVAL = 2  # Update dependency tracking every 5 generations
 NUM_ITERATIONS = 5             # Number of iterations ran per generation
 
@@ -60,7 +60,7 @@ class GeneticOptimisation:
 
         # Fitness function weights
         self.performance_weight = 1
-        self.communication_weight = 0.2
+        self.communication_weight = 0.1
 
         # Track dependencies dynamically
         self.dependency_groups = {}
@@ -69,7 +69,7 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
         # Multiprocessing setup
-        self.num_cores = 10
+        self.num_cores = 5
 
     def create_result_file(self):
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"
@@ -111,7 +111,7 @@ class GeneticOptimisation:
         total_time = 0
         run_times = []
 
-        print(f'eit: "{selected_info_types}')
+        # print(f'eit: "{selected_info_types}')
 
         for i in range(self.num_iterations):
             sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=False)
@@ -129,13 +129,13 @@ class GeneticOptimisation:
         average_time = total_time / self.num_iterations
         return average_time
 
-    def evaluate_fitness(self, genome):
+    def evaluate_fitness(self, selected_info_types):
         """
         Evaluate fitness of a given genome (set of selected info types).
         Genome = population = a list of selected information types to be ran for this run of th simulation.
         """
-        avg_time = self.run_simulation(genome)
-        w = sum(genome)  # Number of info types
+        avg_time = self.run_simulation(selected_info_types)
+        w = len(selected_info_types)  # Number of info types
         fitness = self.performance_weight * avg_time + self.communication_weight * w # TODO: fix this so that it normalises (both?) for best fitness
         return avg_time, w, fitness
 
@@ -146,25 +146,32 @@ class GeneticOptimisation:
         """
         return [[random.choice([0, 1]) for _ in range(num_info_types)] for _ in range(POPULATION_SIZE)]
 
-    def roulette_wheel_selection(self, population, fitness_scores):
-        """Select parents using fitness-proportionate selection."""
-        total_fitness = sum(fitness_scores)
-        selection_probs = [1 - (fitness_scores[i] / total_fitness) for i in range(len(population))]
-        # Selects k=POPULATION_SIZE genomes with a bias based on selection_probs ie. probability of selection
-        # Note - this method allows for replacement selection - i.e. high selection_prob genomes can be selected more than once
-        selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
-        return selected
-
-    # # def tournament_selection(self, population, fitness_scores):
-    #     """Select individuals for crossover using tournament selection while ensuring a large enough group."""
-    #     selected = []
-
-    #     while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
-    #         tournament = random.sample(population, min(TOURNAMENT_SIZE, len(population)))
-    #         best_individual = min(tournament, key=lambda x: fitness_scores[tuple(x)])
-    #         selected.append(best_individual)
-
+    # def roulette_wheel_selection(self, population, fitness_scores):
+    #     """Select parents using fitness-proportionate selection."""
+    #     total_fitness = sum(fitness_scores)
+    #     selection_probs = [1 - ((fitness_scores[i] ** 3) / total_fitness) for i in range(len(population))]
+    #     # Selects k=POPULATION_SIZE genomes with a bias based on selection_probs ie. probability of selection
+    #     # probability of selection is highly biased towards fitness < 1 through the cube law
+    #     # Note - this method allows for replacement selection - i.e. high selection_prob genomes can be selected more than once
+    #     selected = random.choices(population, weights=selection_probs, k=POPULATION_SIZE)
     #     return selected
+
+    def tournament_selection(self, population, fitness_scores):
+        """Select individuals for crossover using tournament selection while ensuring a large enough group."""
+        selected = []
+
+        # Build a dictionary to maintain a relationship between population items and fitness_scores items
+        population_fitness_dict = {}
+        for index, genome in enumerate(population):
+            population_fitness_dict[tuple(genome)] = fitness_scores[index] # Use tuple as a dictionary key must be immutable and hashable
+
+        while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
+            tournament = random.sample(list(population_fitness_dict), min(TOURNAMENT_SIZE, len(population))) # Pick random sample from the keys of population_fitness_dict (i.e. population)
+            tournament_fitness_dict = {key: population_fitness_dict[key] for key in tournament}              # Populate new dictionary with the tournament selected items only
+            best_individual = min(tournament_fitness_dict, key=tournament_fitness_dict.get)                  # Choose best individual based on the lowest fitness and retuen the genome from the population
+            selected.append(list(best_individual))
+
+        return selected
 
     def crossover(self, parent1, parent2):
         """Perform crossover to create new offspring."""
@@ -237,14 +244,15 @@ class GeneticOptimisation:
                 avg_time, w, fitness = results[i]
                 ave_times.append(avg_time)
                 tot_weights.append(w)
-                fitness_scores.append(fitness)
+                fitness_scores.append(fitness) # TODO: do we need this fitness here if we are going to calculate the normaliased ones anyway?
 
             # Update fitness score based using normalisation for this population set
             # TODO: this is a hacky way of doing this - need to update code!
             max_ave_time = max(ave_times)
+            max_w = max(tot_weights)
             normalised_fitness_scores = []
             for i in range(len(population)):
-                normalised_fitness = (ave_times[i] / max_ave_time) + 0.2 * tot_weights[i]
+                normalised_fitness = self.performance_weight * (ave_times[i] / max_ave_time) + self.communication_weight * (tot_weights[i] / max_w) 
                 normalised_fitness_scores.append(normalised_fitness)
 
             # Save results for this generation
@@ -255,7 +263,7 @@ class GeneticOptimisation:
             #     self.update_dependency_tracking(population, fitness_scores)
 
             # Selection
-            selected_parents = self.roulette_wheel_selection(population, normalised_fitness_scores)
+            selected_parents = self.tournament_selection(population, normalised_fitness_scores)
 
             # Ensure selected parents count is even for pairing used in crossover
             if len(selected_parents) % 2 == 1:
