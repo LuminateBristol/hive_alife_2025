@@ -181,7 +181,7 @@ class Swarm:
         self.F_heading = None
         self.agent_dist = None
 
-    def add_agents(self, agent_obj, processed_delivery_points=None, traffic_score=None):
+    def add_agents(self, agent_obj, hive_mind=None, processed_delivery_points=None, traffic_score=None):
         """
         Adds a specified number of robot agents to the swarm, initializing their behavior trees and blackboards.
 
@@ -206,8 +206,6 @@ class Swarm:
         repulsion_o         = self.gen_cfg.get('warehouse', 'repulsion_object')
         repulsion_w         = self.gen_cfg.get('warehouse', 'repulsion_wall')
         heading_change_rate = self.gen_cfg.get('heading_change_rate')
-
-        print(bt_controller)
 
         # Create swarm
         for num in range(number):
@@ -237,6 +235,26 @@ class Swarm:
             ag.blackboard   = py_trees.blackboard.Client(name=name, namespace=namespace)
 
             ag.setup_bb(width, height, heading_change_rate, repulsion_o, repulsion_w, task_log, processed_delivery_points, traffic_score, latency)
+
+            # Set up Robo Mind and Hive Mind
+            # Add entities from config
+            try:
+                entities = self.exp_cfg.get('entities')
+            except:
+                print('No entities defined in config')
+                entities = None
+
+            # Add tasks from config
+            try:
+                tasks = self.exp_cfg.get('tasks')
+            except:
+                print('No tasks defined in config')
+                tasks = None
+
+            # Build
+            ag.build_robo_mind(entities, tasks)
+            if hive_mind is not None:
+                hive_mind.add_robot_observation_space(ag.observation_space)
 
             self.number_of_agents += 1
 
@@ -319,7 +337,7 @@ class Swarm_Centralised:
         self.F_heading = None
         self.agent_dist = None
 
-    def add_agents(self, agent_obj, processed_delivery_points=None, traffic_score=None):
+    def add_agents(self, agent_obj, hive_mind=None, processed_delivery_points=None, traffic_score=None):
         """
         Adds a specified number of robot agents to the swarm, initializing their behavior trees and blackboards.
 
@@ -374,6 +392,25 @@ class Swarm_Centralised:
 
             ag.setup_bb(width, height, heading_change_rate, repulsion_o, repulsion_w, task_log,
                         processed_delivery_points, traffic_score, latency)
+
+            # Set up Robo Mind and Hive Mind
+            # Add entities from config
+            try:
+                entities = self.exp_cfg.get('entities')
+            except:
+                print('No entities defined in config')
+                entities = None
+
+            # Add tasks from config
+            try:
+                tasks = self.exp_cfg.get('tasks')
+            except:
+                print('No tasks defined in config')
+                tasks = None
+
+            ag.build_robo_mind(entities, tasks)
+            if hive_mind is not None:
+                hive_mind.add_robot_observation_space(ag.observation_space)
 
             self.number_of_agents += 1
 

@@ -35,14 +35,14 @@ class  Simulator:
         # Init task
         self.task_setup()
 
+        # Init Hive and Robot Knowledge Graph
+        self.hive_setup()
+
         # Init swarm
         try:
             self.swarm = self.build_swarm(self.exp_cfg.get('behaviour_tree'))
         except Exception as e:
             raise e
-
-        # Init Hive and Robot Knowledge Graph
-        self.hive_setup()
 
         # Init warehouse
         self.warehouse = Warehouse(
@@ -106,23 +106,6 @@ class  Simulator:
             for task in tasks:
                 self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
 
-        # Add a optimistion version on which the cleanup (see below) is not ran
-        # This keeps the Hive full size ready to optimise on -i.e. no cleanup is done
-        self.optimisation_hive_mind = copy.deepcopy(self.Hive_Mind)
-
-        # Build robo_mind and add observation space to Hive Mind for each agent
-        # Add robo minds to Hive Mind
-        for agent in self.swarm.agents:
-            agent.build_robo_mind(entities, tasks)
-            self.Hive_Mind.add_robot_observation_space(agent.observation_space)
-            self.optimisation_hive_mind.add_robot_observation_space(agent.observation_space)
-
-        # Handle graph printing
-        if self.gen_cfg.get('print_kg') == True:
-            self.Hive_Mind.print_graph_mind()
-            self.Hive_Mind.plot_node_tree('robot_1')
-            self.Hive_Mind.print_hive_mind()
-
     def build_swarm(self, controller):
         """
         Construct the swarm by creating robot agents and adding them to the swarm.
@@ -135,7 +118,7 @@ class  Simulator:
         elif controller == 'traffic_centralised':
             swarm = Swarm_Centralised(self.gen_cfg, self.exp_cfg)
 
-        swarm.add_agents(robot_obj,  processed_delivery_points=self.processed_delivery_points, traffic_score = self.traffic_score)
+        swarm.add_agents(robot_obj, self.Hive_Mind, processed_delivery_points=self.processed_delivery_points, traffic_score = self.traffic_score)
 
         return swarm
 
