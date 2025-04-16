@@ -244,8 +244,8 @@ class VizSim(Simulator):
                 exit()
 
         elif self.task == 'traffic':
-            # if counter > self.cfg.get('time_limit'):
-            if self.traffic_score['score'] >= 100:
+            print(counter, self.traffic_score)
+            if self.traffic_score['score'] >= 200:
                 print(f"{counter} counts reached - Time limit expired. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True

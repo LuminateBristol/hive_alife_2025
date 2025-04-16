@@ -29,7 +29,7 @@ class  Simulator:
         self.gen_cfg = gen_config
         self.exp_cfg = exp_config
         self.map_cfg = map_config
-        self.task = self.exp_cfg.get('exit_criteria')
+        self.task = self.exp_cfg.get('task')
         self.drop_zone_limit = self.exp_cfg.get('drop_zone_limit')
 
         # Init task

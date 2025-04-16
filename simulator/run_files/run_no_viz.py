@@ -46,8 +46,8 @@ def run_ex():
     print(f'TOTAL COUNTS: {counter}')
 
 def run_many_log():
-    num_runs = 30
-    num_robots = [200]
+    num_runs = 10
+    num_robots = [10, 20, 50]
 
     # Open file once and write the header
     with open('results/logistics_baseline.txt', 'w') as f:
@@ -95,12 +95,12 @@ def run_many_acov():
 
 def run_many_traf():
 
-    num_runs = 3
-    num_robots = [100]
+    num_runs = 10
+    num_robots = [10,20,50]
 
-    # # Open file once and write the header
-    # with open('results/traffic_optimised.txt', 'w') as f:
-    #     f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
+    # Open file once and write the header
+    with open('traffic_dist.txt', 'w') as f:
+        f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
 
     for num in num_robots:
         # Set number of robots
@@ -110,15 +110,15 @@ def run_many_traf():
         score_total = 0
         time_total = 0
         for i in range(num_runs):
-            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
+            sim = VizSim(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
             counter = sim.run(iteration=i)
             score = sim.traffic_score['score']
             score_total += score
             time_total += counter
 
-            # # Append results for this run
-            # with open('results/traffic.txt', 'a') as f:  # Append mode
-            #     f.write(f"{i}\ttraffic\toptimised\t{num}\t{counter}\n")
+            # Append results for this run
+            with open('traffic_dist.txt', 'a') as f:  # Append mode
+                f.write(f"{i}\ttraffic\tdistributed\t{num}\t{counter}\n")
 
         # Record results
         av_score = score_total / num_runs
