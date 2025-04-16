@@ -8,7 +8,7 @@ import numpy as np
 import py_trees
 import matplotlib.pyplot as plt
 import copy
-from . import Swarm, Swarm_Centralised, Warehouse, Robot, DeliveryPoint, GraphMind
+from . import Swarm, Swarm_Centralised, Swarm_Decentralised, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class  Simulator:
     """
@@ -36,7 +36,12 @@ class  Simulator:
         self.task_setup()
 
         # Init Hive and Robot Knowledge Graph
-        self.hive_setup()
+        # TODO: add in a controller specification here - Hive is only used for 'Hive' controllers(?)
+        controller = self.exp_cfg.get('behaviour_tree')
+        if controller.endswith('hive'):
+            self.hive_setup()
+        elif controller.endswith('distributed'):
+            self.comms_db_setup()
 
         # Init swarm
         try:
@@ -49,8 +54,7 @@ class  Simulator:
             self.gen_cfg,
             self.exp_cfg,
             self.map_cfg,
-            self.swarm,
-            hive_mind=self.Hive_Mind)
+            self.swarm)
 
     def task_setup(self):
         """
@@ -106,19 +110,29 @@ class  Simulator:
             for task in tasks:
                 self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
 
+    def comms_db_setup(self):
+        """
+        Setup the Distrbibuted knowledge graphs from the following
+        """
+
+        self.Comms_Db = GraphMind()
+
     def build_swarm(self, controller):
         """
         Construct the swarm by creating robot agents and adding them to the swarm.
         """
 
-        robot_obj = Robot( self.gen_cfg,  self.exp_cfg)
+        robot_obj = Robot(self.gen_cfg,  self.exp_cfg)
 
-        if controller == 'traffic_hive':
+        if controller.endswith('hive'):
             swarm = Swarm(self.gen_cfg, self.exp_cfg)
-        elif controller == 'traffic_centralised':
+            swarm.add_agents(robot_obj, self.Hive_Mind, processed_delivery_points=self.processed_delivery_points, traffic_score=self.traffic_score)
+        elif controller.endswith('centralised'):
             swarm = Swarm_Centralised(self.gen_cfg, self.exp_cfg)
-
-        swarm.add_agents(robot_obj, self.Hive_Mind, processed_delivery_points=self.processed_delivery_points, traffic_score = self.traffic_score)
+            swarm.add_agents(robot_obj, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
+        elif controller.endswith('distributed'):
+            swarm = Swarm_Decentralised(self.gen_cfg, self.exp_cfg)
+            swarm.add_agents(robot_obj, self.Comms_Db, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
 
         return swarm
 

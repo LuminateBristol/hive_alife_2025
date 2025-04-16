@@ -28,6 +28,8 @@ import csv
 import time
 
 import networkx as nx
+from mistune.plugins.speedup import parse_text
+
 
 def distance_to_wall(robot_c, wall):
     # Find distance to wall using the assumption that the closest point shall be perpendicular to the robot:
@@ -217,261 +219,105 @@ class Sense(py_trees.behaviour.Behaviour):
         self.update_tick_clock()
         return py_trees.common.Status.SUCCESS
 
-class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
+class Update_distributed_hive_mind(py_trees.behaviour.Behaviour):
+    '''
+    This behaviour is used to update the robot's local copy of the distributed mind - a shared knowledge graph with the
+    robot's latest knowledge of each of the other robot's observations.
+
+    This is updated based on communication range, if the robot is within communication range of another robot, it will
+    update that part of the graph.
+    '''
     def __init__(self, name, robot_index):
         super().__init__(name)
         self.robot_index = robot_index
         self.str_index = 'robot_' + str(robot_index)
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='communication_range', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='comms_db', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='distributed_hive_mind', access=py_trees.common.Access.WRITE)
 
     def setup(self):
-        self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
+        self.logger.debug(f"Update Local Distributed Mind::setup {self.name}")
 
-    def compare_robot_hive_graphs(self):
-        '''
-        Here we compare the attributes between the Hive Mind and the Robo Mind for all nodes that have a weight == 1
-        I.e. for all nodes that the Hive has deemed important information for sharing in this iteration of the task.
-        We only compare what is in our own graphs to what is in the Hive graph.
-
-        Because of the nature of different types of information shared, we have different comparisons for each datatype.
-
-        Nothing is directly returned. Instead, for each weighted node, we run an the update function with the node name, the Hive data
-         and the Robot data as an input. This allows us to update the Hive or robot accordingly.
-        '''
-        hive_mind_graph = self.blackboard.hive_mind.graph
-        robot_graph = self.blackboard.robo_mind.graph
-
-        # Extract nodes where weight > 0 from the Hive Mind graph
-        weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
-
-        # Loop through nodes in the weight_nodes dictionary
-        for node_name, hive_mind_attributes in weight_nodes.items():
-            # Check if the node exists in the robot's knowledge graph
-            if node_name in robot_graph.nodes:
-                robot_attributes = robot_graph.nodes[node_name]
-
-                # Compare attributes of the two nodes
-                data = {}
-                for key in hive_mind_attributes:
-                    if key == 'data':                    # We only update data attributes as part of the Hive Mind standard architecture
-                        hive_data = hive_mind_attributes[key]
-                        robot_data = robot_attributes[key]
-
-                        # Handle comparison for different types
-                        if isinstance(hive_data, np.ndarray) or isinstance(hive_data, list):
-                            # Compare arrays or lists (ensure same shape/length for arrays)
-                            if len(hive_data) == len(robot_data):  # Length check for lists or arrays
-                                if not np.array_equal(hive_data, robot_data):
-                                    data['hive'] = hive_mind_attributes[key]
-                                    data['robot'] = robot_attributes.get(key)
-                                    data['attribute'] = key
-
-                        elif isinstance(robot_data, str): # TODO: check if all work with robot_data better as it takes away none errors
-                            # Compare strings
-                            if hive_data != robot_data:
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif isinstance(hive_data, (int, float, bool)):
-                            # Compare integers or floats
-                            if hive_data != robot_data:
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif isinstance(hive_data, dict):
-                            if hive_data.keys() != robot_data.keys():
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif hive_data == None:
-                            pass
-
-                        else:
-                            # Handle any other types as needed
-                            print(f"Unsupported type for {key}: {type(hive_data)}")
-
-                # If there are differences, perform actions based on node type
-                if data:
-                    self.handle_update(node_name, data)
-
-    def handle_update(self, node_name, data):
-        '''
-        Handles the update of information based on the node name.
-        Each node name has a different pre=programmed update protocol.
-        We either update the Hive or the Robo Mind based on the data.
-        We use deepcopy because we do not want to intrinsically link the two data objects in Hive and Robo minds
-        :param node_name: name of node containing information
-        :param data: data held by attributes in the hive and robot (see compare_robot_hive_graphs)
-        :return:
-        '''
-        robo_mind = self.blackboard.robo_mind.graph
-        hive_mind = self.blackboard.hive_mind.graph
-        robo_mind_attr = self.blackboard.robo_mind.graph.nodes[node_name]
-        hive_mind_attr = self.blackboard.hive_mind.graph.nodes[node_name]
-
-        if node_name.endswith('position'):
-            # Update Hive Mind with robo_mind position attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('chosen_door'):
-            # Update Hive Mind with latest robo_mind chosen door attributes
-            data = robo_mind_attr['data']
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('task_id'):
-            # Update Hive Mind with latest robo_mind waypoint attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('heading'):
-            # Update Hive Mind with latest robo_mind heading attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-    def initialise(self):
-        self.compare_robot_hive_graphs()
-
-    def update(self):
-        return py_trees.common.Status.SUCCESS
-
-class Connect_To_Neighbour_Mind(py_trees.behaviour.Behaviour):
-    def __init__(self, name, robot_index):
-        super().__init__(name)
-        self.robot_index = robot_index
-        self.str_index = 'robot_' + str(robot_index)
-        self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
-
-    def setup(self):
-        self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
-
-    def get_neighbour_graph(self, neighbour_id, neighbour_graph):
+    def compare_neighbour_graph(self, neighbour_graph):
         '''
         Here we update the distributed_mind_graph - this is a local copy of all robot observations that is updated when within communication range of other robots
         '''
-        swarm_mind_graph = self.blackboard.distributed_mind.graph
-        robot_graph = self.blackboard.robo_mind.graph
 
-        if neighbour_id not in swarm_mind_graph:
+        for node in neighbour_graph.nodes:
 
+            # Check node is an information node
+            if 'data' in neighbour_graph.nodes[node]:
 
-        # Extract nodes where weight > 0 from the Hive Mind graph
-        weight_nodes = {node: hive_mind_graph.nodes[node] for node in hive_mind_graph.nodes if hive_mind_graph.nodes[node].get('weight', 0) > 0}
+                # If node is not in robot graph - add it
+                if node not in self.blackboard.distributed_hive_mind.graph:
+                    # First check if parent node - i.e. robot name - is in graph
+                    parent = "_".join(str(node).split('_',2)[:2])
+                    if parent not in self.blackboard.distributed_hive_mind.graph:
+                        self.blackboard.robo_mind.add_information_node('robots', parent, **neighbour_graph.nodes[parent])
+                    # Now add actual node
+                    self.blackboard.distributed_hive_mind.add_information_node(parent, node, **neighbour_graph.nodes[node])
 
-        # Loop through nodes in the weight_nodes dictionary
-        for node_name, hive_mind_attributes in weight_nodes.items():
-            # Check if the node exists in the robot's knowledge graph
-            if node_name in robot_graph.nodes:
-                robot_attributes = robot_graph.nodes[node_name]
+                # Otherwise compare to the existing node and only update if more recent
+                else:
+                    neighbor_time = neighbour_graph.nodes[node].get('time', 0)
+                    local_time = self.blackboard.distributed_hive_mind.graph.nodes[node].get('time', 0)
+                    if neighbor_time > local_time:
+                        # Update node attributes
+                        self.blackboard.distributed_hive_mind.graph.nodes[node].update(neighbour_graph.nodes[node])
 
-                # Compare attributes of the two nodes
-                data = {}
-                for key in hive_mind_attributes:
-                    if key == 'data':                    # We only update data attributes as part of the Hive Mind standard architecture
-                        hive_data = hive_mind_attributes[key]
-                        robot_data = robot_attributes[key]
-
-                        # Handle comparison for different types
-                        if isinstance(hive_data, np.ndarray) or isinstance(hive_data, list):
-                            # Compare arrays or lists (ensure same shape/length for arrays)
-                            if len(hive_data) == len(robot_data):  # Length check for lists or arrays
-                                if not np.array_equal(hive_data, robot_data):
-                                    data['hive'] = hive_mind_attributes[key]
-                                    data['robot'] = robot_attributes.get(key)
-                                    data['attribute'] = key
-
-                        elif isinstance(robot_data, str): # TODO: check if all work with robot_data better as it takes away none errors
-                            # Compare strings
-                            if hive_data != robot_data:
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif isinstance(hive_data, (int, float, bool)):
-                            # Compare integers or floats
-                            if hive_data != robot_data:
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif isinstance(hive_data, dict):
-                            if hive_data.keys() != robot_data.keys():
-                                data['hive'] = hive_mind_attributes[key]
-                                data['robot'] = robot_attributes.get(key)
-                                data['attribute'] = key
-
-                        elif hive_data == None:
-                            pass
-
-                        else:
-                            # Handle any other types as needed
-                            print(f"Unsupported type for {key}: {type(hive_data)}")
-
-                # If there are differences, perform actions based on node type
-                if data:
-                    self.handle_update(node_name, data)
-
-    def handle_update(self, node_name, data):
+    def get_neighbour_graph(self, neighbour_id):
         '''
-        Handles the update of information based on the node name.
-        Each node name has a different pre=programmed update protocol.
-        We either update the Hive or the Robo Mind based on the data.
-        We use deepcopy because we do not want to intrinsically link the two data objects in Hive and Robo minds
-        :param node_name: name of node containing information
-        :param data: data held by attributes in the hive and robot (see compare_robot_hive_graphs)
-        :return:
+        Get the latest neighbour graph from the comms_db_graph object - a global store for graph data for
+        the purposes of the simulation.
+
+        In reality - this information would be broadcasted and communicated between robots within a given range.
         '''
-        robo_mind = self.blackboard.robo_mind.graph
-        hive_mind = self.blackboard.hive_mind.graph
-        robo_mind_attr = self.blackboard.robo_mind.graph.nodes[node_name]
-        hive_mind_attr = self.blackboard.hive_mind.graph.nodes[node_name]
+        parent_name = f'robot_{neighbour_id}'
+        nodes = [n for n in self.blackboard.comms_db.graph.nodes if n == parent_name or str(n).startswith(f"{parent_name}")]
+        return self.blackboard.comms_db.graph.subgraph(nodes).copy()  # .copy() to make it a standalone graph
 
-        if node_name.endswith('position'):
-            # Update Hive Mind with robo_mind position attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('chosen_door'):
-            # Update Hive Mind with latest robo_mind chosen door attributes
-            data = robo_mind_attr['data']
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('task_id'):
-            # Update Hive Mind with latest robo_mind waypoint attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
-
-        elif node_name.endswith('heading'):
-            # Update Hive Mind with latest robo_mind heading attributes
-            hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+    def cleanup_graph(self):
+        '''
+        Cleanup our local distributed graph.
+        This behaviour removes all items that are above a certain time threshold as these have expired and are no longer
+        useful to us.
+        '''
 
     def initialise(self):
-        self.compare_robot_hive_graphs()
+        pass
 
     def update(self):
+        # Find neighbours within communication range
+        my_coords = self.blackboard.w_rob_c[self.robot_index]
+        for index, robot in enumerate(self.blackboard.w_rob_c):
+            dis = euclidean_agents(robot, my_coords)
+
+            # If within range - update our local distributed graph
+            if dis < self.blackboard.communication_range:
+                neighbour_graph = self.get_neighbour_graph(index)
+                self.compare_neighbour_graph(neighbour_graph)
+
         return py_trees.common.Status.SUCCESS
 
 class Update_Robo_Mind(py_trees.behaviour.Behaviour):
     '''
     Behaviour class to update the data in the robot's observation space knowledge graph.
+
+    We also update the     We also update the distributed_hive_mind at the same time, this is a simulated object that stores a live copy of all
+ at the same time, this is a simulated object that stores a live copy of all
+    the robot's individual graphs and is used as a means of psuedo-communication - see 'Update_Local_Distributed_Graph'
+    for more.
     '''
     def __init__(self, name, robot_index):
         super().__init__(name)
         self.robot_index = robot_index
         self.str_index = 'robot_' + str(robot_index)
         self.blackboard = self.attach_blackboard_client(name=name, namespace=str(self.str_index))
-        self.blackboard.register_key(key='boxes_seen', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='target_box', access=py_trees.common.Access.WRITE)
-        self.blackboard.register_key(key='place_tol', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='comms_db', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='tick_clock', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='chosen_task', access=py_trees.common.Access.READ)
@@ -487,8 +333,8 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         pass
 
     def update_position(self):
-        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_position', data = self.blackboard.w_rob_c[self.robot_index],
-                                                   time=self.blackboard.tick_clock)
+        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_position', data = self.blackboard.w_rob_c[self.robot_index], time=self.blackboard.tick_clock)
+        self.blackboard.comms_db.update_attribute(f'{self.str_index}_position', data = self.blackboard.w_rob_c[self.robot_index], time=self.blackboard.tick_clock)
 
     def update_led_status(self):
         pass
@@ -498,10 +344,11 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
 
     def update_task_id(self):
         self.blackboard.robo_mind.update_attribute(f'{self.str_index}_task_id', data = self.blackboard.chosen_task)
+        self.blackboard.comms_db.update_attribute(f'{self.str_index}_task_id', data = self.blackboard.chosen_task)
 
     def update_heading(self):
-        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_heading', data = self.blackboard.w_rob_c[self.robot_index][2],
-                                                   time=self.blackboard.tick_clock)
+        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_heading', data = self.blackboard.w_rob_c[self.robot_index][2], time=self.blackboard.tick_clock)
+        self.blackboard.comms_db.update_attribute(f'{self.str_index}_heading', data = self.blackboard.w_rob_c[self.robot_index][2], time=self.blackboard.tick_clock)
 
     def update_lifter_status(self):
         pass
@@ -510,6 +357,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         cell_size = 25  # Define hash cell size (e.g., 100 = 100 cm)
         # Access or initialize the pheromone map dictionary
         robo_pheromone_map = self.blackboard.robo_mind.graph.nodes[f'{self.str_index}_pheromone_map'].get('data')
+        global_dist_robo_pheromone_map = self.blackboard.comms_db.graph.nodes[f'{self.str_index}_pheromone_map'].get('data')
 
         # Robot's current coordinates
         x = self.blackboard.w_rob_c[self.robot_index][0]
@@ -526,14 +374,21 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         else:
             robo_pheromone_map[cell_id] = 1
 
+        # Increment the visit count for the cell_id
+        if cell_id in global_dist_robo_pheromone_map:
+            global_dist_robo_pheromone_map[cell_id] += 1
+        else:
+            global_dist_robo_pheromone_map[cell_id] = 1
+
+        # Update time stamp
+        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_pheromone_map', time=self.blackboard.tick_clock)
+        self.blackboard.comms_db.update_attribute(f'{self.str_index}_pheromone_map', time=self.blackboard.tick_clock)
+
     def update_chosen_door(self):
-        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_chosen_door', data=self.blackboard.chosen_door)
-        # print(self.blackboard.robo_mind.graph.nodes[f'{self.str_index}_chosen_door'])
+        self.blackboard.robo_mind.update_attribute(f'{self.str_index}_chosen_door', data=self.blackboard.chosen_door, time=self.blackboard.tick_clock)
+        self.blackboard.comms_db.update_attribute(f'{self.str_index}_chosen_door', data=self.blackboard.chosen_door, time=self.blackboard.tick_clock)
 
     def update(self):
-
-        hive_mind_graph = self.blackboard.hive_mind.graph
-        robot_graph = self.blackboard.robo_mind.graph
 
         self.update_task_status()
         self.update_position()
@@ -541,7 +396,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
         self.update_speed()
         self.update_task_id()
         self.update_heading()
-        # self.update_pheromone_map()
+        self.update_pheromone_map()
         self.update_chosen_door()
 
         return py_trees.common.Status.SUCCESS
@@ -558,7 +413,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="w_rob_c", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="place_tol", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key='hive_mind', access=py_trees.common.Access.READ)
+        self.blackboard.register_key(key='distributed_hive_mind', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='chosen_door', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='chosen_task', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='traffic_score', access=py_trees.common.Access.WRITE)
@@ -580,7 +435,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         self.door_proximity_threshold = 200
 
         self.multiplier = 2
-        self.doors = 0 # TODO: need a better way of doing this - ideally should be in setup but needs to run after Hive Mind created
+        self.doors = 0 # TODO: need a better way of doing this - ideally should be in setup but needs to run after distributed_hive_mind created
 
         self.info_action_sets = [
             {
@@ -612,10 +467,11 @@ class Select_Action(py_trees.behaviour.Behaviour):
 
     def get_doors(self):
         """
-        Get doors from Hive
+        Unlike Hive implementation - we do not have a central repository to get these from so we assume them as
+        prior knowledge uploaded to the robo_mind graph on startup
         :return: return list of door names
         """
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.robo_mind.graph
         door_list = [n for n in graph.nodes if n.startswith('door_')]
 
         return door_list
@@ -626,7 +482,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         Set next action to 'go_to_door'.
         """
 
-        # Get list of available doors from the Hive
+        # Get list of available doors
         if not self.doors:
             self.doors = self.get_doors()
 
@@ -641,12 +497,12 @@ class Select_Action(py_trees.behaviour.Behaviour):
         Set action to 'go_to_door'
         """
 
-        # Get list of available doors from the Hive
+        # Get list of available doors
         if not self.doors:
             self.doors = self.get_doors()
 
         # Get door details
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.robo_mind.graph
         door_votes = {door: 0 for door in self.doors}
         door_coords = {door: graph.nodes[door].get('coords') for door in self.doors}
 
@@ -654,7 +510,9 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # Set threshold
             self.door_threshold = 5
 
-            # Get traffic data from positions from Hive
+            graph = self.blackboard.distributed_hive_mind.graph
+
+            # Get traffic data from positions from local copy of distributed mind
             position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
 
             for node, attrs in position_nodes.items():
@@ -671,7 +529,8 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # Set threshold
             self.door_threshold = 0
 
-            # Get traffic data from positions from Hive
+            # Get traffic data from positions from distributed_hive_mind
+            graph = self.blackboard.distributed_hive_mind.graph
             position_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'robot_position'}
             my_position = self.blackboard.w_rob_c[self.robot_index]
 
@@ -698,7 +557,8 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # Set threshold
             self.door_threshold = 5
 
-            # Get traffic data from positions from Hive
+            # Get traffic data from positions from distributed_hive_mind
+            graph = self.blackboard.distributed_hive_mind.graph
             chosen_door_nodes = {n: d for n, d in graph.nodes(data=True) if d.get('type') == 'chosen_door'}
 
             for node, attrs in chosen_door_nodes.items():
@@ -711,7 +571,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         # Find doors which have congestion greater than the door_threshold
         # Decision-making based on votes
         above_threshold_doors = [door for door, votes in door_votes.items() if votes > self.door_threshold]
-        SWAP_DIFF = 0 # TODO: changed up changed up chnaged up changed up
+        SWAP_DIFF = 0 # defines a theshold of traffic - if there are SWAP_DIFF less robots at another door, robot moves
 
         # 1) If multiple doors are above threshold including our own, then choose a new door provided it has significantly less
         # congestion than our own (judged by SWAP_DIFF)
@@ -758,7 +618,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         give_way = False
 
         # Get door coords, my position and proximity to door
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.robo_mind.graph
         door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
         my_position = self.blackboard.w_rob_c[self.robot_index]
         my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
@@ -783,7 +643,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         give_way = False
 
         # Get door coords, my position and proximity to door
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.robo_mind.graph
         door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
         my_position = self.blackboard.w_rob_c[self.robot_index]
         my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
@@ -806,7 +666,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
             self.choose_door_by_traffic(type='position_heading')
 
         # Get door coords, my position and proximity to door
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.robo_mind.graph
         door_coords = graph.nodes[self.blackboard.chosen_door].get('coords')
         my_position = self.blackboard.w_rob_c[self.robot_index]
         my_door_proximity = np.sqrt((my_position[0] - door_coords[0]) ** 2 + (my_position[1] - door_coords[1]) ** 2)
@@ -818,18 +678,19 @@ class Select_Action(py_trees.behaviour.Behaviour):
 
         self.blackboard.action = 'go_to_door'
 
-    def get_available_hive_information_types(self):
+    def get_available_shared_information_types(self):
         '''
-        Here we simply search for what information types are available on the Hive with weight = 1.
+        Here we simply search for what information types are available in the distributed_hive_mind that are information types
+        i.e. contain attribute 'data'
         This allows us to make decisions on what information to then extract and act on.
         Treat this like the initial step of an information search or request.
-        :return: hive_info_types (list): list of all information type nodes available on the Hive
+        :return: distributed_hive_mind_info_types (list): list of all information type nodes available on the distributed_hive_mind
         '''
-        graph = self.blackboard.hive_mind.graph
+        graph = self.blackboard.distributed_hive_mind.graph
         selected_nodes = {
             attrs.get('type')
             for node, attrs in graph.nodes(data=True)
-            if attrs.get('weight') == 1 and 'data' in attrs
+            if 'data' in attrs
         }
         return selected_nodes
 
@@ -852,8 +713,8 @@ class Select_Action(py_trees.behaviour.Behaviour):
         if (self.blackboard.chosen_door is None or
             np.sign(robot_coords[0] - door_coords[0]) == np.sign(robot_coords[0] - task_coords[0])):
 
-            # Get shared information types in the Hive
-            selected_info_types = self.get_available_hive_information_types()
+            # Get shared information types in the distributed_hive_mind
+            selected_info_types = self.get_available_shared_information_types()
 
             # Select action function based on available info
             feasible_actions = []
@@ -1130,7 +991,6 @@ class Send_Path(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key="carrying_box", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="target_box", access=py_trees.common.Access.READ)
         self.blackboard.register_key(key="camera_sensor_range", access=py_trees.common.Access.READ)
-        self.blackboard.register_key(key="hive_mind", access=py_trees.common.Access.READ)
         self.setup()
 
     def setup(self): 
@@ -1271,7 +1131,7 @@ def create_root(robot_index):
     update_robo_mind = Update_Robo_Mind(name='Update Robo Graph', robot_index=robot_index)
 
     # Connect to HM local task log
-    connect_to_hm = Connect_To_Hive_Mind(name='Update Hive Graph', robot_index=robot_index)
+    connect_to_hm = Update_distributed_hive_mind(name='Update Distributed Hive Graph', robot_index=robot_index)
 
     # Go to door behaviour
     go_to_door = py_trees.composites.Sequence(name='Go To Door', memory=False)
