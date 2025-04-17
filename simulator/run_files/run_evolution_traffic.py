@@ -36,7 +36,7 @@ map_cfg = Config(cfg_path=map_cfg)
 
 ###### GA Parameters ######
 POPULATION_SIZE = 10
-NUM_GENERATIONS = 20
+NUM_GENERATIONS = 30
 MUTATION_RATE = 0.1             # Set to 0.0 for no mutation
 CROSSOVER_RATE = 0.7            # Set to 0.0 for no crossover
 ELITISM_RATE = 0.3
@@ -69,7 +69,7 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
         # Multiprocessing setup
-        self.num_cores = 5
+        self.num_cores = 10
 
     def create_result_file(self):
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"
