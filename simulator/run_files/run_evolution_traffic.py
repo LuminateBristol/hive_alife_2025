@@ -163,13 +163,13 @@ class GeneticOptimisation:
         # Build a dictionary to maintain a relationship between population items and fitness_scores items
         population_fitness_dict = {}
         for index, genome in enumerate(population):
-            population_fitness_dict[tuple(genome)] = fitness_scores[index] # Use tuple as a dictionary key must be immutable and hashable
+            population_fitness_dict[index] = fitness_scores[index] # Use tuple as a dictionary key must be immutable and hashable
 
         while len(selected) < POPULATION_SIZE:  # Ensure enough parents for the next generation
             tournament = random.sample(list(population_fitness_dict), min(TOURNAMENT_SIZE, len(population))) # Pick random sample from the keys of population_fitness_dict (i.e. population)
-            tournament_fitness_dict = {key: population_fitness_dict[key] for key in tournament}              # Populate new dictionary with the tournament selected items only
+            tournament_fitness_dict = {index: population_fitness_dict[index] for index in tournament}              # Populate new dictionary with the tournament selected items only
             best_individual = min(tournament_fitness_dict, key=tournament_fitness_dict.get)                  # Choose best individual based on the lowest fitness and retuen the genome from the population
-            selected.append(list(best_individual))
+            selected.append(population[best_individual])
 
         return selected
 

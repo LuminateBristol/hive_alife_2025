@@ -95,11 +95,11 @@ def run_many_acov():
 
 def run_many_traf():
 
-    num_runs = 10
-    num_robots = [10,20,50]
+    num_runs = 5
+    num_robots = [100,200]
 
     # Open file once and write the header
-    with open('traffic_dist.txt', 'w') as f:
+    with open('traffic_cent.txt', 'w') as f:
         f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
 
     for num in num_robots:
@@ -110,7 +110,7 @@ def run_many_traf():
         score_total = 0
         time_total = 0
         for i in range(num_runs):
-            sim = VizSim(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
+            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
             counter = sim.run(iteration=i)
             score = sim.traffic_score['score']
             score_total += score
@@ -118,7 +118,7 @@ def run_many_traf():
 
             # Append results for this run
             with open('traffic_dist.txt', 'a') as f:  # Append mode
-                f.write(f"{i}\ttraffic\tdistributed\t{num}\t{counter}\n")
+                f.write(f"{i}\ttraffic\tcentralised\t{num}\t{counter}\n")
 
         # Record results
         av_score = score_total / num_runs
