@@ -171,7 +171,7 @@ class GraphMind(LocalGraph):
             attribute_filter (dict, optional): Dictionary containing attributes to filter nodes (e.g., {'weight': 1}). Defaults to None.
         """
         plt.figure(figsize=(12, 8))
-        pos = nx.arf_layout(self.graph)  # or another layout
+        pos = nx.kamada_kawai_layout(self.graph)  # or another layout
 
         # Color mapping for node types
         color_map = {
@@ -202,7 +202,6 @@ class GraphMind(LocalGraph):
         # Draw the filtered graph, ensuring colors correspond to the nodes in the filtered graph
         nx.draw(filtered_graph, pos, with_labels=True, node_color=node_colors[:len(filtered_graph)], font_size=6)
         edge_labels = nx.get_edge_attributes(filtered_graph, 'edge_type')
-        nx.draw_networkx_edge_labels(filtered_graph, pos, edge_labels=edge_labels, font_size=3)
         plt.title('Filtered Graph Mind Visualization')
         plt.show()
 

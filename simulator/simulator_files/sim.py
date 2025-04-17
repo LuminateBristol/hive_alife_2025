@@ -8,7 +8,7 @@ import numpy as np
 import py_trees
 import matplotlib.pyplot as plt
 import copy
-from . import Swarm, Swarm_Centralised, Warehouse, Robot, DeliveryPoint, GraphMind
+from . import Swarm, Swarm_Centralised, Swarm_Decentralised, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class  Simulator:
     """
@@ -29,28 +29,32 @@ class  Simulator:
         self.gen_cfg = gen_config
         self.exp_cfg = exp_config
         self.map_cfg = map_config
-        self.exit_criteria = self.exp_cfg.get('exit_criteria')
+        self.task = self.exp_cfg.get('exit_criteria')
         self.drop_zone_limit = self.exp_cfg.get('drop_zone_limit')
 
         # Init task
         self.task_setup()
 
+        # Init Hive and Robot Knowledge Graph
+        # TODO: add in a controller specification here - Hive is only used for 'Hive' controllers(?)
+        controller = self.exp_cfg.get('behaviour_tree')
+        if controller.endswith('hive'):
+            self.hive_setup()
+        elif controller.endswith('distributed'):
+            self.comms_db_setup()
+
         # Init swarm
         try:
-            self.swarm = self.build_swarm()
+            self.swarm = self.build_swarm(self.exp_cfg.get('behaviour_tree'))
         except Exception as e:
             raise e
-
-        # Init Hive and Robot Knowledge Graph
-        self.hive_setup()
 
         # Init warehouse
         self.warehouse = Warehouse(
             self.gen_cfg,
             self.exp_cfg,
             self.map_cfg,
-            self.swarm,
-            hive_mind=self.Hive_Mind)
+            self.swarm)
 
     def task_setup(self):
         """
@@ -106,36 +110,29 @@ class  Simulator:
             for task in tasks:
                 self.Hive_Mind.add_information_node(task[0], task[1], task[2], **task[3])
 
-        # Add a optimistion version on which the cleanup (see below) is not ran
-        # This keeps the Hive full size ready to optimise on
-        self.optimisation_hive_mind = copy.deepcopy(self.Hive_Mind)
+    def comms_db_setup(self):
+        """
+        Setup the Distrbibuted knowledge graphs from the following
+        """
 
-        # Build robo_mind and add observation space to Hive Mind for each agent
-        for agent in self.swarm.agents:
-            agent.build_robo_mind(entities, tasks)
-            self.Hive_Mind.add_robot_observation_space(agent.observation_space)
-            self.optimisation_hive_mind.add_robot_observation_space(agent.observation_space)
+        self.Comms_Db = GraphMind()
 
-        # Handle graph printing
-        if self.gen_cfg.get('print_kg') == True:
-            self.Hive_Mind.print_graph_mind()
-            self.Hive_Mind.plot_node_tree('robot_1')
-            self.Hive_Mind.print_hive_mind()
-
-    def build_swarm(self):
+    def build_swarm(self, controller):
         """
         Construct the swarm by creating robot agents and adding them to the swarm.
-
-        Args:
-            cfg (dict): Configuration dictionary containing swarm and robot parameters.
-
-        Returns:
-            Swarm: The initialized swarm object.
         """
 
-        robot_obj = Robot( self.gen_cfg,  self.exp_cfg)
-        swarm = Swarm(self.gen_cfg, self.exp_cfg)
-        swarm.add_agents(robot_obj,  processed_delivery_points=self.processed_delivery_points, traffic_score = self.traffic_score)
+        robot_obj = Robot(self.gen_cfg,  self.exp_cfg)
+
+        if controller.endswith('hive'):
+            swarm = Swarm(self.gen_cfg, self.exp_cfg)
+            swarm.add_agents(robot_obj, self.Hive_Mind, processed_delivery_points=self.processed_delivery_points, traffic_score=self.traffic_score)
+        elif controller.endswith('centralised'):
+            swarm = Swarm_Centralised(self.gen_cfg, self.exp_cfg)
+            swarm.add_agents(robot_obj, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
+        elif controller.endswith('distributed'):
+            swarm = Swarm_Decentralised(self.gen_cfg, self.exp_cfg)
+            swarm.add_agents(robot_obj, self.Comms_Db, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
 
         return swarm
 
@@ -154,13 +151,13 @@ class  Simulator:
         Args:
             counter (int, optional): The current time step of the simulation. Defaults to None.
         """
-        if self.exit_criteria == 'counter':
+        if self.task == 'counter':
             if counter > self.gen_cfg.get('time_limit'):
                 print('{counter} counts reached - Time limit expired')
                 self.exit_threads = True
                 self.exit_run = True
 
-        elif self.exit_criteria == 'logistics':
+        elif self.task == 'logistics':
             if all(dp.delivered for dp in self.processed_delivery_points):
                 print(f'All deliveries complete in {counter} timesteps - Exit sim.')
                 self.exit_threads = True
@@ -171,7 +168,7 @@ class  Simulator:
                 self.exit_threads = True
                 self.exit_run = True
 
-        elif self.exit_criteria == 'area_coverage':
+        elif self.task == 'area_coverage':
             total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
             percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
             if counter > self.gen_cfg.get('time_limit') or percent_explored >= 80:
@@ -180,7 +177,7 @@ class  Simulator:
                 self.exit_threads = True
                 self.exit_run = True
 
-        elif self.exit_criteria == 'traffic':
+        elif self.task == 'traffic':
             # print(counter, self.traffic_score)
             if self.traffic_score['score'] >= 200 or counter > self.gen_cfg.get('time_limit'):
                 print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
