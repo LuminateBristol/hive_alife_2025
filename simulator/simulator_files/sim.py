@@ -29,7 +29,7 @@ class  Simulator:
         self.gen_cfg = gen_config
         self.exp_cfg = exp_config
         self.map_cfg = map_config
-        self.task = self.exp_cfg.get('exit_criteria')
+        self.task = self.exp_cfg.get('task')
         self.drop_zone_limit = self.exp_cfg.get('drop_zone_limit')
 
         # Init task
@@ -179,7 +179,7 @@ class  Simulator:
 
         elif self.task == 'traffic':
             # print(counter, self.traffic_score)
-            if self.traffic_score['score'] >= 200 or counter > self.gen_cfg.get('time_limit'):
+            if self.traffic_score['score'] >= 100 or counter > self.gen_cfg.get('time_limit'):
                 print(f"Counts: {counter}. Traffic score: {self.traffic_score['score']}")
                 self.exit_threads = True
                 self.exit_run = True

@@ -28,7 +28,6 @@ import csv
 import time
 
 import networkx as nx
-from mistune.plugins.speedup import parse_text
 
 
 def distance_to_wall(robot_c, wall):
