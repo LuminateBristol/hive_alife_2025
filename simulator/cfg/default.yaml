@@ -4,7 +4,8 @@
 robot:
   radius: 12.5
   max_v: 2
-  camera_sensor_range: 100
+  camera_sensor_range: 100 # cm
+  communication_range: 500 # cm
   print_bt: False
 
 print_kg: False

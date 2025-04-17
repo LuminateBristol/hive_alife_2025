@@ -91,9 +91,9 @@ class GeneticOptimisation:
                 fitness = fitness_scores[i]
                 file.write(f"{generation}\t{genome}\t{_ave_time}\t{_tot_weight}\t{fitness}\n")
 
-    def get_hive_mind_info_types(self):
+    def get_hive_mind_info_types(self): # TODO: testing a non-optimisation Hive graph as we are not doing cleanup now anyway
         sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
-        hive_mind = sim.optimisation_hive_mind.graph
+        hive_mind = sim.hive_mind.graph
         # Find a groups of all information nodes with the same name
         information_nodes = [n for n, d in hive_mind.nodes(data=True) if 'weight' in d]
         groups = {}

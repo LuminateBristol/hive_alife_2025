@@ -9,14 +9,13 @@ class Warehouse:
     Handles the initialization of objects, robots, and the pheromone mapping.
     """
 
-	def __init__(self, gen_cfg, exp_cfg, map_cfg, swarm, hive_mind = None):
+	def __init__(self, gen_cfg, exp_cfg, map_cfg, swarm):
 		"""
         Initializes the warehouse with dimensions, walls, boxes, and other relevant settings.
 
         Args:
             config (Config): Configuration object with warehouse parameters.
             swarm (class object): The swarm operating within the warehouse - initated in sim.py - see objects.py for definition
-            hive_mind (class object): Hive knowledge graph 0 initiated in sim.py - see hive_mind.py for definition
         """
 		self.gen_cfg = gen_cfg
 		self.exp_cfg = exp_cfg
@@ -28,7 +27,6 @@ class Warehouse:
 		self.box_range = gen_cfg.get('warehouse', 'box_radius')*2.0	#box_range # range at which a box can be picked up
 		self.radius = gen_cfg.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)
 		self.pheromone_map = {}
-		self.hive_mind = hive_mind
 
 		self.delivered = 0 # Number of boxes that have been delivered
 		self.counter = 0 # time starts at 0s or time step = 0 
@@ -46,12 +44,10 @@ class Warehouse:
 		else:
 			self.depot = False
 
-		# Initialise map and hive_mind objects
+		# Initialise map
 		self.map = Map(self.width, self.height, self.wallsh, self.wallsv)
 		self.swarm = swarm
 		swarm.add_map(self.map)
-		if self.hive_mind is not None:
-			swarm.add_hive_mind(self.hive_mind)
 
 		# Initiate robots
 		self.rob_c = []
@@ -196,11 +192,6 @@ class Warehouse:
 			# Update pheromones
 			if self.exp_cfg.get('warehouse', 'pheromones'):
 				self.update_pheromone_map()
-
-			# Run Hive Mind cleanup
-			# (note in reality this would be handled by the Hive server but since this is hosted in the warehouse, we run here)
-			if self.hive_mind is not None:
-				self.hive_mind.cleanup_hive_mind()
 
 		self.counter += 1
 		self.swarm.counter = self.counter
