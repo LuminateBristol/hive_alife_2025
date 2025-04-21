@@ -166,7 +166,8 @@ exp_3_traffic:
   task: 'traffic'
   behaviour_tree: 'traffic_distributed'  # Options: 'traffic_hive' / 'traffic_centralised' / "traffic_distributed"
   map: map2
-  number_of_agents: 20
+  number_of_agents: 200
+
   latency: 0
 
   # Setup warehouse parameters
