@@ -69,7 +69,7 @@ class GeneticOptimisation:
         self.result_file_path = self.create_result_file()
 
         # Multiprocessing setup
-        self.num_cores = 15
+        self.num_cores = 10
 
     def create_result_file(self):
         filename = f"GA_results_pop{POPULATION_SIZE}_gen{NUM_GENERATIONS}_cross{CROSSOVER_RATE}_elit{ELITISM_RATE}_roulette.txt"

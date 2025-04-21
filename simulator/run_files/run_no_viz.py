@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+from multiprocessing import Pool
 
 # from babel.messages.setuptools_frontend import extract_messages
 
@@ -93,13 +94,59 @@ def run_many_acov():
 
     print("Results complete and saved - yay!")
 
-def run_many_traf():
 
-    num_runs = 5
-    num_robots = [100,200]
+def run_traffic_sim(args):
+    num_robots, run_id = args
+
+    # Set up configs locally to avoid shared state issues
+    local_gen_cfg = Config(cfg_path=CFG_FILES['default'])
+    local_exp_cfg = Config(cfg_path=CFG_FILES['exp_setup'], ex_id=ex_id)
+    local_map_cfg = Config(cfg_path=CFG_FILES['map'])
+
+    local_exp_cfg.set('number_of_agents', num_robots)
+
+    sim = Simulator(local_gen_cfg, local_exp_cfg, local_map_cfg, verbose=False)
+    counter = sim.run(iteration=run_id)
+    score = sim.traffic_score['score']
+
+    return (run_id, num_robots, counter, score)
+
+def run_many_traf_parallel():
+    num_runs = 20
+    num_robots_list = [10, 50, 100, 200]
 
     # Open file once and write the header
-    with open('traffic_cent.txt', 'w') as f:
+    with open('traffic_dist.txt', 'w') as f:
+        f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
+
+    for num_robots in num_robots_list:
+        print(f"Running simulations for num_robots: {num_robots}")
+        args_list = [(num_robots, i) for i in range(num_runs)]
+
+        with Pool(processes=10) as pool:
+            results = pool.map(run_traffic_sim, args_list)
+
+        score_total = 0
+        time_total = 0
+
+        with open('traffic_dist.txt', 'a') as f:
+            for run_id, num, counter, score in results:
+                f.write(f"{run_id}\ttraffic\tdistributed\t{num}\t{counter}\n")
+                score_total += score
+                time_total += counter
+
+        av_score = score_total / num_runs
+        av_time = time_total / num_runs
+        print(f"Results complete - num_rob: {num_robots}. Avg score: {av_score}, Avg time: {av_time}")
+
+
+def run_many_traf():
+
+    num_runs = 20
+    num_robots = [10,50,100,200]
+
+    # Open file once and write the header
+    with open('traffic_dist.txt', 'w') as f:
         f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
 
     for num in num_robots:
@@ -118,7 +165,7 @@ def run_many_traf():
 
             # Append results for this run
             with open('traffic_dist.txt', 'a') as f:  # Append mode
-                f.write(f"{i}\ttraffic\tcentralised\t{num}\t{counter}\n")
+                f.write(f"{i}\ttraffic\tdistributed\t{num}\t{counter}\n")
 
         # Record results
         av_score = score_total / num_runs
