@@ -164,9 +164,9 @@ exp_2_area_coverage:
 exp_3_traffic:
   # Area coverage example experimental setup
   task: 'traffic'
-  behaviour_tree: 'traffic_hive'  # Options: 'traffic_hive' / 'traffic_centralised' / "traffic_distributed"
+  behaviour_tree: 'traffic_distributed'  # Options: 'traffic_hive' / 'traffic_centralised' / "traffic_distributed"
   map: map2
-  number_of_agents: 20
+  number_of_agents: 200
 
   latency: 0
 

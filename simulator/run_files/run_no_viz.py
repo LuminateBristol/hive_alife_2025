@@ -95,12 +95,12 @@ def run_many_acov():
 
 def run_many_traf():
 
-    num_runs = 3
-    num_robots = [100]
+    num_runs = 20
+    num_robots = [10, 50, 100, 200]
 
-    # # Open file once and write the header
-    # with open('results/traffic_optimised.txt', 'w') as f:
-    #     f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
+    # Open file once and write the header
+    with open('traffic_optimised_dist.txt', 'w') as f:
+        f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
 
     for num in num_robots:
         # Set number of robots
@@ -116,9 +116,9 @@ def run_many_traf():
             score_total += score
             time_total += counter
 
-            # # Append results for this run
-            # with open('results/traffic.txt', 'a') as f:  # Append mode
-            #     f.write(f"{i}\ttraffic\toptimised\t{num}\t{counter}\n")
+            # Append results for this run
+            with open('traffic_dist.txt', 'a') as f:  # Append mode
+                f.write(f"{i}\ttraffic\tdistributed\t{num}\t{counter}\n")
 
         # Record results
         av_score = score_total / num_runs
