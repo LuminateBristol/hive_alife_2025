@@ -145,7 +145,7 @@ def run_traffic_sim(args):
     return (run_id, num_robots, counter, score)
 
 def run_many_traf_parallel():
-    num_runs = 20
+    num_runs = 30
     num_robots_list = [10, 20, 50, 100, 200]
 
     # Open file once and write the header
@@ -156,7 +156,7 @@ def run_many_traf_parallel():
         print(f"Running simulations for num_robots: {num_robots}")
         args_list = [(num_robots, i) for i in range(num_runs)]
 
-        with Pool(processes=os.cpu_count()) as pool:
+        with Pool(processes=15) as pool:
             results = pool.map(run_traffic_sim, args_list)
 
         score_total = 0
@@ -164,7 +164,7 @@ def run_many_traf_parallel():
 
         with open('traffic_dist.txt', 'a') as f:
             for run_id, num, counter, score in results:
-                f.write(f"{run_id}\ttraffic\tdistributed\t{num}\t{counter}\n")
+                f.write(f"{run_id}\ttraffic\dist\t{num}\t{counter}\n")
                 score_total += score
                 time_total += counter
 

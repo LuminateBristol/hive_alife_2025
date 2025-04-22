@@ -43,10 +43,10 @@ class Robot:
         The observation lists here are set up for GraphMind class in hive_mind.py. The format is as follows:
         [parent_name, node_name, edge, **attributes]
         """
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position',        'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':np.array([999, 999, 999]),   'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_position',      'has_status',   {'type':'robot_position',        'weight':1, 'robot_name':f'robot_{self.robot_index}',  'data':np.array([999, 999, 999]),   'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_led_status',    'has_status',   {'type':'robot_led_status',      'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':[],                          'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_lifter_status', 'has_status',   {'type':'robot_lifter_status',   'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':False,                       'time':0} ])
-        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading',         'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
+        self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_heading',       'has_status',   {'type':'robot_heading',         'weight':1, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_speed',         'has_status',   {'type':'robot_speed_status',    'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_task_id',       'in_progress',  {'type':'robot_task_id',         'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':0,                           'time':0} ])
         self.observation_space.append([f'robot_{self.robot_index}', f'robot_{self.robot_index}_pheromone_map', 'has_status',   {'type':'robot_pheromone_map',   'weight':0, 'robot_name':f'robot_{self.robot_index}',  'data':{},                          'time':0} ])
