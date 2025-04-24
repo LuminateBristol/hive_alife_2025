@@ -399,7 +399,7 @@ class Update_Robo_Mind(py_trees.behaviour.Behaviour):
 
     def update(self):
 
-        hive_mind_graph = self.blackboard.hive_mind.graph
+        # hive_mind_graph = self.blackboard.hive_mind.graph  
         robot_graph = self.blackboard.robo_mind.graph
 
         self.update_task_status()
@@ -706,7 +706,7 @@ def create_root(robot_index):
     update_robo_mind = Update_Robo_Mind(name='Update robo mind', robot_index=robot_index)
 
     # Connect to HM local task log
-    connect_to_hm = Connect_To_Hive_Mind(name='Connect to HM', robot_index=robot_index)
+    # connect_to_hm = Connect_To_Hive_Mind(name='Connect to HM', robot_index=robot_index)
 
     # Assigned path behaviour
     assigned_path = py_trees.composites.Sequence(name='Assigned Path', memory=False)

@@ -149,7 +149,7 @@ def run_many_traf_parallel():
     num_robots_list = [10, 20, 50, 100, 200]
 
     # Open file once and write the header
-    with open('traffic_naive.txt', 'w') as f:
+    with open('traffic_cent.txt', 'w') as f:
         f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
 
     for num_robots in num_robots_list:
@@ -162,9 +162,9 @@ def run_many_traf_parallel():
         score_total = 0
         time_total = 0
 
-        with open('traffic_naive.txt', 'a') as f:
+        with open('traffic_cent.txt', 'a') as f:
             for run_id, num, counter, score in results:
-                f.write(f"{run_id}\ttraffic\tnaive\t{num}\t{counter}\n")
+                f.write(f"{run_id}\ttraffic\tcentralised\t{num}\t{counter}\n")
                 score_total += score
                 time_total += counter
 
