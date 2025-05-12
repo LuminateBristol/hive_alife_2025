@@ -13,9 +13,9 @@ Install the simulator by simply cloning this repository. Note that some dependen
 ### Overview
 This simulator has been built for use with behaviour tree controllers. The main branch currently includes one example, a random walk. Other branches in this directory may contain more extensive conrtrollers that other users have developed for their own research.
 
-The system works through a series of global lists which store the location of all robots (rob_c), the walls (wallsh, wallsv) and the location of all boxes (boxes). The simulator is initiated in the Simulator class which sets up the warehouse and swarm. The warehouse is madeup of the pre-defined walls and contains the locations of robots and boxes for plotting. The Swarm class is made up of x number of Robot classes. 
+The system works through a series of global lists which store the location of all robots (rob_c), the walls (wallsh, wallsv) and the location of all boxes (boxes). The simulator is initiated in the Simulator class, which sets up the warehouse and swarm. The warehouse is made up of the pre-defined walls and contains the locations of robots and boxes for plotting. The Swarm class is made up of x number of Robot classes. 
 
-Each Robot object hosts a behaviour tree controller, in the implementation in main, these are homogeneous. Behaviour trees have a storage feature called 'Blackboard', this is used as a type of memory for each robot to store information about themselves and the other objects in the warehouse. The robot's sensors are artificially simualted by comparing the robot's own position against the position of others. The position of others (robots, walls, boxes) are all stored in each robot's blackboard making it easy and quick to compare locations locally, as if the robot was using sensors. Each robot's blackboard is updates on each iteration so that the positions of others stay up to date.
+Each Robot object hosts a behaviour tree controller, in the implementation in main, these are homogeneous. Behaviour trees have a storage feature called 'Blackboard', which is used as a type of memory for each robot to store information about themselves and the other objects in the warehouse. The robot's sensors are artificially simulated by comparing the robot's own position against the positions of others. The positions of others (robots, walls, boxes) are all stored in each robot's blackboard, making it easy and quick to compare locations locally, as if the robot were using sensors. Each robot's blackboard is updates on each iteration so that the positions of others stay up to date.
 
 ### Running the simulation
 To run the simulation, simply navigate to the 'run_files', select a python run file from within, and run.
@@ -26,13 +26,13 @@ To make generalised changes to the simulation, the config files (cfg folder) can
 
 
 ### Modifying the Swarm Behaviours 
-Behaviour trees are currently implemented using the PyTrees library. This is very well documented here: https://py-trees.readthedocs.io/en/devel/
+Behaviour trees are currently implemented using the PyTrees library.
 
 Users are encouraged to create new or modify existing behaviour trees for their own simulations using the same structure given in this repo. The behaviour tree can be split into multiple files as long as the root of the tree is called in the same way.
 
 
 ### File structure
-The object-oriented approach of this simulator means that there is an interlinking relationship between different objects in the file structure. The diagram below gives and overview as to how each part fits together.
+The object-oriented approach of this simulator means that there is an interlinking relationship between different objects in the file structure. The diagram below gives an overview of how each part fits together.
 
 #### Run Files (simulator)
 | Simulator File | Description                                                                                |
