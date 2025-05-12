@@ -34,8 +34,6 @@ Users are encouraged to create new or modify existing behaviour trees for their 
 ### File structure
 The object-oriented approach of this simulator means that there is an interlinking relationship between different objects in the file structure. The diagram below gives and overview as to how each part fits together.
 
-See images/dot_2d_flow.jpg for a depiction of how information moves around the simulator.
-
 #### Run Files (simulator)
 | Simulator File | Description                                                                                |
 |----------------|--------------------------------------------------------------------------------------------|
