@@ -219,30 +219,6 @@ class VizSim(Simulator):
                 if self.gen_cfg.get('animate'):
                     exit()
 
-        elif self.task == 'logistics':
-
-            if all(dp.delivered for dp in self.processed_delivery_points):
-                if self.verbose:
-                    print("All boxes delivered in", counter, "seconds")
-
-                if self.gen_cfg.get('animate'):
-                    exit()
-
-            if counter > self.gen_cfg.get('time_limit'):
-                if self.verbose:
-                    print("in", counter, "seconds")
-
-                if self.gen_cfg.get('animate'):
-                    exit()
-
-        elif self.task == 'area_coverage':
-            if counter > self.gen_cfg.get('time_limit'):
-                total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
-                print(self.warehouse.pheromone_map)
-                percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
-                print(f'{counter} counts reached - Time limit expired - Percentage explored: {percent_explored}%')
-                exit()
-
         elif self.task == 'traffic':
             # print(counter, self.traffic_score)
             if self.traffic_score['score'] >= 200:
@@ -299,18 +275,6 @@ class VizSim(Simulator):
             color="#f2f2f2",
             fillstyle='none'
         )
-
-        # LOGISTICS GRAPHICS
-        # Plot delivery points as squares
-        for dp in self.processed_delivery_points:
-            box_marker_size = self.get_marker_size_in_data_units(box_size, self.ax)
-
-            # Plot each delivery point as a square
-            self.ax.plot(dp.x, dp.y, marker='s', markersize=box_marker_size * 1.8,
-                    markeredgecolor='black',
-                    markerfacecolor=dp.colour,  # Solid fill with the same color as edge
-                    linewidth=2,
-                    alpha=0.35)
 
         # Plot dropzone
         self.ax.fill_between(np.linspace(0, self.gen_cfg.get('warehouse', 'width'), 100), 0, self.exp_cfg.get('warehouse', 'drop_zone_limit'), color='lightgrey', alpha=0.2)

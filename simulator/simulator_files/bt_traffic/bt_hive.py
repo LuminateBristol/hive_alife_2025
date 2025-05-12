@@ -450,6 +450,7 @@ class Select_Action(py_trees.behaviour.Behaviour):
         self.blackboard.action = 'init'
         self.blackboard.chosen_door = None
         self.blackboard.chosen_task = random.choice(['task_1', 'task_2'])
+        self.init_task = 1
 
     def setup(self):
         self.logger.debug(f"Select action::setup {self.name}")
@@ -759,7 +760,12 @@ class Select_Action(py_trees.behaviour.Behaviour):
             # If we are within place_tol of the task - set new task and reset door to None
             dis_to_task = np.sqrt((robot_coords[0]-task_coords[0])**2 + (robot_coords[1]-task_coords[1])**2)
             if dis_to_task < self.blackboard.place_tol:
-                self.blackboard.traffic_score['score'] += 1
+                # If we are in task initiation - i.e. we have not visited a task yet - then no score addition
+                # Else - add to the score
+                if self.init_task:
+                    self.init_task = 0
+                else:
+                    self.blackboard.traffic_score['score'] += 1
                 self.blackboard.chosen_door = None
                 self.blackboard.chosen_task = 'task_2' if self.blackboard.chosen_task == 'task_1' else 'task_1'
 

@@ -28,21 +28,12 @@ class Warehouse:
 		self.radius = gen_cfg.get('warehouse', 'box_radius') # physical radius of the box (approximated to a circle even though square in animation)
 		self.pheromone_map = {}
 
+		# Setup parameters for object transport - note for this experiment these are not used to all set to 0
+		self.number_of_boxes = 0
+		self.boxes = []
+		self.depot = 0
 		self.delivered = 0 # Number of boxes that have been delivered
-		self.counter = 0 # time starts at 0s or time step = 0 
-
-		# LOGISTICS: Initialise boxes
-		self.boxes = [] # centre coordinates of boxes starts as an empty list
-		for colour in exp_cfg.get('warehouse', 'boxes'):
-			for i in range(exp_cfg.get('warehouse', 'boxes')[colour]):
-				self.boxes.append(Box(colour=colour))
-		self.number_of_boxes = len(self.boxes)
-
-		# LOGISTICS: Initiate depot
-		if exp_cfg.get('warehouse', 'depot') == True:
-			self.depot = True
-		else:
-			self.depot = False
+		self.counter = 0 # time starts at 0s or time step = 0
 
 		# Initialise map
 		self.map = Map(self.width, self.height, self.wallsh, self.wallsv)

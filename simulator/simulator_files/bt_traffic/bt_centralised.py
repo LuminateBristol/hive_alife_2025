@@ -500,7 +500,7 @@ class Assigned_Path(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='assigned_path', access=py_trees.common.Access.READ)
 
     def setup(self):
-        pass
+        self.init_task = 1
 
     def initialise(self):
         pass
@@ -521,7 +521,12 @@ class Assigned_Path(py_trees.behaviour.Behaviour):
         if dis_to_wp < tol:
             # Waypoint complete - update log if it was a task wp
             if self.blackboard.next_waypoint.startswith('task'):
-                self.blackboard.traffic_score['score'] += 1
+                # If we are in task initiation - i.e. we have not visited a task yet - then no score addition
+                # Else - add to the score
+                if self.init_task:
+                    self.init_task = 0
+                else:
+                    self.blackboard.traffic_score['score'] += 1
             current_index = self.blackboard.assigned_path.index(self.blackboard.next_waypoint)
             next_index = (current_index + 1) % len(self.blackboard.assigned_path)
             self.blackboard.next_waypoint = self.blackboard.assigned_path[next_index]

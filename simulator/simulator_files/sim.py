@@ -8,7 +8,7 @@ import numpy as np
 import py_trees
 import matplotlib.pyplot as plt
 import copy
-from . import Swarm, Swarm_Centralised, Swarm_Decentralised, Warehouse, Robot, DeliveryPoint, GraphMind
+from . import Swarm, Swarm_Centralised, Warehouse, Robot, DeliveryPoint, GraphMind
 
 class  Simulator:
     """
@@ -36,12 +36,9 @@ class  Simulator:
         self.task_setup()
 
         # Init Hive and Robot Knowledge Graph
-        # TODO: add in a controller specification here - Hive is only used for 'Hive' controllers(?)
         controller = self.exp_cfg.get('behaviour_tree')
         if controller.endswith('hive'):
             self.hive_setup()
-        elif controller.endswith('distributed'):
-            self.comms_db_setup()
 
         # Init swarm
         try:
@@ -61,21 +58,6 @@ class  Simulator:
         Setup task parameters depending on the selected task
         - see lib and exp_setup.yaml - for specification
         """
-
-        # LOGISTICS SETUP
-        self.processed_delivery_points = []
-        delivery_points = self.exp_cfg.get('delivery_points')
-        # Convert task_log to DeliveryPoint objects and append to the list
-        if delivery_points is not None:
-            for dp_id, dp_info in delivery_points.items():
-                x, y = dp_info['target_c']
-                colour = dp_info['colour']
-                delivered = dp_info['status']  # Assuming 'status' indicates if delivered or not
-                # Append the DeliveryPoint instance
-                self.processed_delivery_points.append(DeliveryPoint(x, y, colour, delivered, dp_id))
-
-        # AREA_COVERAGE SETUP
-        # na
 
         # TRAFFIC SETUP
         self.traffic_score = {'score': 0}
@@ -126,13 +108,10 @@ class  Simulator:
 
         if controller.endswith('hive'):
             swarm = Swarm(self.gen_cfg, self.exp_cfg)
-            swarm.add_agents(robot_obj, self.Hive_Mind, processed_delivery_points=self.processed_delivery_points, traffic_score=self.traffic_score)
+            swarm.add_agents(robot_obj, self.Hive_Mind, traffic_score=self.traffic_score)
         elif controller.endswith('centralised'):
             swarm = Swarm_Centralised(self.gen_cfg, self.exp_cfg)
-            swarm.add_agents(robot_obj, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
-        elif controller.endswith('distributed'):
-            swarm = Swarm_Decentralised(self.gen_cfg, self.exp_cfg)
-            swarm.add_agents(robot_obj, self.Comms_Db, processed_delivery_points=self.processed_delivery_points,  traffic_score=self.traffic_score)
+            swarm.add_agents(robot_obj,  traffic_score=self.traffic_score)
 
         return swarm
 
@@ -154,26 +133,6 @@ class  Simulator:
         if self.task == 'counter':
             if counter > self.gen_cfg.get('time_limit'):
                 print('{counter} counts reached - Time limit expired')
-                self.exit_threads = True
-                self.exit_run = True
-
-        elif self.task == 'logistics':
-            if all(dp.delivered for dp in self.processed_delivery_points):
-                print(f'All deliveries complete in {counter} timesteps - Exit sim.')
-                self.exit_threads = True
-                self.exit_run = True
-
-            if counter > self.gen_cfg.get('time_limit'):
-                print(f'{counter} counts reached - Time limit expired')
-                self.exit_threads = True
-                self.exit_run = True
-
-        elif self.task == 'area_coverage':
-            total_cells = (self.gen_cfg.get('warehouse', 'width') * self.gen_cfg.get('warehouse', 'height')) / self.gen_cfg.get('warehouse', 'cell_size') ** 2
-            percent_explored = (len(self.warehouse.pheromone_map) / total_cells) * 100
-            if counter > self.gen_cfg.get('time_limit') or percent_explored >= 80:
-                print(f'{counter} counts reached - percentage explored: {percent_explored}%')
-                # self.print_pheromone_map(self.warehouse.pheromone_map, self.cfg.get('warehouse', 'width'), self.cfg.get('warehouse', 'height'), 'test')
                 self.exit_threads = True
                 self.exit_run = True
 
