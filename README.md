@@ -1,10 +1,7 @@
 
-# DOTS 2D Simulator - Python
+# Hive 2D Simulator - Python
 
-This simulator is designed to be used as a basic experimentation and setup tool for the DOTS robots. It allows users to test behaviour based controllers on robots at high speed and with basic physics.
-
-This simulator is based on previous project work which can be found here: https://bitbucket.org/suet_lee/metric_extraction_ddmefd/src/master/
-
+This simulator is designed to be used as a basic experimentation and setup tool for the real robots. It allows users to test behaviour-based controllers on robots at high speed and with basic physics.
 
 ## Installation
 
@@ -57,7 +54,7 @@ See images/dot_2d_flow.jpg for a depiction of how information moves around the s
 | objects.py       | Contains the classes for all objects (robots, swarm and boxes)                             |
 | sim.py           | Contains the classes and functions for running the simulator                               |
 | viz_sim.py       | Contains the classes and functions for running the simulator with matplotlib visualisation |
-| warehouse.py     | Contains the classes and functions for settup up the warehouse                             |
+| warehouse.py     | Contains the classes and functions for setup up the warehouse                             |
 
 #### Config Files (cfg)
 
@@ -81,7 +78,4 @@ See images/dot_2d_flow.jpg for a depiction of how information moves around the s
 | Library File | Description                                                   |
 |-------------|----------------------------------------------------------------|
 | Config.py   | Functions for parsing the config files into useable parameters |
-
-#### MkDocs
-Further documentation on the simulator files is provided in mkdocs through the 'hive_documentation' directory.
-This can be ran locally using the mkdocs serve command - see mkdocs info online here: https://www.mkdocs.org/
+  
