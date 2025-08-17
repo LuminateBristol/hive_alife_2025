@@ -7,4 +7,6 @@ res/
 animation/
 .venv/
 .idea/
+__init__.py
+
 
