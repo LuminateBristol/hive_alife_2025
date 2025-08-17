@@ -45,7 +45,7 @@ TOURNAMENT_SIZE = 5
 NUM_ITERATIONS = 1             # Number of iterations ran per generation
 
 # Multi processing wrapper:
-def evaluate_genome_wrapper(args): # TODO: at the moment this only parallelises the genomes - i.e. max cores = 10. Future work needs to flatten this to we parallise over Num_genomes + Num_iterations - i;e. setup list of jobs which contains all genomres * NUM_ITERATIONS and send this to multiprocessing. Following this, we can then combine them again and take averages for the entire genome 
+def evaluate_genome_wrapper(args): # TODO: at the moment this only parallelises the genomes - i.e. max cores = population size. Future work needs to flatten this to we parallise over Num_genomes + Num_iterations - i;e. setup list of jobs which contains all genomres * NUM_ITERATIONS and send this to multiprocessing. Following this, we can then combine them again and take averages for the entire genome
         self_instance, genome, info_types = args
         selected_info_types = []
         for index, i in enumerate(genome):

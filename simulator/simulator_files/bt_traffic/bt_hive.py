@@ -227,9 +227,12 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='robo_mind', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='target_task_id', access=py_trees.common.Access.WRITE)
         self.blackboard.register_key(key='w_rob_c', access=py_trees.common.Access.WRITE)
+        self.blackboard.register_key(key='task_total_communication_throughput', access=py_trees.common.Access.WRITE)
 
     def setup(self):
         self.logger.debug(f"Connect to Hive Mind::setup {self.name}")
+        self.hive_http_communication_header_size = 500 # bytes - assumed based on online data for request & repsonse headers sitting somewhere between 200-800 bytes
+        self.per_instance_communication_throughput = 0 # User to record communication throughput per communication instance with the Hive (request and response / download and upload)
 
     def compare_robot_hive_graphs(self):
         '''
@@ -319,6 +322,7 @@ class Connect_To_Hive_Mind(py_trees.behaviour.Behaviour):
         if node_name.endswith('position'):
             # Update Hive Mind with robo_mind position attributes
             hive_mind.nodes[node_name]['data'] = copy.deepcopy(robo_mind_attr['data'])
+
 
         elif node_name.endswith('chosen_door'):
             # Update Hive Mind with latest robo_mind chosen door attributes

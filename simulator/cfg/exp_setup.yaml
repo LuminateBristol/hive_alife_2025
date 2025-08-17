@@ -24,11 +24,8 @@ exp_3_traffic:
     - [ None, 'robots', None, { 'type': 'entity' } ]
     - [ None, 'doors', None, { 'type': 'entity' } ]
     - [ None, 'map', None, {'type': 'entity'} ]
-    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 830]} ] # NOTE: tweaked y-values for smoother door entrance/exit from task locations
+    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 830]} ]
     - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1680] } ]
-#    - [ 'doors', 'door_A', 'child_of', { 'type': 'door', 'coords': [1250, 625]} ]
-#    - [ 'doors', 'door_B', 'child_of', { 'type': 'door', 'coords': [1250, 1250] } ]
-#    - [ 'doors', 'door_C', 'child_of', { 'type': 'door', 'coords': [1250, 1875] } ]
     - [ None, 'targets', None, { 'type': 'entity' } ]
     - [ 'tasks', 'task_1', 'child_of', { 'type': 'task', 'coords': [50, 1250]} ]
     - [ 'tasks', 'task_2', 'child_of', { 'type': 'task', 'coords': [2450, 1250]} ]

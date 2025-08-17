@@ -46,54 +46,6 @@ def run_ex():
 
     print(f'TOTAL COUNTS: {counter}')
 
-def run_many_log():
-    num_runs = 30
-    num_robots = [200]
-
-    # Open file once and write the header
-    with open('results/logistics_baseline.txt', 'w') as f:
-        f.write('id\texp\ttype\tnum_rob\ttime\n')  # Write header
-
-    for num in num_robots:
-        # Set number of robots
-        exp_cfg.set('number_of_agents', num)
-
-        # Run
-        for i in range(num_runs):
-            sim = Simulator(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
-            counter = sim.run(iteration=i+20)
-
-            # Append results for this run
-            with open('results/logistics_baseline.txt', 'a') as f:  # Append mode
-                f.write(f"{i}\tlogistics\tbaseline\t{num}\t{counter}\n")
-
-    print("Results complete and saved - yay!")
-
-def run_many_acov():
-    num_runs = 10
-    num_robots = [0]
-
-    # Open file once and write the header
-    with open('results/logistics_optimised.txt', 'w') as f:
-        f.write('id\texp\ttype\tnum_rob\ttimesteps\n')  # Write header
-
-    for num in num_robots:
-        # Set number of robots
-        exp_cfg.set('number_of_agents', num)
-
-        # Run
-        for i in range(num_runs):
-            sim = VizSim(gen_cfg, exp_cfg, map_cfg, verbose=verbose)
-            counter = sim.run(iteration=i)
-            # total_cells = (sim.cfg.get('warehouse', 'width') * sim.cfg.get('warehouse', 'height')) / sim.cfg.get('warehouse', 'cell_size') ** 2
-            # percent = (len(sim.warehouse.pheromone_map) / total_cells) * 100
-
-            # Append results for this run
-            with open('results/logistics_optimised.txt', 'a') as f:  # Append mode
-                f.write(f"{i}\tlogistics\toptimised\t{num}\t{counter}\n")
-
-    print("Results complete and saved - yay!")
-
 def run_many_traf():
 
     num_runs = 20
