@@ -6,3 +6,5 @@ models/
 res/
 animation/
 .venv/
+.idea/
+
